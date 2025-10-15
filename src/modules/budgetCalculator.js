@@ -1,4 +1,4 @@
-// src/modules/budgetCalculator.js
+// src/modules/budgetCalculator.js - Zaktualizowany z pełnym systemem kopert
 import { 
   getIncomes, 
   getExpenses, 
@@ -11,7 +11,8 @@ import {
 import { 
   getDaysLeftFor, 
   isRealised, 
-  getWarsawDateString 
+  getWarsawDateString,
+  getWeekStart
 } from '../utils/dateHelpers.js';
 import { DAILY_ENVELOPE } from '../utils/constants.js';
 
@@ -26,7 +27,7 @@ let envelopeSettings = {
 };
 
 /**
- * Oblicz sumy zrealizowanych przychodów i wydatków
+ * Oblicz sumy zrealizowanych przychodów i wydatków (bez dzisiejszych)
  */
 export function calculateRealisedTotals() {
   const incomes = getIncomes();
@@ -80,7 +81,7 @@ export function computeBaseEnvelope() {
  * Aktualizuj/utwórz kopertę dnia
  */
 export async function updateDailyEnvelope() {
-  if (!DAILY_ENVELOPE.ENABLED) return;
+  if (!DAILY_ENVELOPE.ENABLED) return null;
   
   const dateStr = getWarsawDateString();
   let record = await loadDailyEnvelope(dateStr);
@@ -104,6 +105,63 @@ export async function updateDailyEnvelope() {
 }
 
 /**
+ * Oblicz medianę z tablicy liczb
+ */
+function median(arr) {
+  const a = (Array.isArray(arr) ? arr : [])
+    .filter(x => Number.isFinite(x))
+    .sort((x, y) => x - y);
+  
+  if (!a.length) return 0;
+  
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+}
+
+/**
+ * Pobierz dzienne sumy wydatków z ostatnich N dni
+ */
+function getDailyExpenseTotalsLastNDays(n = 30) {
+  const expenses = getExpenses();
+  const totals = new Map();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const since = new Date(today);
+  since.setDate(since.getDate() - (n - 1));
+  
+  expenses.forEach(exp => {
+    if (exp && !exp.planned && exp.date) {
+      const d = new Date(exp.date);
+      d.setHours(0, 0, 0, 0);
+      
+      if (d >= since && d <= today) {
+        const key = d.toISOString().slice(0, 10);
+        const val = (exp.amount * (exp.quantity || 1)) || 0;
+        totals.set(key, (totals.get(key) || 0) + val);
+      }
+    }
+  });
+  
+  const result = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(since);
+    d.setDate(since.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    result.push(totals.get(key) || 0);
+  }
+  
+  return result;
+}
+
+/**
+ * Oblicz globalną medianę wydatków dziennych z ostatnich 30 dni
+ */
+export function getGlobalMedian30d() {
+  return median(getDailyExpenseTotalsLastNDays(30));
+}
+
+/**
  * Oblicz wydatki dzienne, tygodniowe i miesięczne
  */
 export function calculateSpendingPeriods() {
@@ -115,11 +173,7 @@ export function calculateSpendingPeriods() {
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
   
-  // Początek tygodnia (poniedziałek)
-  const weekStart = new Date(today);
-  const distance = (weekStart.getDay() + 6) % 7;
-  weekStart.setDate(weekStart.getDate() - distance);
-  weekStart.setHours(0, 0, 0, 0);
+  const weekStart = getWeekStart(today);
   
   let spentToday = 0;
   let spentWeek = 0;
@@ -156,7 +210,6 @@ export function calculateDailyLimits() {
   const savingGoal = getSavingGoal();
   const endDates = getEndDates();
   
-  // Całkowite zrealizowane przychody i wydatki
   let totalIncomeReal = 0;
   let totalExpenseReal = 0;
   
@@ -186,7 +239,9 @@ export function calculateDailyLimits() {
     dailyLimit2,
     spendable1,
     spendable2,
-    remainingReal
+    remainingReal,
+    totalIncomeReal,
+    totalExpenseReal
   };
 }
 
@@ -198,25 +253,27 @@ export function calculateForecastLimits() {
   const expenses = getExpenses();
   const savingGoal = getSavingGoal();
   const endDates = getEndDates();
-  const { remainingReal } = calculateDailyLimits();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Funkcja pomocnicza do obliczania prognozowanego pozostałego budżetu
   const computeForecastRemaining = (endDateStr) => {
     let forecastIncome = 0;
     let forecastExpense = 0;
     
-    if (!endDateStr) return remainingReal;
+    if (!endDateStr) return 0;
     
     const endDate = new Date(endDateStr);
     endDate.setHours(0, 0, 0, 0);
     
+    let totalIncomeReal = 0;
+    let totalExpenseReal = 0;
+    
     incomes.forEach(inc => {
-      if (inc.planned) {
+      if (isRealised(inc)) {
+        totalIncomeReal += inc.amount;
+      } else if (inc.planned) {
         const d = new Date(inc.date);
         d.setHours(0, 0, 0, 0);
-        
         if (d.getTime() <= endDate.getTime() && d.getTime() > today.getTime()) {
           forecastIncome += inc.amount;
         }
@@ -224,26 +281,15 @@ export function calculateForecastLimits() {
     });
     
     expenses.forEach(exp => {
-      if (exp.planned) {
+      if (isRealised(exp)) {
+        totalExpenseReal += exp.amount * (exp.quantity || 1);
+      } else if (exp.planned) {
         const d = new Date(exp.date);
         d.setHours(0, 0, 0, 0);
-        
         if (d.getTime() <= endDate.getTime() && d.getTime() > today.getTime()) {
           forecastExpense += exp.amount * (exp.quantity || 1);
         }
       }
-    });
-    
-    // Oblicz całkowitą kwotę realną
-    let totalIncomeReal = 0;
-    let totalExpenseReal = 0;
-    
-    incomes.forEach(inc => {
-      if (isRealised(inc)) totalIncomeReal += inc.amount;
-    });
-    
-    expenses.forEach(exp => {
-      if (isRealised(exp)) totalExpenseReal += exp.amount * (exp.quantity || 1);
     });
     
     return (totalIncomeReal + forecastIncome) - (totalExpenseReal + forecastExpense);
@@ -324,63 +370,6 @@ export function computeSourcesRemaining() {
 }
 
 /**
- * Oblicz medianę z tablicy liczb
- */
-function median(arr) {
-  const a = (Array.isArray(arr) ? arr : [])
-    .filter(x => Number.isFinite(x))
-    .sort((x, y) => x - y);
-  
-  if (!a.length) return 0;
-  
-  const mid = Math.floor(a.length / 2);
-  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
-}
-
-/**
- * Pobierz dzienne sumy wydatków z ostatnich N dni
- */
-function getDailyExpenseTotalsLastNDays(n = 30) {
-  const expenses = getExpenses();
-  const totals = new Map();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const since = new Date(today);
-  since.setDate(since.getDate() - (n - 1));
-  
-  expenses.forEach(exp => {
-    if (exp && !exp.planned && exp.date) {
-      const d = new Date(exp.date);
-      d.setHours(0, 0, 0, 0);
-      
-      if (d >= since && d <= today) {
-        const key = d.toISOString().slice(0, 10);
-        const val = (exp.amount * (exp.quantity || 1)) || 0;
-        totals.set(key, (totals.get(key) || 0) + val);
-      }
-    }
-  });
-  
-  const result = [];
-  for (let i = 0; i < n; i++) {
-    const d = new Date(since);
-    d.setDate(since.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
-    result.push(totals.get(key) || 0);
-  }
-  
-  return result;
-}
-
-/**
- * Oblicz globalną medianę wydatków dziennych z ostatnich 30 dni
- */
-export function getGlobalMedian30d() {
-  return median(getDailyExpenseTotalsLastNDays(30));
-}
-
-/**
  * Sprawdź anomalie budżetowe
  */
 export function checkAnomalies() {
@@ -405,7 +394,6 @@ export function checkAnomalies() {
   
   const remaining = totalIncome - totalSpent;
   
-  // Okres budżetowy
   const startDate = getBudgetStartDate();
   const endDateStr = endDates.primary;
   const endDate = endDateStr 
@@ -430,6 +418,10 @@ export function checkAnomalies() {
   
   if (expectedSpendable > 0 && overspend > expectedSpendable * 0.1) {
     anomalies.push('Wydano więcej niż przewidywany poziom w tym momencie.');
+  }
+  
+  if (anomalies.length > 0) {
+    anomalies.push('Rozważ ograniczenie zbędnych wydatków, planowanie posiłków i zakupy według listy, renegocjację abonamentów lub poszukiwanie dodatkowych oszczędności.');
   }
   
   return {
@@ -472,7 +464,6 @@ export function calculateSpendingGauge(spentMonth, dailyLimit, daysElapsed) {
     ratio = (spentMonth / daysElapsed) / dailyLimit;
   }
   
-  // Ogranicz do przedziału 0-1 z marginesem
   const clamped = Math.max(0, Math.min(1, ratio));
   const minRatio = 0.05;
   const maxRatio = 0.95;
@@ -530,7 +521,6 @@ export function computeComparisons(periodType, userFilter) {
   now.setHours(0, 0, 0, 0);
   
   if (periodType === 'weekly') {
-    // Ostatnie 4 tygodnie
     const current = new Date(now);
     const diff = (current.getDay() + 6) % 7;
     current.setDate(current.getDate() - diff);
@@ -552,7 +542,6 @@ export function computeComparisons(periodType, userFilter) {
       results.push({ label, ...totals });
     }
   } else {
-    // Ostatnie 6 miesięcy
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
     for (let i = 5; i >= 0; i--) {
