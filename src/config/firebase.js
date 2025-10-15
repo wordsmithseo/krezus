@@ -5,6 +5,7 @@ import { getAuth } from 'firebase/auth';
 
 /**
  * Konfiguracja Firebase dla aplikacji Krezus
+ * UWAGA: Te dane są już publiczne w kodzie frontendu
  */
 const firebaseConfig = {
   apiKey: "AIzaSyCnRc4rnq-xNf1Z9H_z-cfT7prqNgxQ_-0",
@@ -17,8 +18,19 @@ const firebaseConfig = {
 };
 
 // Inicjalizacja Firebase
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
+let app;
+let db;
+let auth;
+
+try {
+  app = initializeApp(firebaseConfig);
+  db = getDatabase(app);
+  auth = getAuth(app);
+  
+  console.log('✅ Firebase zainicjalizowany pomyślnie');
+} catch (error) {
+  console.error('❌ Błąd inicjalizacji Firebase:', error);
+  throw error;
+}
 
 export { app, db, auth };
