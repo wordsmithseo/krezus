@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Krezus - Planer Budżetu</title>
+  
+  <!-- Preconnect do Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Biblioteki zewnętrzne -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  
+  <!-- Style -->
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+  <!-- Kontener uwierzytelniania (widoczny tylko gdy użytkownik nie jest zalogowany) -->
+  <div id="authContainer" class="auth-container" style="display: none;">
+    <h2 id="authTitle">Logowanie</h2>
+    <form id="authForm">
+      <div class="form-group">
+        <label for="authEmail">Email</label>
+        <input 
+          type="email" 
+          id="authEmail" 
+          required
+          aria-label="Adres email"
+          aria-required="true"
+          placeholder="twoj@email.com"
+        />
+      </div>
+      
+      <div class="form-group">
+        <label for="authPassword">Hasło</label>
+        <input 
+          type="password" 
+          id="authPassword" 
+          required
+          minlength="6"
+          aria-label="Hasło użytkownika"
+          aria-required="true"
+          placeholder="Minimum 6 znaków"
+        />
+      </div>
+      
+      <button 
+        type="submit" 
+        id="authSubmit"
+        aria-label="Zaloguj się do aplikacji"
+      >
+        🔐 Zaloguj się
+      </button>
+    </form>
+    
+    <div class="auth-toggle">
+      <p>
+        <span id="authToggleText">Nie masz konta?</span>
+        <a href="#" id="authToggleLink">Zarejestruj się</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- Kontener głównej aplikacji (widoczny tylko po zalogowaniu) -->
+  <div id="appContainer" style="display: none;">
+    <header>Krezus</header>
+    
+    <!-- Informacje o użytkowniku -->
+    <div class="user-info">
+      <div>
+        <span>Zalogowano jako: </span>
+        <span class="user-name user-display-name"></span>
+      </div>
+      <div class="user-actions">
+        <button 
+          id="editProfileBtn" 
+          class="btn-secondary"
+          aria-label="Edytuj profil użytkownika"
+        >
+          👤 Edytuj profil
+        </button>
+        <button 
+          id="logoutBtn" 
+          class="btn-secondary"
+          aria-label="Wyloguj się z aplikacji"
+        >
+          🚪 Wyloguj
+        </button>
+      </div>
+    </div>
+    
+    <!-- Loader (wyświetlany podczas ładowania danych) -->
+    <div id="loader" class="loader-overlay">
+      <div class="spinner"></div>
+    </div>
+    
+    <!-- Nawigacja -->
+    <nav class="navbar" role="navigation" aria-label="Główna nawigacja">
+      <a href="#summary-section">Podsumowanie</a>
+      <a href="#add-expense">Dodaj wydatek</a>
+      <a href="#category-chart">Wykres</a>
+      <a href="#comparisons">Porównania</a>
+      <a href="#set-end-date">Ustaw koniec</a>
+      <a href="#saving-goal">Cel oszczędności</a>
+      <a href="#categories">Kategorie</a>
+      <a href="#sources">Źródła finansów</a>
+      <a href="#income-history">Historia źródeł finansów</a>
+      <a href="#expense-history">Historia wydatków</a>
+    </nav>
+
+    <main>
+      <!-- Podsumowanie -->
+      <section id="summary-section" class="section">
+        <h2>📊 Podsumowanie</h2>
+        <div id="summary"></div>
+        <div id="anomalyMessage" style="margin-top:15px;padding:10px;border:1px solid #c0392b;background-color:#ffe6e6;color:#c0392b;display:none;border-radius:5px;"></div>
+        
+        <!-- Prognozowane limity -->
+        <div id="forecastSummaryContainer" style="margin-top:20px;">
+          <h3 id="forecastSummaryHeader" style="margin-bottom:10px; font-size:1.1rem; color: var(--primary); display:flex; align-items:center; gap:8px;">
+            🔮 Prognozowane limity
+          </h3>
+          <div id="forecastSummary" class="summary-items"></div>
+        </div>
+        
+        <!-- Wskaźnik tempa wydatków -->
+        <div id="spendingGaugeContainer"></div>
+      </section>
+
+      <!-- Źródła finansów -->
+      <section id="sources" class="section">
+        <h2>💼 Źródła finansów</h2>
+        <div id="sourcesSummary">
+          <p style="font-size:1.1rem; margin-bottom:8px;">
+            <strong>Dostępne środki:</strong> <span id="availableFunds">0.00</span> PLN
+          </p>
+          <p style="font-size:0.95rem; margin-bottom:15px;">
+            <strong>Data ostatniego dodania środków:</strong> <span id="lastIncomeDate">Brak</span>
+          </p>
+          
+          <!-- Formularz edycji stanu (tylko admin) -->
+          <div id="editFundsContainer" style="display:none; margin-bottom:15px;">
+            <label for="editFundsAmount" style="font-weight:600;">Nowa kwota dostępna (PLN):</label>
+            <input 
+              type="number" 
+              id="editFundsAmount" 
+              min="0" 
+              step="0.01"
+              aria-label="Nowa kwota dostępnych środków"
+            />
+            <div style="display:flex; gap:10px;">
+              <button 
+                type="button" 
+                id="confirmEditFunds"
+                aria-label="Zatwierdź edycję stanu środków"
+              >
+                Zatwierdź
+              </button>
+              <button 
+                type="button" 
+                id="cancelEditFunds" 
+                class="btn-secondary"
+                aria-label="Anuluj edycję stanu środków"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+          
+          <!-- Formularz dodawania środków -->
+          <div id="addFundsContainer" style="display:none; margin-bottom:15px;">
+            <label for="addFundsAmount">Kwota (PLN):</label>
+            <input 
+              type="number" 
+              id="addFundsAmount" 
+              min="0" 
+              step="0.01"
+              required
+              aria-label="Kwota nowych środków"
+              aria-required="true"
+            />
+            
+            <label for="addFundsUser">Użytkownik:</label>
+            <select id="addFundsUser" aria-label="Wybierz użytkownika">
+              <option value="Martyna">Martyna</option>
+              <option value="Sławek">Sławek</option>
+            </select>
+            
+            <label for="addFundsDesc">Opis:</label>
+            <input 
+              type="text" 
+              id="addFundsDesc" 
+              placeholder="Np. pensja, dodatkowy dochód"
+              aria-label="Opis źródła finansów"
+            />
+            
+            <label for="addFundsType">Typ:</label>
+            <select id="addFundsType" aria-label="Typ transakcji">
+              <option value="normal">Zwykły</option>
+              <option value="planned">Planowany</option>
+            </select>
+            
+            <div id="addFundsDateContainer" style="display:none;">
+              <label for="addFundsDate">Data:</label>
+              <input 
+                type="date" 
+                id="addFundsDate"
+                aria-label="Data planowanego wpływu"
+              />
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+              <button 
+                type="button" 
+                id="confirmAddFunds"
+                aria-label="Zatwierdź dodanie środków"
+              >
+                Zatwierdź
+              </button>
+              <button 
+                type="button" 
+                id="cancelAddFunds" 
+                class="btn-secondary"
+                aria-label="Anuluj dodawanie środków"
+              >
+                Anuluj
+              </button>
+            </div>
+          </div>
+          
+          <!-- Przyciski akcji -->
+          <div id="sourcesButtons" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button 
+              type="button" 
+              id="showAddFundsForm"
+              aria-label="Pokaż formularz dodawania środków"
+            >
+              ➕ Dodaj środki
+            </button>
+            <button 
+              type="button" 
+              id="editFundsButton" 
+              style="display:none;"
+              aria-label="Edytuj stan dostępnych środków"
+            >
+              ✏️ Edytuj stan
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Historia źródeł finansów -->
+      <section id="income-history" class="section">
+        <h2>🕐 Historia źródeł finansów</h2>
+        <div style="overflow-x: auto;">
+          <table id="incomeHistoryTable" class="history-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Godzina</th>
+                <th>Użytkownik</th>
+                <th>Opis</th>
+                <th>Kwota (PLN)</th>
+                <th>Edytuj</th>
+                <th>Usuń</th>
+                <th>Akcja</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="incomePagination" class="pagination-controls"></div>
+      </section>
+
+      <!-- Dodaj wydatek -->
+      <section id="add-expense" class="section">
+        <h2>🛒 Dodaj wydatek</h2>
+        <form id="expenseForm">
+          <label for="expenseDate">Data:</label>
+          <input 
+            type="date" 
+            id="expenseDate" 
+            required
+            aria-label="Data wydatku"
+            aria-required="true"
+          />
+          
+          <label for="expenseUser">Użytkownik:</label>
+          <select id="expenseUser" aria-label="Wybierz użytkownika">
+            <option value="Martyna">Martyna</option>
+            <option value="Sławek">Sławek</option>
+          </select>
+          
+          <label for="expenseCategory">Kategoria:</label>
+          <input 
+            list="categoryList" 
+            id="expenseCategory" 
+            required
+            aria-label="Wybierz lub wpisz kategorię"
+            aria-required="true"
+          />
+          <datalist id="categoryList"></datalist>
+          <div id="categorySuggestions" class="suggestions-container"></div>
+          
+          <label for="expenseQuantity">Ilość:</label>
+          <input 
+            type="number" 
+            id="expenseQuantity" 
+            min="1" 
+            value="1" 
+            required
+            aria-label="Ilość"
+            aria-required="true"
+          />
+          
+          <label for="expenseAmount">Kwota (PLN):</label>
+          <input 
+            type="number" 
+            id="expenseAmount" 
+            min="0" 
+            step="0.01" 
+            required
+            pattern="[0-9]+(\.[0-9]{1,2})?"
+            aria-label="Kwota wydatku"
+            aria-required="true"
+          />
+          
+          <label for="expenseDesc">Opis:</label>
+          <input 
+            type="text" 
+            id="expenseDesc" 
+            placeholder="Np. zakupy spożywcze"
+            aria-label="Opis wydatku"
+          />
+          <div id="descriptionSuggestions" class="suggestions-container"></div>
+          
+          <label for="expenseType">Typ:</label>
+          <select id="expenseType" aria-label="Typ transakcji">
+            <option value="normal">Zwykły</option>
+            <option value="planned">Planowany</option>
+          </select>
+          
+          <button 
+            type="submit"
+            aria-label="Dodaj wydatek do budżetu"
+          >
+            ➖ Dodaj wydatek
+          </button>
+        </form>
+      </section>
+
+      <!-- Wykres kategorii -->
+      <section id="category-chart" class="section">
+        <h2>📈 Udział kategorii w wydatkach</h2>
+        <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+          <label for="categoryMonthSelect">Miesiąc:</label>
+          <select 
+            id="categoryMonthSelect" 
+            style="min-width:160px;"
+            aria-label="Wybierz miesiąc do wyświetlenia"
+          ></select>
+        </div>
+        <canvas id="categoryChart" width="400" height="300"></canvas>
+        <div id="chartLegend" class="chart-legend"></div>
+      </section>
+
+      <!-- Porównania -->
+      <section id="comparisons" class="section">
+        <h2>📊 Porównania</h2>
+        <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+          <label for="comparisonUser">Użytkownik:</label>
+          <select id="comparisonUser" aria-label="Filtruj według użytkownika">
+            <option value="all">Wszyscy</option>
+            <option value="Martyna">Martyna</option>
+            <option value="Sławek">Sławek</option>
+          </select>
+          
+          <label for="comparisonPeriod">Okres:</label>
+          <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
+            <option value="weekly">Tygodniowo (4 tyg.)</option>
+            <option value="monthly">Miesięcznie (6 mies.)</option>
+          </select>
+        </div>
+        <div style="height:400px;">
+          <canvas id="comparisonsChart"></canvas>
+        </div>
+        <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
+      </section>
+
+      <!-- Ustaw końce okresu budżetowego -->
+      <section id="set-end-date" class="section">
+        <h2>📆 Ustaw końce okresu budżetowego</h2>
+        <form id="endDatesForm">
+          <label for="budgetEndDate1">Data końcowa 1:</label>
+          <input 
+            type="date" 
+            id="budgetEndDate1" 
+            required 
+            disabled
+            aria-label="Pierwsza data końcowa okresu budżetowego"
+          />
+          
+          <label for="budgetEndDate2">Data końcowa 2:</label>
+          <input 
+            type="date" 
+            id="budgetEndDate2" 
+            required 
+            disabled
+            aria-label="Druga data końcowa okresu budżetowego"
+          />
+          
+          <button 
+            id="setEndDatesButton" 
+            type="submit" 
+            disabled
+            aria-label="Ustaw daty końcowe okresów budżetowych"
+          >
+            📅 Ustaw daty końcowe
+          </button>
+        </form>
+      </section>
+
+      <!-- Ustaw cel oszczędności -->
+      <section id="saving-goal" class="section">
+        <h2>🏖 Ustaw cel oszczędności</h2>
+        <form id="savingGoalForm">
+          <label for="savingGoal">Kwota do oszczędzenia (PLN):</label>
+          <input 
+            type="number" 
+            id="savingGoal" 
+            min="0" 
+            step="0.01"
+            pattern="[0-9]+(\.[0-9]{1,2})?"
+            aria-label="Kwota celu oszczędności"
+          />
+          <button 
+            type="submit"
+            aria-label="Ustaw cel oszczędności"
+          >
+            💰 Ustaw cel
+          </button>
+        </form>
+      </section>
+
+      <!-- Twoje kategorie -->
+      <section id="categories" class="section">
+        <h2>📂 Twoje kategorie</h2>
+        <div id="categoriesSection">
+          <div style="overflow-x: auto;">
+            <table id="categoriesTable">
+              <thead>
+                <tr>
+                  <th>Kategoria</th>
+                  <th>Wydatki (PLN)</th>
+                  <th>Edytuj</th>
+                  <th>Usuń</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Historia wydatków -->
+      <section id="expense-history" class="section">
+        <h2>🧾 Historia wydatków</h2>
+        <div style="overflow-x: auto;">
+          <table id="historyTable" class="history-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Godzina</th>
+                <th>Użytkownik</th>
+                <th>Kategoria</th>
+                <th>Opis</th>
+                <th>Ilość</th>
+                <th>Kwota (PLN)</th>
+                <th>Edytuj</th>
+                <th>Usuń</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="expensePagination" class="pagination-controls"></div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer-info">
+      <p>Autor: Sławomir Sprawski | Wersja 2.0</p>
+    </footer>
+  </div>
+
+  <!-- Główny skrypt aplikacji (moduł ES6) -->
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
