@@ -8,6 +8,9 @@ import {
 // Lokalizacja: około linii 100-120
 // ============================================
 
+/**
+ * Załaduj wszystkie dane
+ */
 async function loadAllData() {
   try {
     showLoader(true);
@@ -15,20 +18,40 @@ async function loadAllData() {
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     
-    // Subskrybuj real-time updates z callbackiem dla koperty
+    // Renderuj tylko raz przy pierwszym załadowaniu
+    renderAll();
+    
+    // POPRAWKA: Subskrybuj updates BEZ natychmiastowego renderowania
     subscribeToDataUpdates({
-      onCategoriesChange: () => renderAll(),
-      onExpensesChange: () => renderAll(),
-      onIncomesChange: () => renderAll(),
-      onEndDatesChange: () => renderAll(),
-      onSavingGoalChange: () => renderAll(),
+      onCategoriesChange: () => {
+        // Debounce - czekaj 300ms przed renderowaniem
+        clearTimeout(window.categoryUpdateTimeout);
+        window.categoryUpdateTimeout = setTimeout(() => renderAll(), 300);
+      },
+      onExpensesChange: () => {
+        clearTimeout(window.expenseUpdateTimeout);
+        window.expenseUpdateTimeout = setTimeout(() => renderAll(), 300);
+      },
+      onIncomesChange: () => {
+        clearTimeout(window.incomeUpdateTimeout);
+        window.incomeUpdateTimeout = setTimeout(() => renderAll(), 300);
+      },
+      onEndDatesChange: () => {
+        clearTimeout(window.endDateUpdateTimeout);
+        window.endDateUpdateTimeout = setTimeout(() => renderAll(), 300);
+      },
+      onSavingGoalChange: () => {
+        clearTimeout(window.savingGoalUpdateTimeout);
+        window.savingGoalUpdateTimeout = setTimeout(() => renderAll(), 300);
+      },
       onDailyEnvelopeChange: (envelope) => {
         console.log('📥 Koperta dnia zaktualizowana w czasie rzeczywistym');
-        renderSummary();
+        // Tylko podsumowanie, nie cały render
+        clearTimeout(window.envelopeUpdateTimeout);
+        window.envelopeUpdateTimeout = setTimeout(() => renderSummary(), 300);
       }
     });
     
-    renderAll();
   } catch (error) {
     console.error('Błąd ładowania danych:', error);
     showErrorMessage('Nie udało się załadować danych');
@@ -1324,9 +1347,18 @@ function setupMonthSelector() {
 /**
  * Renderuj wykres kategorii
  */
+/**
+ * Renderuj wykres kategorii
+ */
 function renderCategoryChart() {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
+  
+  // POPRAWKA: Zniszcz stary wykres PRZED utworzeniem nowego
+  if (window.categoryChartInstance) {
+    window.categoryChartInstance.destroy();
+    window.categoryChartInstance = null;
+  }
   
   const ctx = canvas.getContext('2d');
   const expenses = getExpenses();
@@ -1364,10 +1396,6 @@ function renderCategoryChart() {
     return `hsl(${hue}, 70%, 60%)`;
   });
   
-  if (window.categoryChartInstance) {
-    window.categoryChartInstance.destroy();
-  }
-  
   if (labels.length === 0) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const legendDiv = document.getElementById('chartLegend');
@@ -1375,10 +1403,11 @@ function renderCategoryChart() {
     return;
   }
   
-  // POPRAWKA: Ustaw stałą wysokość canvas
+  // Ustaw stałą wysokość canvas
   canvas.style.height = '400px';
   canvas.height = 400;
   
+  // POPRAWKA: Dodaj opcję animation: false dla lepszej wydajności
   window.categoryChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1392,7 +1421,8 @@ function renderCategoryChart() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // WAŻNE!
+      maintainAspectRatio: false,
+      animation: false, // Wyłącz animacje przy aktualizacji
       scales: {
         x: {
           ticks: {
@@ -1465,10 +1495,19 @@ function setupComparisonsFilters() {
 /**
  * Renderuj porównania
  */
+/**
+ * Renderuj porównania
+ */
 function renderComparisons() {
   const userSel = document.getElementById('comparisonUser');
   const periodSel = document.getElementById('comparisonPeriod');
   if (!userSel || !periodSel) return;
+  
+  // POPRAWKA: Zniszcz stary wykres PRZED utworzeniem nowego
+  if (window.comparisonsChartInstance) {
+    window.comparisonsChartInstance.destroy();
+    window.comparisonsChartInstance = null;
+  }
   
   const user = userSel.value;
   const periodType = periodSel.value;
@@ -1500,10 +1539,6 @@ function renderComparisons() {
   
   const ctx = ctxElem.getContext('2d');
   
-  if (window.comparisonsChartInstance) {
-    window.comparisonsChartInstance.destroy();
-  }
-  
   const labels = results.map(r => r.label);
   const incomeData = results.map(r => parseFloat(r.incomeSum.toFixed(2)));
   const expenseData = results.map(r => parseFloat(r.expenseSum.toFixed(2)));
@@ -1511,10 +1546,11 @@ function renderComparisons() {
   const incomeColors = new Array(results.length).fill('rgba(0, 184, 148, 0.8)');
   const expenseColors = new Array(results.length).fill('#e74c3c');
   
-  // POPRAWKA: Ustaw stałą wysokość canvas
+  // Ustaw stałą wysokość canvas
   ctxElem.style.height = '400px';
   ctxElem.height = 400;
   
+  // POPRAWKA: Dodaj opcję animation: false
   window.comparisonsChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1536,7 +1572,8 @@ function renderComparisons() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // WAŻNE!
+      maintainAspectRatio: false,
+      animation: false, // Wyłącz animacje
       scales: {
         x: {
           ticks: {
