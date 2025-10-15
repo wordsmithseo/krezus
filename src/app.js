@@ -1321,6 +1321,9 @@ function setupMonthSelector() {
 /**
  * Renderuj wykres kategorii
  */
+/**
+ * Renderuj wykres kategorii
+ */
 function renderCategoryChart() {
   const canvas = document.getElementById('categoryChart');
   if (!canvas) return;
@@ -1372,6 +1375,10 @@ function renderCategoryChart() {
     return;
   }
   
+  // POPRAWKA: Ustaw stałą wysokość canvas
+  canvas.style.height = '400px';
+  canvas.height = 400;
+  
   window.categoryChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1385,7 +1392,7 @@ function renderCategoryChart() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: false, // WAŻNE!
       scales: {
         x: {
           ticks: {
@@ -1455,6 +1462,9 @@ function setupComparisonsFilters() {
 /**
  * Renderuj porównania
  */
+/**
+ * Renderuj porównania
+ */
 function renderComparisons() {
   const userSel = document.getElementById('comparisonUser');
   const periodSel = document.getElementById('comparisonPeriod');
@@ -1501,6 +1511,10 @@ function renderComparisons() {
   const incomeColors = new Array(results.length).fill('rgba(0, 184, 148, 0.8)');
   const expenseColors = new Array(results.length).fill('#e74c3c');
   
+  // POPRAWKA: Ustaw stałą wysokość canvas
+  ctxElem.style.height = '400px';
+  ctxElem.height = 400;
+  
   window.comparisonsChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1522,7 +1536,7 @@ function renderComparisons() {
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: false, // WAŻNE!
       scales: {
         x: {
           ticks: {

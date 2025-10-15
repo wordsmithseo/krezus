@@ -333,40 +333,46 @@
       </section>
 
       <!-- Wykres kategorii -->
-      <section id="category-chart" class="section">
-        <h2>📈 Udział kategorii w wydatkach</h2>
-        <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-          <label for="categoryMonthSelect">Miesiąc:</label>
-          <select 
-            id="categoryMonthSelect" 
-            style="min-width:160px;"
-            aria-label="Wybierz miesiąc do wyświetlenia"
-          ></select>
-        </div>
-        <canvas id="categoryChart" width="400" height="300"></canvas>
-        <div id="chartLegend" class="chart-legend"></div>
-      </section>
+      <!-- Wykres kategorii -->
+<section id="category-chart" class="section">
+  <h2>📈 Udział kategorii w wydatkach</h2>
+  <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+    <label for="categoryMonthSelect">Miesiąc:</label>
+    <select 
+      id="categoryMonthSelect" 
+      style="min-width:160px;"
+      aria-label="Wybierz miesiąc do wyświetlenia"
+    ></select>
+  </div>
+  <!-- DODAJ kontener z ustaloną wysokością -->
+  <div style="position: relative; height: 400px; width: 100%;">
+    <canvas id="categoryChart"></canvas>
+  </div>
+  <div id="chartLegend" class="chart-legend"></div>
+</section>
 
       <!-- Porównania -->
-      <section id="comparisons" class="section">
-        <h2>📊 Porównania</h2>
-        <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-          <label for="comparisonUser">Użytkownik:</label>
-          <select id="comparisonUser" aria-label="Filtruj według użytkownika">
-            <option value="all">Wszyscy</option>
-          </select>
-          
-          <label for="comparisonPeriod">Okres:</label>
-          <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
-            <option value="weekly">Tygodniowo (4 tyg.)</option>
-            <option value="monthly">Miesięcznie (6 mies.)</option>
-          </select>
-        </div>
-        <div style="height:400px;">
-          <canvas id="comparisonsChart"></canvas>
-        </div>
-        <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
-      </section>
+      <!-- Porównania -->
+<section id="comparisons" class="section">
+  <h2>📊 Porównania</h2>
+  <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+    <label for="comparisonUser">Użytkownik:</label>
+    <select id="comparisonUser" aria-label="Filtruj według użytkownika">
+      <option value="all">Wszyscy</option>
+    </select>
+    
+    <label for="comparisonPeriod">Okres:</label>
+    <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
+      <option value="weekly">Tygodniowo (4 tyg.)</option>
+      <option value="monthly">Miesięcznie (6 mies.)</option>
+    </select>
+  </div>
+  <!-- DODAJ kontener z ustaloną wysokością -->
+  <div style="position: relative; height: 400px; width: 100%;">
+    <canvas id="comparisonsChart"></canvas>
+  </div>
+  <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
+</section>
 
       <!-- Ustaw końce okresu budżetowego -->
       <section id="set-end-date" class="section">
