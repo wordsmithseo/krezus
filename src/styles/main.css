@@ -785,3 +785,65 @@ html {
     border: 1px solid #ddd;
   }
 }
+
+/* ========================================
+   POPRAWKI WYKRESÓW - Dodaj na końcu main.css
+   ======================================== */
+
+/* Wykres kategorii - OGRANICZONA wysokość */
+#category-chart canvas {
+  max-height: 400px !important;
+  height: 400px !important;
+}
+
+#category-chart {
+  max-height: 500px;
+  overflow: hidden;
+}
+
+/* Wykres porównań - OGRANICZONA wysokość */
+#comparisons canvas {
+  max-height: 400px !important;
+}
+
+#comparisons > div {
+  height: 400px !important;
+  max-height: 400px !important;
+  position: relative;
+}
+
+/* Ogólne ograniczenie dla wszystkich canvas */
+canvas {
+  max-height: 500px !important;
+}
+
+/* Responsive dla małych ekranów */
+@media (max-width: 768px) {
+  #category-chart canvas,
+  #comparisons canvas {
+    max-height: 300px !important;
+    height: 300px !important;
+  }
+  
+  #comparisons > div {
+    height: 300px !important;
+    max-height: 300px !important;
+  }
+  
+  #category-chart {
+    max-height: 400px;
+  }
+}
+
+@media (max-width: 480px) {
+  #category-chart canvas,
+  #comparisons canvas {
+    max-height: 250px !important;
+    height: 250px !important;
+  }
+  
+  #comparisons > div {
+    height: 250px !important;
+    max-height: 250px !important;
+  }
+}

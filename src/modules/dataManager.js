@@ -1,12 +1,13 @@
-// src/modules/dataManager.js
+// src/modules/dataManager.js - Wspólny budżet dla wszystkich użytkowników
 import { ref, get, set, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
-import { getUserId } from './auth.js';
 import { parseDateStr, parseDateTime, isRealised, getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 
 /**
- * Cache lokalnych danych
+ * WAŻNE: Ta aplikacja używa wspólnego budżetu dla wszystkich użytkowników.
+ * Ścieżka danych: shared_budget/ (zamiast users/{userId}/)
  */
+
 let categoriesCache = [];
 let incomesCache = [];
 let expensesCache = [];
@@ -16,12 +17,10 @@ let savingGoalCache = 0;
 let dailyEnvelopeCache = null;
 
 /**
- * Pobierz ścieżkę do danych użytkownika
+ * Pobierz ścieżkę do wspólnych danych budżetu
  */
-function getUserPath(path = '') {
-  const userId = getUserId();
-  if (!userId) throw new Error('Brak zalogowanego użytkownika');
-  return `users/${userId}/${path}`;
+function getSharedBudgetPath(path = '') {
+  return `shared_budget/${path}`;
 }
 
 /**
@@ -29,7 +28,7 @@ function getUserPath(path = '') {
  */
 export async function loadCategories() {
   try {
-    const snapshot = await get(ref(db, getUserPath('categories')));
+    const snapshot = await get(ref(db, getSharedBudgetPath('categories')));
     const data = snapshot.val() || {};
     categoriesCache = Object.values(data);
     return categoriesCache;
@@ -44,7 +43,7 @@ export async function loadCategories() {
  */
 export async function loadExpenses() {
   try {
-    const snapshot = await get(ref(db, getUserPath('expenses')));
+    const snapshot = await get(ref(db, getSharedBudgetPath('expenses')));
     const data = snapshot.val() || {};
     expensesCache = Object.values(data);
     return expensesCache;
@@ -59,7 +58,7 @@ export async function loadExpenses() {
  */
 export async function loadIncomes() {
   try {
-    const snapshot = await get(ref(db, getUserPath('incomes')));
+    const snapshot = await get(ref(db, getSharedBudgetPath('incomes')));
     const data = snapshot.val() || {};
     incomesCache = Object.values(data);
     return incomesCache;
@@ -74,7 +73,7 @@ export async function loadIncomes() {
  */
 export async function loadEndDates() {
   try {
-    const snapshot = await get(ref(db, getUserPath('endDate')));
+    const snapshot = await get(ref(db, getSharedBudgetPath('endDate')));
     const data = snapshot.val();
     
     if (typeof data === 'string') {
@@ -100,7 +99,7 @@ export async function loadEndDates() {
  */
 export async function loadSavingGoal() {
   try {
-    const snapshot = await get(ref(db, getUserPath('savingGoal')));
+    const snapshot = await get(ref(db, getSharedBudgetPath('savingGoal')));
     const val = snapshot.val();
     savingGoalCache = val ? parseFloat(val) : 0;
     return savingGoalCache;
@@ -115,7 +114,7 @@ export async function loadSavingGoal() {
  */
 export async function loadDailyEnvelope(dateStr) {
   try {
-    const snapshot = await get(ref(db, getUserPath(`daily_envelope/${dateStr}`)));
+    const snapshot = await get(ref(db, getSharedBudgetPath(`daily_envelope/${dateStr}`)));
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
     console.error('Błąd ładowania koperty dnia:', error);
@@ -133,7 +132,7 @@ export async function saveCategories(categories) {
   });
   
   try {
-    await set(ref(db, getUserPath('categories')), obj);
+    await set(ref(db, getSharedBudgetPath('categories')), obj);
     categoriesCache = categories;
   } catch (error) {
     console.error('Błąd zapisywania kategorii:', error);
@@ -151,7 +150,7 @@ export async function saveExpenses(expenses) {
   });
   
   try {
-    await set(ref(db, getUserPath('expenses')), obj);
+    await set(ref(db, getSharedBudgetPath('expenses')), obj);
     expensesCache = expenses;
   } catch (error) {
     console.error('Błąd zapisywania wydatków:', error);
@@ -169,7 +168,7 @@ export async function saveIncomes(incomes) {
   });
   
   try {
-    await set(ref(db, getUserPath('incomes')), obj);
+    await set(ref(db, getSharedBudgetPath('incomes')), obj);
     incomesCache = incomes;
   } catch (error) {
     console.error('Błąd zapisywania źródeł finansów:', error);
@@ -182,7 +181,7 @@ export async function saveIncomes(incomes) {
  */
 export async function saveEndDates(primary, secondary) {
   try {
-    await set(ref(db, getUserPath('endDate')), { 
+    await set(ref(db, getSharedBudgetPath('endDate')), { 
       primary: primary || '', 
       secondary: secondary || '' 
     });
@@ -199,7 +198,7 @@ export async function saveEndDates(primary, secondary) {
  */
 export async function saveSavingGoal(goal) {
   try {
-    await set(ref(db, getUserPath('savingGoal')), goal);
+    await set(ref(db, getSharedBudgetPath('savingGoal')), goal);
     savingGoalCache = goal;
   } catch (error) {
     console.error('Błąd zapisywania celu oszczędności:', error);
@@ -212,7 +211,7 @@ export async function saveSavingGoal(goal) {
  */
 export async function saveDailyEnvelope(dateStr, envelope) {
   try {
-    await set(ref(db, getUserPath(`daily_envelope/${dateStr}`)), envelope);
+    await set(ref(db, getSharedBudgetPath(`daily_envelope/${dateStr}`)), envelope);
     if (dateStr === getWarsawDateString()) {
       dailyEnvelopeCache = envelope;
     }
@@ -223,7 +222,7 @@ export async function saveDailyEnvelope(dateStr, envelope) {
 }
 
 /**
- * Pobierz wszystkie dane użytkownika
+ * Pobierz wszystkie dane wspólnego budżetu
  */
 export async function fetchAllData() {
   try {
@@ -235,7 +234,6 @@ export async function fetchAllData() {
       loadSavingGoal()
     ]);
     
-    // Załaduj kopertę dnia
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
     
@@ -263,7 +261,6 @@ export async function autoRealiseDueTransactions() {
   let incomesUpdated = false;
   let expensesUpdated = false;
   
-  // Realizuj przeterminowane źródła finansów
   incomesCache.forEach(inc => {
     if (inc && inc.planned && inc.date) {
       const dueDate = new Date(inc.date);
@@ -282,7 +279,6 @@ export async function autoRealiseDueTransactions() {
     }
   });
   
-  // Realizuj przeterminowane wydatki
   expensesCache.forEach(exp => {
     if (exp && exp.planned && exp.date) {
       const dueDate = new Date(exp.date);
@@ -301,7 +297,6 @@ export async function autoRealiseDueTransactions() {
     }
   });
   
-  // Zapisz zmiany
   if (incomesUpdated) {
     await saveIncomes(incomesCache);
   }
@@ -317,11 +312,7 @@ export async function autoRealiseDueTransactions() {
  * Nasłuchuj zmian w czasie rzeczywistym
  */
 export function subscribeToRealtimeUpdates(callbacks) {
-  const userId = getUserId();
-  if (!userId) return;
-  
-  // Nasłuchuj kategorii
-  onValue(ref(db, getUserPath('categories')), (snapshot) => {
+  onValue(ref(db, getSharedBudgetPath('categories')), (snapshot) => {
     const data = snapshot.val() || {};
     categoriesCache = Object.values(data);
     if (callbacks.onCategoriesChange) {
@@ -329,8 +320,7 @@ export function subscribeToRealtimeUpdates(callbacks) {
     }
   });
   
-  // Nasłuchuj wydatków
-  onValue(ref(db, getUserPath('expenses')), (snapshot) => {
+  onValue(ref(db, getSharedBudgetPath('expenses')), (snapshot) => {
     const data = snapshot.val() || {};
     expensesCache = Object.values(data);
     if (callbacks.onExpensesChange) {
@@ -338,8 +328,7 @@ export function subscribeToRealtimeUpdates(callbacks) {
     }
   });
   
-  // Nasłuchuj źródeł finansów
-  onValue(ref(db, getUserPath('incomes')), (snapshot) => {
+  onValue(ref(db, getSharedBudgetPath('incomes')), (snapshot) => {
     const data = snapshot.val() || {};
     incomesCache = Object.values(data);
     if (callbacks.onIncomesChange) {
@@ -347,8 +336,7 @@ export function subscribeToRealtimeUpdates(callbacks) {
     }
   });
   
-  // Nasłuchuj dat końcowych
-  onValue(ref(db, getUserPath('endDate')), (snapshot) => {
+  onValue(ref(db, getSharedBudgetPath('endDate')), (snapshot) => {
     const data = snapshot.val() || {};
     if (typeof data === 'string') {
       endDate1Cache = data;
@@ -362,18 +350,27 @@ export function subscribeToRealtimeUpdates(callbacks) {
     }
   });
   
-  // Nasłuchuj celu oszczędności
-  onValue(ref(db, getUserPath('savingGoal')), (snapshot) => {
+  onValue(ref(db, getSharedBudgetPath('savingGoal')), (snapshot) => {
     const val = snapshot.val();
     savingGoalCache = val ? parseFloat(val) : 0;
     if (callbacks.onSavingGoalChange) {
       callbacks.onSavingGoalChange(savingGoalCache);
     }
   });
+  
+  const todayStr = getWarsawDateString();
+  onValue(ref(db, getSharedBudgetPath(`daily_envelope/${todayStr}`)), (snapshot) => {
+    if (snapshot.exists()) {
+      dailyEnvelopeCache = snapshot.val();
+      if (callbacks.onDailyEnvelopeChange) {
+        callbacks.onDailyEnvelopeChange(dailyEnvelopeCache);
+      }
+    }
+  });
 }
 
 /**
- * Gettery dla cache'owanych danych
+ * Gettery
  */
 export function getCategories() {
   return categoriesCache;

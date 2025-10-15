@@ -1,4 +1,41 @@
 // src/app.js - Główna aplikacja Krezus v2.0 z pełnym systemem kopert
+import {
+  subscribeToRealtimeUpdates as subscribeToDataUpdates
+} from './modules/dataManager.js';
+
+
+// 4. ZNAJDŹ funkcję loadAllData() i ZASTĄP ją
+// Lokalizacja: około linii 100-120
+// ============================================
+
+async function loadAllData() {
+  try {
+    showLoader(true);
+    await fetchAllData();
+    await autoRealiseDueTransactions();
+    await updateDailyEnvelope();
+    
+    // Subskrybuj real-time updates z callbackiem dla koperty
+    subscribeToDataUpdates({
+      onCategoriesChange: () => renderAll(),
+      onExpensesChange: () => renderAll(),
+      onIncomesChange: () => renderAll(),
+      onEndDatesChange: () => renderAll(),
+      onSavingGoalChange: () => renderAll(),
+      onDailyEnvelopeChange: (envelope) => {
+        console.log('📥 Koperta dnia zaktualizowana w czasie rzeczywistym');
+        renderSummary();
+      }
+    });
+    
+    renderAll();
+  } catch (error) {
+    console.error('Błąd ładowania danych:', error);
+    showErrorMessage('Nie udało się załadować danych');
+  } finally {
+    showLoader(false);
+  }
+}
 
 import { 
   loginUser, 
@@ -893,10 +930,6 @@ function setupSourcesSection() {
   const typeSelect = document.getElementById('addFundsType');
   const dateContainer = document.getElementById('addFundsDateContainer');
   
-  // Usuń pole użytkownika jeśli istnieje
-  const userRow = addContainer?.querySelector('label[for="addFundsUser"]')?.parentElement;
-  if (userRow) userRow.parentElement.removeChild(userRow);
-  
   addBtn?.addEventListener('click', () => {
     if (addContainer) addContainer.style.display = 'block';
   });
@@ -911,6 +944,7 @@ function setupSourcesSection() {
     }
   });
   
+  // NOWA WERSJA Z PRZELICZANIEM KOPERTY
   document.getElementById('confirmAddFunds')?.addEventListener('click', async () => {
     if (!isAdmin) {
       showErrorMessage('Funkcja dostępna tylko dla admina');
@@ -955,8 +989,18 @@ function setupSourcesSection() {
       
       await saveIncomes(incomes);
       
+      // ZAWSZE przelicz kopertę po dodaniu źródła
+      console.log('🔄 Przeliczanie koperty dnia po dodaniu źródła...');
+      await updateDailyEnvelope();
+      
+      // Jeśli to zrealizowany przychód, zaktualizuj timestamp
       if (!planned) {
-        await updateDailyEnvelope();
+        const envelope = getDailyEnvelope();
+        if (envelope) {
+          const nowStamp = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
+          envelope.set_at = nowStamp;
+          await saveDailyEnvelope(getWarsawDateString(), envelope);
+        }
       }
       
       document.getElementById('addFundsAmount').value = '';
@@ -967,13 +1011,14 @@ function setupSourcesSection() {
       renderAll();
       showSuccessFeedback();
     } catch (error) {
+      console.error('Błąd dodawania środków:', error);
       showErrorMessage('Nie udało się dodać środków');
     } finally {
       showLoader(false);
     }
   });
   
-  // Edycja stanu środków
+  // Edycja stanu środków - NOWA WERSJA Z PRZELICZANIEM KOPERTY
   document.getElementById('editFundsButton')?.addEventListener('click', () => {
     if (!isAdmin) return;
     
@@ -1032,7 +1077,18 @@ function setupSourcesSection() {
       });
       
       await saveIncomes(incomes);
+      
+      // ZAWSZE przelicz kopertę po korekcie
+      console.log('🔄 Przeliczanie koperty dnia po korekcie środków...');
       await updateDailyEnvelope();
+      
+      // Zaktualizuj timestamp koperty
+      const envelope = getDailyEnvelope();
+      if (envelope) {
+        const nowStamp = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
+        envelope.set_at = nowStamp;
+        await saveDailyEnvelope(getWarsawDateString(), envelope);
+      }
       
       const editContainer = document.getElementById('editFundsContainer');
       if (editContainer) editContainer.style.display = 'none';
@@ -1040,6 +1096,7 @@ function setupSourcesSection() {
       renderAll();
       showSuccessFeedback();
     } catch (error) {
+      console.error('Błąd edycji stanu środków:', error);
       showErrorMessage('Nie udało się edytować stanu środków');
     } finally {
       showLoader(false);
@@ -1620,13 +1677,33 @@ window.toggleIncomeStatus = async (incId) => {
     return;
   }
   
-  const incomes = getIncomes();
-  await saveIncomes(incomes);
-  await updateDailyEnvelope();
-  
-  renderIncomeHistory();
-  renderSummary();
-  showSuccessFeedback();
+  try {
+    showLoader(true);
+    
+    const incomes = getIncomes();
+    await saveIncomes(incomes);
+    
+    // ZAWSZE przelicz kopertę po realizacji planowanego przychodu
+    console.log('🔄 Przeliczanie koperty dnia po realizacji planowanego przychodu...');
+    await updateDailyEnvelope();
+    
+    // Zaktualizuj timestamp koperty
+    const envelope = getDailyEnvelope();
+    if (envelope) {
+      const nowStamp = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
+      envelope.set_at = nowStamp;
+      await saveDailyEnvelope(getWarsawDateString(), envelope);
+    }
+    
+    renderIncomeHistory();
+    renderSummary();
+    showSuccessFeedback();
+  } catch (error) {
+    console.error('Błąd przełączania statusu przychodu:', error);
+    showErrorMessage('Nie udało się zmienić statusu');
+  } finally {
+    showLoader(false);
+  }
 };
 
 console.log('✅ Aplikacja Krezus gotowa do działania!');
