@@ -1,33 +1,4 @@
 // src/app.js - Główna aplikacja Krezus v2.0 z pełnym systemem kopert
-import {
-  subscribeToRealtimeUpdates as subscribeToDataUpdates
-} from './modules/dataManager.js';
-
-
-// 4. ZNAJDŹ funkcję loadAllData() i ZASTĄP ją
-// Lokalizacja: około linii 100-120
-// ============================================
-
-/**
- * Załaduj wszystkie dane
- */
-async function loadAllData() {
-  try {
-    showLoader(true);
-    await fetchAllData();
-    await autoRealiseDueTransactions();
-    await updateDailyEnvelope();
-    
-    // Renderuj tylko raz przy pierwszym załadowaniu
-    renderAll();
-    
-  } catch (error) {
-    console.error('Błąd ładowania danych:', error);
-    showErrorMessage('Nie udało się załadować danych');
-  } finally {
-    showLoader(false);
-  }
-}
 
 import { 
   loginUser, 
@@ -896,8 +867,6 @@ function setupExpenseForm() {
       }
       
       await saveExpenses(expenses);
-
-      await fetchAllData();
       
       form.reset();
       dateInput.value = getWarsawDateString();
@@ -924,6 +893,10 @@ function setupSourcesSection() {
   const typeSelect = document.getElementById('addFundsType');
   const dateContainer = document.getElementById('addFundsDateContainer');
   
+  // Usuń pole użytkownika jeśli istnieje
+  const userRow = addContainer?.querySelector('label[for="addFundsUser"]')?.parentElement;
+  if (userRow) userRow.parentElement.removeChild(userRow);
+  
   addBtn?.addEventListener('click', () => {
     if (addContainer) addContainer.style.display = 'block';
   });
@@ -938,74 +911,69 @@ function setupSourcesSection() {
     }
   });
   
-  // NOWA WERSJA Z PRZELICZANIEM KOPERTY
- document.getElementById('confirmAddFunds')?.addEventListener('click', async () => {
-  if (!isAdmin) {
-    showErrorMessage('Funkcja dostępna tylko dla admina');
-    return;
-  }
-  
-  const amount = parseFloat(document.getElementById('addFundsAmount').value);
-  const desc = document.getElementById('addFundsDesc').value.trim();
-  const typeVal = typeSelect?.value || 'normal';
-  const planned = typeVal === 'planned';
-  
-  let dateStr;
-  if (planned) {
-    const dateInput = document.getElementById('addFundsDate');
-    dateStr = dateInput?.value || '';
-    if (!dateStr) {
-      showErrorMessage('Podaj datę planowanego wpływu');
+  document.getElementById('confirmAddFunds')?.addEventListener('click', async () => {
+    if (!isAdmin) {
+      showErrorMessage('Funkcja dostępna tylko dla admina');
       return;
     }
-  } else {
-    dateStr = getWarsawDateString();
-  }
+    
+    const amount = parseFloat(document.getElementById('addFundsAmount').value);
+    const desc = document.getElementById('addFundsDesc').value.trim();
+    const typeVal = typeSelect?.value || 'normal';
+    const planned = typeVal === 'planned';
+    
+    let dateStr;
+    if (planned) {
+      const dateInput = document.getElementById('addFundsDate');
+      dateStr = dateInput?.value || '';
+      if (!dateStr) {
+        showErrorMessage('Podaj datę planowanego wpływu');
+        return;
+      }
+    } else {
+      dateStr = getWarsawDateString();
+    }
+    
+    if (!validateAmount(amount).valid) {
+      showErrorMessage('Nieprawidłowa kwota');
+      return;
+    }
+    
+    try {
+      showLoader(true);
+      
+      const incomes = getIncomes();
+      incomes.push({
+        id: Date.now().toString(),
+        date: dateStr,
+        time: getCurrentTimeString(),
+        amount,
+        description: desc || 'Dodanie środków',
+        user: getDisplayName(),
+        planned
+      });
+      
+      await saveIncomes(incomes);
+      
+      if (!planned) {
+        await updateDailyEnvelope();
+      }
+      
+      document.getElementById('addFundsAmount').value = '';
+      document.getElementById('addFundsDesc').value = '';
+      if (addContainer) addContainer.style.display = 'none';
+      
+      currentIncomePage = 1;
+      renderAll();
+      showSuccessFeedback();
+    } catch (error) {
+      showErrorMessage('Nie udało się dodać środków');
+    } finally {
+      showLoader(false);
+    }
+  });
   
-  if (!validateAmount(amount).valid) {
-    showErrorMessage('Nieprawidłowa kwota');
-    return;
-  }
-  
-  try {
-    showLoader(true);
-    
-    const incomes = getIncomes();
-    incomes.push({
-      id: Date.now().toString(),
-      date: dateStr,
-      time: getCurrentTimeString(),
-      amount,
-      description: desc || 'Dodanie środków',
-      user: getDisplayName(),
-      planned
-    });
-    
-    await saveIncomes(incomes);
-    
-    // Przelicz kopertę
-    console.log('🔄 Przeliczanie koperty dnia po dodaniu źródła...');
-    await updateDailyEnvelope();
-    
-    // POPRAWKA: Przeładuj dane z Firebase
-    await fetchAllData();
-    
-    document.getElementById('addFundsAmount').value = '';
-    document.getElementById('addFundsDesc').value = '';
-    if (addContainer) addContainer.style.display = 'none';
-    
-    currentIncomePage = 1;
-    renderAll();
-    showSuccessFeedback();
-  } catch (error) {
-    console.error('Błąd dodawania środków:', error);
-    showErrorMessage('Nie udało się dodać środków');
-  } finally {
-    showLoader(false);
-  }
-});
-  
-  // Edycja stanu środków - NOWA WERSJA Z PRZELICZANIEM KOPERTY
+  // Edycja stanu środków
   document.getElementById('editFundsButton')?.addEventListener('click', () => {
     if (!isAdmin) return;
     
@@ -1064,18 +1032,7 @@ function setupSourcesSection() {
       });
       
       await saveIncomes(incomes);
-      
-      // ZAWSZE przelicz kopertę po korekcie
-      console.log('🔄 Przeliczanie koperty dnia po korekcie środków...');
       await updateDailyEnvelope();
-      
-      // Zaktualizuj timestamp koperty
-      const envelope = getDailyEnvelope();
-      if (envelope) {
-        const nowStamp = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
-        envelope.set_at = nowStamp;
-        await saveDailyEnvelope(getWarsawDateString(), envelope);
-      }
       
       const editContainer = document.getElementById('editFundsContainer');
       if (editContainer) editContainer.style.display = 'none';
@@ -1083,7 +1040,6 @@ function setupSourcesSection() {
       renderAll();
       showSuccessFeedback();
     } catch (error) {
-      console.error('Błąd edycji stanu środków:', error);
       showErrorMessage('Nie udało się edytować stanu środków');
     } finally {
       showLoader(false);
@@ -1308,147 +1264,118 @@ function setupMonthSelector() {
 /**
  * Renderuj wykres kategorii
  */
-/**
- * Renderuj wykres kategorii
- */
-/**
- * Renderuj wykres kategorii
- */
-/**
- * Renderuj wykres kategorii
- */
 function renderCategoryChart() {
-  // GUARD: Zapobiega wielokrotnemu renderowaniu
-  if (window.isRenderingCategoryChart) {
-    console.log('⏭️ Pomijam renderowanie wykresu - już w trakcie');
-    return;
-  }
+  const canvas = document.getElementById('categoryChart');
+  if (!canvas) return;
   
-  window.isRenderingCategoryChart = true;
+  const ctx = canvas.getContext('2d');
+  const expenses = getExpenses();
+  const categories = getCategories();
   
-  try {
-    const canvas = document.getElementById('categoryChart');
-    if (!canvas) return;
-    
-    // Zniszcz stary wykres
-    if (window.categoryChartInstance) {
-      window.categoryChartInstance.destroy();
-      window.categoryChartInstance = null;
+  const monthSelect = document.getElementById('categoryMonthSelect');
+  const selectedMonth = monthSelect ? monthSelect.value : '';
+  
+  const totals = {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  expenses.forEach(exp => {
+    if (exp.planned) {
+      const dCheck = new Date(exp.date);
+      dCheck.setHours(0, 0, 0, 0);
+      if (dCheck.getTime() > today.getTime()) return;
     }
     
-    const ctx = canvas.getContext('2d');
-    const expenses = getExpenses();
-    const categories = getCategories();
-    
-    const monthSelect = document.getElementById('categoryMonthSelect');
-    const selectedMonth = monthSelect ? monthSelect.value : '';
-    
-    const totals = {};
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    expenses.forEach(exp => {
-      if (exp.planned) {
-        const dCheck = new Date(exp.date);
-        dCheck.setHours(0, 0, 0, 0);
-        if (dCheck.getTime() > today.getTime()) return;
-      }
-      
-      if (selectedMonth && exp.date && exp.date.slice(0, 7) !== selectedMonth) {
-        return;
-      }
-      
-      const cat = categories.find(c => c.id === exp.categoryId);
-      const name = cat ? cat.name : 'Nieznana';
-      const cost = exp.amount * (exp.quantity || 1);
-      totals[name] = (totals[name] || 0) + cost;
-    });
-    
-    const labels = Object.keys(totals);
-    const data = labels.map(l => totals[l]);
-    
-    const colors = labels.map((_, i) => {
-      const hue = (i * 360 / labels.length) % 360;
-      return `hsl(${hue}, 70%, 60%)`;
-    });
-    
-    if (labels.length === 0) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const legendDiv = document.getElementById('chartLegend');
-      if (legendDiv) legendDiv.innerHTML = '';
+    if (selectedMonth && exp.date && exp.date.slice(0, 7) !== selectedMonth) {
       return;
     }
     
-    // Ustaw wysokość
-    canvas.style.height = '400px';
-    canvas.height = 400;
-    
-    window.categoryChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: '',
-          data: data,
-          backgroundColor: colors,
-          maxBarThickness: 60,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        scales: {
-          x: {
-            ticks: {
-              color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            },
-            grid: {
-              display: false
-            }
+    const cat = categories.find(c => c.id === exp.categoryId);
+    const name = cat ? cat.name : 'Nieznana';
+    const cost = exp.amount * (exp.quantity || 1);
+    totals[name] = (totals[name] || 0) + cost;
+  });
+  
+  const labels = Object.keys(totals);
+  const data = labels.map(l => totals[l]);
+  
+  const colors = labels.map((_, i) => {
+    const hue = (i * 360 / labels.length) % 360;
+    return `hsl(${hue}, 70%, 60%)`;
+  });
+  
+  if (window.categoryChartInstance) {
+    window.categoryChartInstance.destroy();
+  }
+  
+  if (labels.length === 0) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const legendDiv = document.getElementById('chartLegend');
+    if (legendDiv) legendDiv.innerHTML = '';
+    return;
+  }
+  
+  window.categoryChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '',
+        data: data,
+        backgroundColor: colors,
+        maxBarThickness: 60,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          ticks: {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
           },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            }
+          grid: {
+            display: false
           }
         },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const idx = context.dataIndex;
-                const val = context.dataset.data[idx];
-                return `${context.chart.data.labels[idx]}: ${val.toFixed(2)} PLN`;
-              }
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const idx = context.dataIndex;
+              const val = context.dataset.data[idx];
+              return `${context.chart.data.labels[idx]}: ${val.toFixed(2)} PLN`;
             }
           }
         }
       }
-    });
-    
-    const legendDiv = document.getElementById('chartLegend');
-    if (legendDiv) {
-      legendDiv.innerHTML = '';
-      labels.forEach((lbl, i) => {
-        const item = document.createElement('div');
-        item.className = 'legend-item';
-        const colorBox = document.createElement('span');
-        colorBox.className = 'legend-color';
-        colorBox.style.backgroundColor = colors[i];
-        item.appendChild(colorBox);
-        const text = document.createTextNode(`${lbl} (${data[i].toFixed(2)})`);
-        item.appendChild(text);
-        legendDiv.appendChild(item);
-      });
     }
-  } finally {
-    // ZAWSZE odblokuj po zakończeniu
-    window.isRenderingCategoryChart = false;
+  });
+  
+  const legendDiv = document.getElementById('chartLegend');
+  if (legendDiv) {
+    legendDiv.innerHTML = '';
+    labels.forEach((lbl, i) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      const colorBox = document.createElement('span');
+      colorBox.className = 'legend-color';
+      colorBox.style.backgroundColor = colors[i];
+      item.appendChild(colorBox);
+      const text = document.createTextNode(`${lbl} (${data[i].toFixed(2)})`);
+      item.appendChild(text);
+      legendDiv.appendChild(item);
+    });
   }
 }
 
@@ -1471,168 +1398,138 @@ function setupComparisonsFilters() {
 /**
  * Renderuj porównania
  */
-/**
- * Renderuj porównania
- */
-/**
- * Renderuj porównania
- */
-/**
- * Renderuj porównania
- */
 function renderComparisons() {
-  // GUARD: Zapobiega wielokrotnemu renderowaniu
-  if (window.isRenderingComparisons) {
-    console.log('⏭️ Pomijam renderowanie porównań - już w trakcie');
-    return;
+  const userSel = document.getElementById('comparisonUser');
+  const periodSel = document.getElementById('comparisonPeriod');
+  if (!userSel || !periodSel) return;
+  
+  const user = userSel.value;
+  const periodType = periodSel.value;
+  
+  const results = computeComparisons(periodType, user);
+  
+  const incomeDiff = [];
+  const expenseDiff = [];
+  for (let i = 0; i < results.length; i++) {
+    if (i === 0) {
+      incomeDiff.push({ delta: 0, percent: 0 });
+      expenseDiff.push({ delta: 0, percent: 0 });
+    } else {
+      const prevIncome = results[i - 1].incomeSum;
+      const prevExpense = results[i - 1].expenseSum;
+      const currIncome = results[i].incomeSum;
+      const currExpense = results[i].expenseSum;
+      const deltaIncome = currIncome - prevIncome;
+      const deltaExpense = currExpense - prevExpense;
+      const incomePct = prevIncome !== 0 ? (deltaIncome / prevIncome * 100) : 0;
+      const expensePct = prevExpense !== 0 ? (deltaExpense / prevExpense * 100) : 0;
+      incomeDiff.push({ delta: deltaIncome, percent: incomePct });
+      expenseDiff.push({ delta: deltaExpense, percent: expensePct });
+    }
   }
   
-  window.isRenderingComparisons = true;
+  const ctxElem = document.getElementById('comparisonsChart');
+  if (!ctxElem) return;
   
-  try {
-    const userSel = document.getElementById('comparisonUser');
-    const periodSel = document.getElementById('comparisonPeriod');
-    if (!userSel || !periodSel) return;
-    
-    // Zniszcz stary wykres
-    if (window.comparisonsChartInstance) {
-      window.comparisonsChartInstance.destroy();
-      window.comparisonsChartInstance = null;
-    }
-    
-    const user = userSel.value;
-    const periodType = periodSel.value;
-    
-    const results = computeComparisons(periodType, user);
-    
-    const incomeDiff = [];
-    const expenseDiff = [];
-    for (let i = 0; i < results.length; i++) {
-      if (i === 0) {
-        incomeDiff.push({ delta: 0, percent: 0 });
-        expenseDiff.push({ delta: 0, percent: 0 });
-      } else {
-        const prevIncome = results[i - 1].incomeSum;
-        const prevExpense = results[i - 1].expenseSum;
-        const currIncome = results[i].incomeSum;
-        const currExpense = results[i].expenseSum;
-        const deltaIncome = currIncome - prevIncome;
-        const deltaExpense = currExpense - prevExpense;
-        const incomePct = prevIncome !== 0 ? (deltaIncome / prevIncome * 100) : 0;
-        const expensePct = prevExpense !== 0 ? (deltaExpense / prevExpense * 100) : 0;
-        incomeDiff.push({ delta: deltaIncome, percent: incomePct });
-        expenseDiff.push({ delta: deltaExpense, percent: expensePct });
-      }
-    }
-    
-    const ctxElem = document.getElementById('comparisonsChart');
-    if (!ctxElem) return;
-    
-    const ctx = ctxElem.getContext('2d');
-    
-    const labels = results.map(r => r.label);
-    const incomeData = results.map(r => parseFloat(r.incomeSum.toFixed(2)));
-    const expenseData = results.map(r => parseFloat(r.expenseSum.toFixed(2)));
-    
-    const incomeColors = new Array(results.length).fill('rgba(0, 184, 148, 0.8)');
-    const expenseColors = new Array(results.length).fill('#e74c3c');
-    
-    // Ustaw stałą wysokość canvas
-    ctxElem.style.height = '400px';
-    ctxElem.height = 400;
-    
-    window.comparisonsChartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Nowe źródła finansów',
-            data: incomeData,
-            backgroundColor: incomeColors,
-            maxBarThickness: 50
+  const ctx = ctxElem.getContext('2d');
+  
+  if (window.comparisonsChartInstance) {
+    window.comparisonsChartInstance.destroy();
+  }
+  
+  const labels = results.map(r => r.label);
+  const incomeData = results.map(r => parseFloat(r.incomeSum.toFixed(2)));
+  const expenseData = results.map(r => parseFloat(r.expenseSum.toFixed(2)));
+  
+  const incomeColors = new Array(results.length).fill('rgba(0, 184, 148, 0.8)');
+  const expenseColors = new Array(results.length).fill('#e74c3c');
+  
+  window.comparisonsChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Nowe źródła finansów',
+          data: incomeData,
+          backgroundColor: incomeColors,
+          maxBarThickness: 50
+        },
+        {
+          label: 'Wydatki',
+          data: expenseData,
+          backgroundColor: expenseColors,
+          maxBarThickness: 50
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          ticks: {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
           },
-          {
-            label: 'Wydatki',
-            data: expenseData,
-            backgroundColor: expenseColors,
-            maxBarThickness: 50
+          grid: {
+            display: false
           }
-        ]
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+          }
+        }
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        scales: {
-          x: {
-            ticks: {
-              color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-            },
-            grid: {
-              display: false
-            }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: {
-              color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const idx = context.dataIndex;
+              const datasetLabel = context.dataset.label;
+              if (datasetLabel === 'Nowe źródła finansów') {
+                const deltaObj = incomeDiff[idx];
+                const deltaAbs = deltaObj.delta;
+                const deltaPct = deltaObj.percent;
+                const signAbs = deltaAbs >= 0 ? '+' : '';
+                const signPct = deltaPct >= 0 ? '+' : '';
+                return `${datasetLabel}: ${incomeData[idx].toFixed(2)} PLN (Δ ${signAbs}${deltaAbs.toFixed(2)} PLN, ${signPct}${deltaPct.toFixed(1)}%)`;
+              } else {
+                const deltaObj = expenseDiff[idx];
+                const deltaAbs = deltaObj.delta;
+                const deltaPct = deltaObj.percent;
+                const signAbs = deltaAbs >= 0 ? '+' : '';
+                const signPct = deltaPct >= 0 ? '+' : '';
+                return `${datasetLabel}: ${expenseData[idx].toFixed(2)} PLN (Δ ${signAbs}${deltaAbs.toFixed(2)} PLN, ${signPct}${deltaPct.toFixed(1)}%)`;
+              }
             }
           }
         },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                const idx = context.dataIndex;
-                const datasetLabel = context.dataset.label;
-                if (datasetLabel === 'Nowe źródła finansów') {
-                  const deltaObj = incomeDiff[idx];
-                  const deltaAbs = deltaObj.delta;
-                  const deltaPct = deltaObj.percent;
-                  const signAbs = deltaAbs >= 0 ? '+' : '';
-                  const signPct = deltaPct >= 0 ? '+' : '';
-                  return `${datasetLabel}: ${incomeData[idx].toFixed(2)} PLN (Δ ${signAbs}${deltaAbs.toFixed(2)} PLN, ${signPct}${deltaPct.toFixed(1)}%)`;
-                } else {
-                  const deltaObj = expenseDiff[idx];
-                  const deltaAbs = deltaObj.delta;
-                  const deltaPct = deltaObj.percent;
-                  const signAbs = deltaAbs >= 0 ? '+' : '';
-                  const signPct = deltaPct >= 0 ? '+' : '';
-                  return `${datasetLabel}: ${expenseData[idx].toFixed(2)} PLN (Δ ${signAbs}${deltaAbs.toFixed(2)} PLN, ${signPct}${deltaPct.toFixed(1)}%)`;
-                }
-              }
-            }
-          },
-          legend: {
-            position: 'bottom'
-          }
+        legend: {
+          position: 'bottom'
         }
       }
-    });
-    
-    const tableDiv = document.getElementById('comparisonsTable');
-    if (tableDiv) {
-      let html = '<table><thead><tr><th>Okres</th><th>Nowe źródła finansów (PLN)</th><th>Δ Nowe źródła</th><th>Wydatki (PLN)</th><th>Δ Wydatki</th><th>Transakcje</th><th>Średni dzienny wydatek (PLN)</th></tr></thead><tbody>';
-      for (let i = 0; i < results.length; i++) {
-        const res = results[i];
-        const incDiffObj = incomeDiff[i];
-        const expDiffObj = expenseDiff[i];
-        const signIncAbs = incDiffObj.delta >= 0 ? '+' : '';
-        const signIncPct = incDiffObj.percent >= 0 ? '+' : '';
-        const signExpAbs = expDiffObj.delta >= 0 ? '+' : '';
-        const signExpPct = expDiffObj.percent >= 0 ? '+' : '';
-        const incDeltaStr = `${signIncAbs}${incDiffObj.delta.toFixed(2)} PLN (${signIncPct}${incDiffObj.percent.toFixed(1)}%)`;
-        const expDeltaStr = `${signExpAbs}${expDiffObj.delta.toFixed(2)} PLN (${signExpPct}${expDiffObj.percent.toFixed(1)}%)`;
-        html += `<tr><td>${res.label}</td><td>${res.incomeSum.toFixed(2)}</td><td>${incDeltaStr}</td><td>${res.expenseSum.toFixed(2)}</td><td>${expDeltaStr}</td><td>${res.transactionCount}</td><td>${res.avgDailySpend.toFixed(2)}</td></tr>`;
-      }
-      html += '</tbody></table>';
-      tableDiv.innerHTML = html;
     }
-    
-  } finally {
-    // ZAWSZE odblokuj po zakończeniu
-    window.isRenderingComparisons = false;
+  });
+  
+  const tableDiv = document.getElementById('comparisonsTable');
+  if (tableDiv) {
+    let html = '<table><thead><tr><th>Okres</th><th>Nowe źródła finansów (PLN)</th><th>Δ Nowe źródła</th><th>Wydatki (PLN)</th><th>Δ Wydatki</th><th>Transakcje</th><th>Średni dzienny wydatek (PLN)</th></tr></thead><tbody>';
+    for (let i = 0; i < results.length; i++) {
+      const res = results[i];
+      const incDiffObj = incomeDiff[i];
+      const expDiffObj = expenseDiff[i];
+      const signIncAbs = incDiffObj.delta >= 0 ? '+' : '';
+      const signIncPct = incDiffObj.percent >= 0 ? '+' : '';
+      const signExpAbs = expDiffObj.delta >= 0 ? '+' : '';
+      const signExpPct = expDiffObj.percent >= 0 ? '+' : '';
+      const incDeltaStr = `${signIncAbs}${incDiffObj.delta.toFixed(2)} PLN (${signIncPct}${incDiffObj.percent.toFixed(1)}%)`;
+      const expDeltaStr = `${signExpAbs}${expDiffObj.delta.toFixed(2)} PLN (${signExpPct}${expDiffObj.percent.toFixed(1)}%)`;
+      html += `<tr><td>${res.label}</td><td>${res.incomeSum.toFixed(2)}</td><td>${incDeltaStr}</td><td>${res.expenseSum.toFixed(2)}</td><td>${expDeltaStr}</td><td>${res.transactionCount}</td><td>${res.avgDailySpend.toFixed(2)}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
   }
 }
 
@@ -1723,33 +1620,13 @@ window.toggleIncomeStatus = async (incId) => {
     return;
   }
   
-  try {
-    showLoader(true);
-    
-    const incomes = getIncomes();
-    await saveIncomes(incomes);
-    
-    // ZAWSZE przelicz kopertę po realizacji planowanego przychodu
-    console.log('🔄 Przeliczanie koperty dnia po realizacji planowanego przychodu...');
-    await updateDailyEnvelope();
-    
-    // Zaktualizuj timestamp koperty
-    const envelope = getDailyEnvelope();
-    if (envelope) {
-      const nowStamp = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
-      envelope.set_at = nowStamp;
-      await saveDailyEnvelope(getWarsawDateString(), envelope);
-    }
-    
-    renderIncomeHistory();
-    renderSummary();
-    showSuccessFeedback();
-  } catch (error) {
-    console.error('Błąd przełączania statusu przychodu:', error);
-    showErrorMessage('Nie udało się zmienić statusu');
-  } finally {
-    showLoader(false);
-  }
+  const incomes = getIncomes();
+  await saveIncomes(incomes);
+  await updateDailyEnvelope();
+  
+  renderIncomeHistory();
+  renderSummary();
+  showSuccessFeedback();
 };
 
 console.log('✅ Aplikacja Krezus gotowa do działania!');

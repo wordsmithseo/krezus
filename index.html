@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Krezus - Planer Budżetu</title>
   
+  <!-- Preconnect do Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
+  <!-- Biblioteki zewnętrzne -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   
+  <!-- Style -->
   <link rel="stylesheet" href="/src/styles/main.css">
 </head>
 <body>
-  <!-- Kontener uwierzytelniania -->
+  <!-- Kontener uwierzytelniania (widoczny tylko gdy użytkownik nie jest zalogowany) -->
   <div id="authContainer" class="auth-container" style="display: none;">
     <h2 id="authTitle">Logowanie</h2>
     <form id="authForm">
@@ -61,7 +64,7 @@
     </div>
   </div>
 
-  <!-- Kontener głównej aplikacji -->
+  <!-- Kontener głównej aplikacji (widoczny tylko po zalogowaniu) -->
   <div id="appContainer" style="display: none;">
     <header>Krezus</header>
     
@@ -89,7 +92,7 @@
       </div>
     </div>
     
-    <!-- Loader -->
+    <!-- Loader (wyświetlany podczas ładowania danych) -->
     <div id="loader" class="loader-overlay">
       <div class="spinner"></div>
     </div>
@@ -115,6 +118,7 @@
         <div id="summary"></div>
         <div id="anomalyMessage" style="margin-top:15px;padding:10px;border:1px solid #c0392b;background-color:#ffe6e6;color:#c0392b;display:none;border-radius:5px;"></div>
         
+        <!-- Prognozowane limity -->
         <div id="forecastSummaryContainer" style="margin-top:20px;">
           <h3 id="forecastSummaryHeader" style="margin-bottom:10px; font-size:1.1rem; color: var(--primary); display:flex; align-items:center; gap:8px;">
             🔮 Prognozowane limity
@@ -122,6 +126,7 @@
           <div id="forecastSummary" class="summary-items"></div>
         </div>
         
+        <!-- Wskaźnik tempa wydatków -->
         <div id="spendingGaugeContainer"></div>
       </section>
 
@@ -165,7 +170,7 @@
             </div>
           </div>
           
-          <!-- Formularz dodawania środków (bez pola użytkownika) -->
+          <!-- Formularz dodawania środków -->
           <div id="addFundsContainer" style="display:none; margin-bottom:15px;">
             <label for="addFundsAmount">Kwota (PLN):</label>
             <input 
@@ -177,6 +182,12 @@
               aria-label="Kwota nowych środków"
               aria-required="true"
             />
+            
+            <label for="addFundsUser">Użytkownik:</label>
+            <select id="addFundsUser" aria-label="Wybierz użytkownika">
+              <option value="Martyna">Martyna</option>
+              <option value="Sławek">Sławek</option>
+            </select>
             
             <label for="addFundsDesc">Opis:</label>
             <input 
@@ -220,6 +231,7 @@
             </div>
           </div>
           
+          <!-- Przyciski akcji -->
           <div id="sourcesButtons" style="display:flex; gap:10px; flex-wrap:wrap;">
             <button 
               type="button" 
@@ -252,6 +264,8 @@
                 <th>Użytkownik</th>
                 <th>Opis</th>
                 <th>Kwota (PLN)</th>
+                <th>Edytuj</th>
+                <th>Usuń</th>
                 <th>Akcja</th>
               </tr>
             </thead>
@@ -261,7 +275,7 @@
         <div id="incomePagination" class="pagination-controls"></div>
       </section>
 
-      <!-- Dodaj wydatek (bez pola użytkownika) -->
+      <!-- Dodaj wydatek -->
       <section id="add-expense" class="section">
         <h2>🛒 Dodaj wydatek</h2>
         <form id="expenseForm">
@@ -273,6 +287,12 @@
             aria-label="Data wydatku"
             aria-required="true"
           />
+          
+          <label for="expenseUser">Użytkownik:</label>
+          <select id="expenseUser" aria-label="Wybierz użytkownika">
+            <option value="Martyna">Martyna</option>
+            <option value="Sławek">Sławek</option>
+          </select>
           
           <label for="expenseCategory">Kategoria:</label>
           <input 
@@ -333,46 +353,42 @@
       </section>
 
       <!-- Wykres kategorii -->
-      <!-- Wykres kategorii -->
-<section id="category-chart" class="section">
-  <h2>📈 Udział kategorii w wydatkach</h2>
-  <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-    <label for="categoryMonthSelect">Miesiąc:</label>
-    <select 
-      id="categoryMonthSelect" 
-      style="min-width:160px;"
-      aria-label="Wybierz miesiąc do wyświetlenia"
-    ></select>
-  </div>
-  <!-- DODAJ kontener z ustaloną wysokością -->
-  <div style="position: relative; height: 400px; width: 100%;">
-    <canvas id="categoryChart"></canvas>
-  </div>
-  <div id="chartLegend" class="chart-legend"></div>
-</section>
+      <section id="category-chart" class="section">
+        <h2>📈 Udział kategorii w wydatkach</h2>
+        <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+          <label for="categoryMonthSelect">Miesiąc:</label>
+          <select 
+            id="categoryMonthSelect" 
+            style="min-width:160px;"
+            aria-label="Wybierz miesiąc do wyświetlenia"
+          ></select>
+        </div>
+        <canvas id="categoryChart" width="400" height="300"></canvas>
+        <div id="chartLegend" class="chart-legend"></div>
+      </section>
 
       <!-- Porównania -->
-      <!-- Porównania -->
-<section id="comparisons" class="section">
-  <h2>📊 Porównania</h2>
-  <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-    <label for="comparisonUser">Użytkownik:</label>
-    <select id="comparisonUser" aria-label="Filtruj według użytkownika">
-      <option value="all">Wszyscy</option>
-    </select>
-    
-    <label for="comparisonPeriod">Okres:</label>
-    <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
-      <option value="weekly">Tygodniowo (4 tyg.)</option>
-      <option value="monthly">Miesięcznie (6 mies.)</option>
-    </select>
-  </div>
-  <!-- DODAJ kontener z ustaloną wysokością -->
-  <div style="position: relative; height: 400px; width: 100%;">
-    <canvas id="comparisonsChart"></canvas>
-  </div>
-  <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
-</section>
+      <section id="comparisons" class="section">
+        <h2>📊 Porównania</h2>
+        <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
+          <label for="comparisonUser">Użytkownik:</label>
+          <select id="comparisonUser" aria-label="Filtruj według użytkownika">
+            <option value="all">Wszyscy</option>
+            <option value="Martyna">Martyna</option>
+            <option value="Sławek">Sławek</option>
+          </select>
+          
+          <label for="comparisonPeriod">Okres:</label>
+          <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
+            <option value="weekly">Tygodniowo (4 tyg.)</option>
+            <option value="monthly">Miesięcznie (6 mies.)</option>
+          </select>
+        </div>
+        <div style="height:400px;">
+          <canvas id="comparisonsChart"></canvas>
+        </div>
+        <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
+      </section>
 
       <!-- Ustaw końce okresu budżetowego -->
       <section id="set-end-date" class="section">
@@ -480,6 +496,7 @@
     </footer>
   </div>
 
+  <!-- Główny skrypt aplikacji (moduł ES6) -->
   <script type="module" src="/src/app.js"></script>
 </body>
 </html>
