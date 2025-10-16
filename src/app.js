@@ -981,11 +981,6 @@ function setupSourcesSection() {
   });
   
   document.getElementById('confirmAddFunds')?.addEventListener('click', async () => {
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
-    
     const amount = parseFloat(document.getElementById('addFundsAmount').value);
     const desc = document.getElementById('addFundsDesc').value.trim();
     const typeVal = typeSelect?.value || 'normal';
@@ -1043,8 +1038,6 @@ function setupSourcesSection() {
   
   // Edycja stanu środków
   document.getElementById('editFundsButton')?.addEventListener('click', () => {
-    if (!isAdmin) return;
-    
     const editContainer = document.getElementById('editFundsContainer');
     if (!editContainer) return;
     
@@ -1062,11 +1055,6 @@ function setupSourcesSection() {
   });
   
   document.getElementById('confirmEditFunds')?.addEventListener('click', async () => {
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
-    
     const inputField = document.getElementById('editFundsAmount');
     const newVal = inputField ? parseFloat(inputField.value) : NaN;
     const availElem = document.getElementById('availableFunds');
@@ -1120,13 +1108,13 @@ function setupSourcesSection() {
 function setupEndDatesForm() {
   const form = document.getElementById('endDatesForm');
   
+  // Włącz pola dla wszystkich użytkowników
+  document.getElementById('setEndDatesButton')?.removeAttribute('disabled');
+  document.getElementById('budgetEndDate1')?.removeAttribute('disabled');
+  document.getElementById('budgetEndDate2')?.removeAttribute('disabled');
+  
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
     
     const date1 = document.getElementById('budgetEndDate1').value;
     const date2 = document.getElementById('budgetEndDate2').value;
@@ -1150,13 +1138,14 @@ function setupEndDatesForm() {
 function setupSavingGoalForm() {
   const form = document.getElementById('savingGoalForm');
   
+  // Włącz formularz dla wszystkich użytkowników
+  if (form) {
+    const inputs = form.querySelectorAll('input, button');
+    inputs.forEach(el => el.disabled = false);
+  }
+  
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
     
     const goal = parseFloat(document.getElementById('savingGoal').value);
     
@@ -1626,7 +1615,6 @@ function showSuccessFeedback() {
  * Edytuj wydatek
  */
 window.editExpense = async (expId) => {
-  if (!isAdmin) return;
   const expense = getExpenses().find(e => e.id === expId);
   if (!expense) return;
   
@@ -1664,7 +1652,6 @@ window.deleteExpense = async (expId) => {
  * Przełącz status przychodu (planowany/zrealizowany)
  */
 window.toggleIncomeStatus = async (incId) => {
-  if (!isAdmin) return;
   const inc = getIncomes().find(item => item.id === incId);
   if (!inc) return;
   
