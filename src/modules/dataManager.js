@@ -92,9 +92,16 @@ export async function loadCategories() {
  */
 export async function loadExpenses() {
   try {
-    const snapshot = await get(ref(db, getUserBudgetPath('expenses')));
+    const userId = getUserId();
+    const path = getUserBudgetPath('expenses');
+    
+    console.log('📥 Ładowanie wydatków dla użytkownika:', userId);
+    
+    const snapshot = await get(ref(db, path));
     const data = snapshot.val() || {};
     const newExpenses = Object.values(data);
+    
+    console.log('📊 Pobrano z Firebase:', newExpenses.length, 'wydatków');
     
     // Usuń duplikaty na podstawie ID
     const uniqueExpenses = [];
@@ -104,11 +111,13 @@ export async function loadExpenses() {
       if (exp && exp.id && !seenIds.has(exp.id)) {
         seenIds.add(exp.id);
         uniqueExpenses.push(exp);
+      } else if (exp && exp.id) {
+        console.warn('⚠️ Duplikat wydatku wykryty i pominięty:', exp.id);
       }
     });
     
     expensesCache = uniqueExpenses;
-    console.log('✅ Załadowano wydatki:', expensesCache.length);
+    console.log('✅ Załadowano unikalne wydatki:', expensesCache.length);
     return expensesCache;
   } catch (error) {
     console.error('❌ Błąd ładowania wydatków:', error);
@@ -148,11 +157,6 @@ export async function loadIncomes() {
     
     incomesCache = uniqueIncomes;
     console.log('✅ Załadowano unikalne przychody:', incomesCache.length);
-    
-    // Debug: pokaż pierwsze 3 przychody
-    if (incomesCache.length > 0) {
-      console.log('🔍 Próbka przychodów:', incomesCache.slice(0, 3));
-    }
     
     return incomesCache;
   } catch (error) {
@@ -244,21 +248,28 @@ export async function saveCategories(categories) {
  * Zapisz wydatki do Firebase
  */
 export async function saveExpenses(expenses) {
+  const userId = getUserId();
   const obj = {};
   const seenIds = new Set();
+  
+  console.log('💾 Zapisywanie wydatków dla użytkownika:', userId);
+  console.log('📊 Liczba wydatków do zapisu:', expenses.length);
   
   // Usuń duplikaty przed zapisem
   expenses.forEach(exp => {
     if (exp && exp.id && !seenIds.has(exp.id)) {
       seenIds.add(exp.id);
       obj[exp.id] = exp;
+    } else if (exp && exp.id) {
+      console.warn('⚠️ Duplikat wydatku pominięty podczas zapisu:', exp.id);
     }
   });
   
   try {
-    await set(ref(db, getUserBudgetPath('expenses')), obj);
+    const path = getUserBudgetPath('expenses');
+    await set(ref(db, path), obj);
     expensesCache = Object.values(obj);
-    console.log('✅ Zapisano wydatki:', expensesCache.length);
+    console.log('✅ Zapisano unikalne wydatki:', expensesCache.length);
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatków:', error);
     throw error;
@@ -518,6 +529,8 @@ export function subscribeToRealtimeUpdates(callbacks) {
       if (item && item.id && !seenIds.has(item.id)) {
         seenIds.add(item.id);
         uniqueData.push(item);
+      } else if (item && item.id) {
+        console.warn('⚠️ Duplikat wydatku w listenerze:', item.id);
       }
     });
     
@@ -532,7 +545,7 @@ export function subscribeToRealtimeUpdates(callbacks) {
     console.error('❌ Błąd listenera wydatków:', error);
   });
   
-  // Incomes listener - NAJWAŻNIEJSZY
+  // Incomes listener
   const incomesRef = ref(db, getUserBudgetPath('incomes'));
   activeListeners.incomes = onValue(incomesRef, (snapshot) => {
     const data = snapshot.val() || {};
@@ -641,30 +654,15 @@ export function clearCache() {
  * Gettery - ZAWSZE zwracają kopie, nigdy referencje
  */
 export function getCategories() {
-  // Zwróć kopię aby zapobiec mutacjom
   return [...categoriesCache];
 }
 
 export function getExpenses() {
-  // Zwróć kopię aby zapobiec mutacjom
   return [...expensesCache];
 }
 
 export function getIncomes() {
-  // KRYTYCZNE: Zawsze zwracaj świeżą kopię
-  const copy = [...incomesCache];
-  
-  // Debug log
-  if (copy.length > 0) {
-    const userId = getUserId();
-    console.log('📤 Zwracam przychody:', {
-      count: copy.length,
-      userId,
-      sample: copy.length > 0 ? copy[0].id : 'brak'
-    });
-  }
-  
-  return copy;
+  return [...incomesCache];
 }
 
 export function getEndDates() {
