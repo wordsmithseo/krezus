@@ -1,12 +1,14 @@
-// src/modules/dataManager.js - Indywidualne budżety dla każdego użytkownika
-import { ref, get, set, onValue, off } from 'firebase/database';
+// src/modules/dataManager.js - NAPRAWIONY: Indywidualne budżety bez przecieków danych
+
+import { ref, get, set, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
-import { parseDateStr, parseDateTime, isRealised, getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
+import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 
 /**
- * WAŻNE: Każdy użytkownik ma swój własny budżet
+ * KRYTYCZNE: Każdy użytkownik ma swój własny budżet
  * Ścieżka danych: users/{userId}/budget/
+ * NIE MOŻE być przecieków danych między użytkownikami!
  */
 
 let categoriesCache = [];
@@ -17,8 +19,11 @@ let endDate2Cache = '';
 let savingGoalCache = 0;
 let dailyEnvelopeCache = null;
 
-// Referencje do listenerów
+// Referencje do listenerów - MUSI być czyszczone przy wylogowaniu
 let activeListeners = {};
+
+// ID aktualnego użytkownika - dla weryfikacji
+let currentCachedUserId = null;
 
 /**
  * Pobierz ścieżkę do budżetu użytkownika
@@ -28,7 +33,29 @@ function getUserBudgetPath(path = '') {
   if (!userId) {
     throw new Error('Użytkownik nie jest zalogowany');
   }
+  
+  // KRYTYCZNE: Sprawdź czy cache jest dla tego samego użytkownika
+  if (currentCachedUserId && currentCachedUserId !== userId) {
+    console.warn('⚠️ Wykryto zmianę użytkownika! Czyszczenie cache...');
+    clearCacheInternal();
+  }
+  
+  currentCachedUserId = userId;
   return `users/${userId}/budget/${path}`;
+}
+
+/**
+ * Wewnętrzne czyszczenie cache (nie eksportowane)
+ */
+function clearCacheInternal() {
+  categoriesCache = [];
+  incomesCache = [];
+  expensesCache = [];
+  endDate1Cache = '';
+  endDate2Cache = '';
+  savingGoalCache = 0;
+  dailyEnvelopeCache = null;
+  currentCachedUserId = null;
 }
 
 /**
@@ -38,10 +65,24 @@ export async function loadCategories() {
   try {
     const snapshot = await get(ref(db, getUserBudgetPath('categories')));
     const data = snapshot.val() || {};
-    categoriesCache = Object.values(data);
+    const newCategories = Object.values(data);
+    
+    // Usuń duplikaty na podstawie ID
+    const uniqueCategories = [];
+    const seenIds = new Set();
+    
+    newCategories.forEach(cat => {
+      if (cat && cat.id && !seenIds.has(cat.id)) {
+        seenIds.add(cat.id);
+        uniqueCategories.push(cat);
+      }
+    });
+    
+    categoriesCache = uniqueCategories;
+    console.log('✅ Załadowano kategorie:', categoriesCache.length);
     return categoriesCache;
   } catch (error) {
-    console.error('Błąd ładowania kategorii:', error);
+    console.error('❌ Błąd ładowania kategorii:', error);
     return [];
   }
 }
@@ -53,10 +94,24 @@ export async function loadExpenses() {
   try {
     const snapshot = await get(ref(db, getUserBudgetPath('expenses')));
     const data = snapshot.val() || {};
-    expensesCache = Object.values(data);
+    const newExpenses = Object.values(data);
+    
+    // Usuń duplikaty na podstawie ID
+    const uniqueExpenses = [];
+    const seenIds = new Set();
+    
+    newExpenses.forEach(exp => {
+      if (exp && exp.id && !seenIds.has(exp.id)) {
+        seenIds.add(exp.id);
+        uniqueExpenses.push(exp);
+      }
+    });
+    
+    expensesCache = uniqueExpenses;
+    console.log('✅ Załadowano wydatki:', expensesCache.length);
     return expensesCache;
   } catch (error) {
-    console.error('Błąd ładowania wydatków:', error);
+    console.error('❌ Błąd ładowania wydatków:', error);
     return [];
   }
 }
@@ -66,12 +121,42 @@ export async function loadExpenses() {
  */
 export async function loadIncomes() {
   try {
-    const snapshot = await get(ref(db, getUserBudgetPath('incomes')));
+    const userId = getUserId();
+    const path = getUserBudgetPath('incomes');
+    
+    console.log('📥 Ładowanie przychodów dla użytkownika:', userId);
+    console.log('📍 Ścieżka:', path);
+    
+    const snapshot = await get(ref(db, path));
     const data = snapshot.val() || {};
-    incomesCache = Object.values(data);
+    const newIncomes = Object.values(data);
+    
+    console.log('📊 Pobrano z Firebase:', newIncomes.length, 'przychodów');
+    
+    // Usuń duplikaty na podstawie ID
+    const uniqueIncomes = [];
+    const seenIds = new Set();
+    
+    newIncomes.forEach(inc => {
+      if (inc && inc.id && !seenIds.has(inc.id)) {
+        seenIds.add(inc.id);
+        uniqueIncomes.push(inc);
+      } else if (inc && inc.id) {
+        console.warn('⚠️ Duplikat przychodu wykryty i pominięty:', inc.id);
+      }
+    });
+    
+    incomesCache = uniqueIncomes;
+    console.log('✅ Załadowano unikalne przychody:', incomesCache.length);
+    
+    // Debug: pokaż pierwsze 3 przychody
+    if (incomesCache.length > 0) {
+      console.log('🔍 Próbka przychodów:', incomesCache.slice(0, 3));
+    }
+    
     return incomesCache;
   } catch (error) {
-    console.error('Błąd ładowania źródeł finansów:', error);
+    console.error('❌ Błąd ładowania źródeł finansów:', error);
     return [];
   }
 }
@@ -97,7 +182,7 @@ export async function loadEndDates() {
     
     return { primary: endDate1Cache, secondary: endDate2Cache };
   } catch (error) {
-    console.error('Błąd ładowania dat końcowych:', error);
+    console.error('❌ Błąd ładowania dat końcowych:', error);
     return { primary: '', secondary: '' };
   }
 }
@@ -112,7 +197,7 @@ export async function loadSavingGoal() {
     savingGoalCache = val ? parseFloat(val) : 0;
     return savingGoalCache;
   } catch (error) {
-    console.error('Błąd ładowania celu oszczędności:', error);
+    console.error('❌ Błąd ładowania celu oszczędności:', error);
     return 0;
   }
 }
@@ -125,7 +210,7 @@ export async function loadDailyEnvelope(dateStr) {
     const snapshot = await get(ref(db, getUserBudgetPath(`daily_envelope/${dateStr}`)));
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
-    console.error('Błąd ładowania koperty dnia:', error);
+    console.error('❌ Błąd ładowania koperty dnia:', error);
     return null;
   }
 }
@@ -135,15 +220,22 @@ export async function loadDailyEnvelope(dateStr) {
  */
 export async function saveCategories(categories) {
   const obj = {};
+  const seenIds = new Set();
+  
+  // Usuń duplikaty przed zapisem
   categories.forEach(cat => {
-    obj[cat.id] = cat;
+    if (cat && cat.id && !seenIds.has(cat.id)) {
+      seenIds.add(cat.id);
+      obj[cat.id] = cat;
+    }
   });
   
   try {
     await set(ref(db, getUserBudgetPath('categories')), obj);
-    categoriesCache = categories;
+    categoriesCache = Object.values(obj);
+    console.log('✅ Zapisano kategorie:', categoriesCache.length);
   } catch (error) {
-    console.error('Błąd zapisywania kategorii:', error);
+    console.error('❌ Błąd zapisywania kategorii:', error);
     throw error;
   }
 }
@@ -153,15 +245,22 @@ export async function saveCategories(categories) {
  */
 export async function saveExpenses(expenses) {
   const obj = {};
+  const seenIds = new Set();
+  
+  // Usuń duplikaty przed zapisem
   expenses.forEach(exp => {
-    obj[exp.id] = exp;
+    if (exp && exp.id && !seenIds.has(exp.id)) {
+      seenIds.add(exp.id);
+      obj[exp.id] = exp;
+    }
   });
   
   try {
     await set(ref(db, getUserBudgetPath('expenses')), obj);
-    expensesCache = expenses;
+    expensesCache = Object.values(obj);
+    console.log('✅ Zapisano wydatki:', expensesCache.length);
   } catch (error) {
-    console.error('Błąd zapisywania wydatków:', error);
+    console.error('❌ Błąd zapisywania wydatków:', error);
     throw error;
   }
 }
@@ -170,16 +269,33 @@ export async function saveExpenses(expenses) {
  * Zapisz źródła finansów do Firebase
  */
 export async function saveIncomes(incomes) {
+  const userId = getUserId();
   const obj = {};
+  const seenIds = new Set();
+  
+  console.log('💾 Zapisywanie przychodów dla użytkownika:', userId);
+  console.log('📊 Liczba przychodów do zapisu:', incomes.length);
+  
+  // Usuń duplikaty przed zapisem
   incomes.forEach(inc => {
-    obj[inc.id] = inc;
+    if (inc && inc.id && !seenIds.has(inc.id)) {
+      seenIds.add(inc.id);
+      obj[inc.id] = inc;
+    } else if (inc && inc.id) {
+      console.warn('⚠️ Duplikat przychodu pominięty podczas zapisu:', inc.id);
+    }
   });
   
   try {
-    await set(ref(db, getUserBudgetPath('incomes')), obj);
-    incomesCache = incomes;
+    const path = getUserBudgetPath('incomes');
+    console.log('📍 Zapisywanie do ścieżki:', path);
+    
+    await set(ref(db, path), obj);
+    incomesCache = Object.values(obj);
+    
+    console.log('✅ Zapisano unikalne przychody:', incomesCache.length);
   } catch (error) {
-    console.error('Błąd zapisywania źródeł finansów:', error);
+    console.error('❌ Błąd zapisywania źródeł finansów:', error);
     throw error;
   }
 }
@@ -196,7 +312,7 @@ export async function saveEndDates(primary, secondary) {
     endDate1Cache = primary || '';
     endDate2Cache = secondary || '';
   } catch (error) {
-    console.error('Błąd zapisywania dat końcowych:', error);
+    console.error('❌ Błąd zapisywania dat końcowych:', error);
     throw error;
   }
 }
@@ -209,7 +325,7 @@ export async function saveSavingGoal(goal) {
     await set(ref(db, getUserBudgetPath('savingGoal')), goal);
     savingGoalCache = goal;
   } catch (error) {
-    console.error('Błąd zapisywania celu oszczędności:', error);
+    console.error('❌ Błąd zapisywania celu oszczędności:', error);
     throw error;
   }
 }
@@ -224,7 +340,7 @@ export async function saveDailyEnvelope(dateStr, envelope) {
       dailyEnvelopeCache = envelope;
     }
   } catch (error) {
-    console.error('Błąd zapisywania koperty dnia:', error);
+    console.error('❌ Błąd zapisywania koperty dnia:', error);
     throw error;
   }
 }
@@ -234,6 +350,9 @@ export async function saveDailyEnvelope(dateStr, envelope) {
  */
 export async function fetchAllData() {
   try {
+    const userId = getUserId();
+    console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
+    
     const [categories, expenses, incomes, endDates, savingGoal] = await Promise.all([
       loadCategories(),
       loadExpenses(),
@@ -245,6 +364,13 @@ export async function fetchAllData() {
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
     
+    console.log('✅ Załadowano wszystkie dane:', {
+      categories: categories.length,
+      expenses: expenses.length,
+      incomes: incomes.length,
+      userId
+    });
+    
     return {
       categories,
       expenses,
@@ -254,7 +380,7 @@ export async function fetchAllData() {
       dailyEnvelope: dailyEnvelopeCache
     };
   } catch (error) {
-    console.error('Błąd ładowania danych:', error);
+    console.error('❌ Błąd ładowania danych:', error);
     throw error;
   }
 }
@@ -320,23 +446,37 @@ export async function autoRealiseDueTransactions() {
  * Wyczyść wszystkie aktywne listenery
  */
 export function clearAllListeners() {
-  Object.values(activeListeners).forEach(unsubscribe => {
+  console.log('🧹 Czyszczenie listenerów Firebase...');
+  
+  Object.entries(activeListeners).forEach(([key, unsubscribe]) => {
     if (typeof unsubscribe === 'function') {
-      unsubscribe();
+      try {
+        unsubscribe();
+        console.log('✅ Usunięto listener:', key);
+      } catch (error) {
+        console.error('❌ Błąd usuwania listenera:', key, error);
+      }
     }
   });
+  
   activeListeners = {};
+  console.log('✅ Wszystkie listenery wyczyszczone');
 }
 
 /**
  * Nasłuchuj zmian w czasie rzeczywistym
  */
 export function subscribeToRealtimeUpdates(callbacks) {
-  // Wyczyść poprzednie listenery
+  // KRYTYCZNE: Wyczyść poprzednie listenery
   clearAllListeners();
   
   const userId = getUserId();
-  if (!userId) return;
+  if (!userId) {
+    console.error('❌ Brak zalogowanego użytkownika - nie można subskrybować');
+    return;
+  }
+  
+  console.log('🔔 Konfigurowanie listenerów Real-time dla użytkownika:', userId);
   
   // Categories listener
   const categoriesRef = ref(db, getUserBudgetPath('categories'));
@@ -344,13 +484,25 @@ export function subscribeToRealtimeUpdates(callbacks) {
     const data = snapshot.val() || {};
     const newData = Object.values(data);
     
-    // Sprawdź czy dane się zmieniły
-    if (JSON.stringify(categoriesCache) !== JSON.stringify(newData)) {
-      categoriesCache = newData;
+    // Usuń duplikaty
+    const uniqueData = [];
+    const seenIds = new Set();
+    newData.forEach(item => {
+      if (item && item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        uniqueData.push(item);
+      }
+    });
+    
+    if (JSON.stringify(categoriesCache) !== JSON.stringify(uniqueData)) {
+      categoriesCache = uniqueData;
+      console.log('🔄 Kategorie zaktualizowane:', categoriesCache.length);
       if (callbacks.onCategoriesChange) {
         callbacks.onCategoriesChange(categoriesCache);
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera kategorii:', error);
   });
   
   // Expenses listener
@@ -359,26 +511,60 @@ export function subscribeToRealtimeUpdates(callbacks) {
     const data = snapshot.val() || {};
     const newData = Object.values(data);
     
-    if (JSON.stringify(expensesCache) !== JSON.stringify(newData)) {
-      expensesCache = newData;
+    // Usuń duplikaty
+    const uniqueData = [];
+    const seenIds = new Set();
+    newData.forEach(item => {
+      if (item && item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        uniqueData.push(item);
+      }
+    });
+    
+    if (JSON.stringify(expensesCache) !== JSON.stringify(uniqueData)) {
+      expensesCache = uniqueData;
+      console.log('🔄 Wydatki zaktualizowane:', expensesCache.length);
       if (callbacks.onExpensesChange) {
         callbacks.onExpensesChange(expensesCache);
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera wydatków:', error);
   });
   
-  // Incomes listener
+  // Incomes listener - NAJWAŻNIEJSZY
   const incomesRef = ref(db, getUserBudgetPath('incomes'));
   activeListeners.incomes = onValue(incomesRef, (snapshot) => {
     const data = snapshot.val() || {};
     const newData = Object.values(data);
     
-    if (JSON.stringify(incomesCache) !== JSON.stringify(newData)) {
-      incomesCache = newData;
+    console.log('🔄 Listener przychodów wywołany:', {
+      userId,
+      dataCount: newData.length,
+      path: `users/${userId}/budget/incomes`
+    });
+    
+    // Usuń duplikaty
+    const uniqueData = [];
+    const seenIds = new Set();
+    newData.forEach(item => {
+      if (item && item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        uniqueData.push(item);
+      } else if (item && item.id) {
+        console.warn('⚠️ Duplikat przychodu w listenerze:', item.id);
+      }
+    });
+    
+    if (JSON.stringify(incomesCache) !== JSON.stringify(uniqueData)) {
+      incomesCache = uniqueData;
+      console.log('✅ Przychody zaktualizowane:', incomesCache.length);
       if (callbacks.onIncomesChange) {
         callbacks.onIncomesChange(incomesCache);
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera przychodów:', error);
   });
   
   // End dates listener
@@ -402,6 +588,8 @@ export function subscribeToRealtimeUpdates(callbacks) {
         callbacks.onEndDatesChange({ primary: endDate1Cache, secondary: endDate2Cache });
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera dat końcowych:', error);
   });
   
   // Saving goal listener
@@ -416,6 +604,8 @@ export function subscribeToRealtimeUpdates(callbacks) {
         callbacks.onSavingGoalChange(savingGoalCache);
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera celu oszczędności:', error);
   });
   
   // Daily envelope listener
@@ -431,35 +621,50 @@ export function subscribeToRealtimeUpdates(callbacks) {
         }
       }
     }
+  }, (error) => {
+    console.error('❌ Błąd listenera koperty dnia:', error);
   });
+  
+  console.log('✅ Wszystkie listenery skonfigurowane:', Object.keys(activeListeners));
 }
 
 /**
- * Wyczyść cache przy wylogowaniu
+ * Wyczyść cache przy wylogowaniu - PUBLICZNE
  */
 export function clearCache() {
-  categoriesCache = [];
-  incomesCache = [];
-  expensesCache = [];
-  endDate1Cache = '';
-  endDate2Cache = '';
-  savingGoalCache = 0;
-  dailyEnvelopeCache = null;
+  console.log('🧹 Czyszczenie cache danych...');
+  clearCacheInternal();
+  console.log('✅ Cache wyczyszczony');
 }
 
 /**
- * Gettery
+ * Gettery - ZAWSZE zwracają kopie, nigdy referencje
  */
 export function getCategories() {
-  return categoriesCache;
+  // Zwróć kopię aby zapobiec mutacjom
+  return [...categoriesCache];
 }
 
 export function getExpenses() {
-  return expensesCache;
+  // Zwróć kopię aby zapobiec mutacjom
+  return [...expensesCache];
 }
 
 export function getIncomes() {
-  return incomesCache;
+  // KRYTYCZNE: Zawsze zwracaj świeżą kopię
+  const copy = [...incomesCache];
+  
+  // Debug log
+  if (copy.length > 0) {
+    const userId = getUserId();
+    console.log('📤 Zwracam przychody:', {
+      count: copy.length,
+      userId,
+      sample: copy.length > 0 ? copy[0].id : 'brak'
+    });
+  }
+  
+  return copy;
 }
 
 export function getEndDates() {
@@ -471,5 +676,5 @@ export function getSavingGoal() {
 }
 
 export function getDailyEnvelope() {
-  return dailyEnvelopeCache;
+  return dailyEnvelopeCache ? { ...dailyEnvelopeCache } : null;
 }
