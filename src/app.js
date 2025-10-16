@@ -1,52 +1,4 @@
-/**
- * Renderuj źródła finansów
- */
-function renderSources() {
-  const remaining = computeSourcesRemaining();
-  let totalAvailable = 0;
-  remaining.forEach(item => {
-    totalAvailable += item.left;
-  });
-  
-  if (totalAvailable < 0) totalAvailable = 0;
-  
-  const availElem = document.getElementById('availableFunds');
-  if (availElem) {
-    availElem.textContent = totalAvailable.toFixed(2);
-  }
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const realised = getIncomes().filter(rec => {
-    if (!rec.planned) return true;
-    const d = new Date(rec.date);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime() <= today.getTime();
-  });
-  
-  realised.sort((a, b) => {
-    const dtA = new Date(a.date + 'T' + (a.time || '00:00'));
-    const dtB = new Date(b.date + 'T' + (b.time || '00:00'));
-    return dtB - dtA;
-  });
-  
-  const lastRec = realised.length > 0 ? realised[0] : null;
-  const lastElem = document.getElementById('lastIncomeDate');
-  if (lastElem) {
-    if (lastRec) {
-      const dtStr = lastRec.date + (lastRec.time ? (' ' + lastRec.time) : '');
-      lastElem.textContent = dtStr;
-    } else {
-      lastElem.textContent = 'Brak';
-    }
-  }
-  
-  // Pokaż przycisk edycji dla wszystkich
-  const editBtn = document.getElementById('editFundsButton');
-  if (editBtn) {
-    editBtn.style.display = 'inline-flex';
-  }
-}// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
+// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
 
 import { 
   loginUser, 
@@ -189,13 +141,6 @@ function showApp() {
   document.querySelectorAll('.user-display-name').forEach(el => {
     el.textContent = displayName;
   });
-}
-
-/**
- * Przełącz widoczność kolumn w tabelach (nie jest już potrzebne, ale pozostawiam dla kompatybilności)
- */
-function toggleAdminColumns() {
-  // Wszystkie kolumny są teraz widoczne dla wszystkich
 }
 
 /**
@@ -767,9 +712,10 @@ function renderSources() {
     }
   }
   
+  // Pokaż przycisk edycji dla wszystkich
   const editBtn = document.getElementById('editFundsButton');
   if (editBtn) {
-    editBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    editBtn.style.display = 'inline-flex';
   }
 }
 
