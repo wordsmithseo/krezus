@@ -673,22 +673,48 @@ function renderIncomeHistory() {
  * Renderuj źródła finansów
  */
 function renderSources() {
-  const remaining = computeSourcesRemaining();
-  let totalAvailable = 0;
-  remaining.forEach(item => {
-    totalAvailable += item.left;
+  const incomes = getIncomes();
+  const expenses = getExpenses();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Oblicz sumę zrealizowanych przychodów
+  let totalIncome = 0;
+  incomes.forEach(inc => {
+    if (!inc.planned) {
+      totalIncome += inc.amount;
+    } else {
+      const d = new Date(inc.date);
+      d.setHours(0, 0, 0, 0);
+      if (d.getTime() <= today.getTime()) {
+        totalIncome += inc.amount;
+      }
+    }
   });
   
-  if (totalAvailable < 0) totalAvailable = 0;
+  // Oblicz sumę zrealizowanych wydatków
+  let totalExpense = 0;
+  expenses.forEach(exp => {
+    if (!exp.planned) {
+      totalExpense += exp.amount * (exp.quantity || 1);
+    } else {
+      const d = new Date(exp.date);
+      d.setHours(0, 0, 0, 0);
+      if (d.getTime() <= today.getTime()) {
+        totalExpense += exp.amount * (exp.quantity || 1);
+      }
+    }
+  });
+  
+  const totalAvailable = Math.max(0, totalIncome - totalExpense);
   
   const availElem = document.getElementById('availableFunds');
   if (availElem) {
     availElem.textContent = totalAvailable.toFixed(2);
   }
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const realised = getIncomes().filter(rec => {
+  // Znajdź ostatni zrealizowany przychód
+  const realised = incomes.filter(rec => {
     if (!rec.planned) return true;
     const d = new Date(rec.date);
     d.setHours(0, 0, 0, 0);

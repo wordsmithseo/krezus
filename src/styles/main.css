@@ -675,7 +675,112 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Media Queries - Mobile (< 480px) */
+/* ========================================
+   KONTROLKI WYKRESÓW - Kompaktowy layout
+   ======================================== */
+
+.category-controls,
+.comparison-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+
+.category-controls label,
+.comparison-controls label {
+  margin-bottom: 0;
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.category-controls select,
+.comparison-controls select {
+  margin-bottom: 0;
+  min-width: 160px;
+  max-width: 250px;
+  padding: 6px 10px;
+  font-size: var(--font-sm);
+}
+
+/* ========================================
+   WYKRESY - Prawidłowe wymiary
+   ======================================== */
+
+/* Sekcja wykresu kategorii */
+#category-chart {
+  position: relative;
+  width: 100%;
+  min-height: 350px;
+  max-height: 450px;
+  margin-bottom: 15px;
+}
+
+#category-chart canvas {
+  max-height: 400px !important;
+  height: 400px !important;
+}
+
+/* Legenda wykresu kategorii */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 15px;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-sm);
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Sekcja porównań */
+#comparisons {
+  position: relative;
+}
+
+#comparisons canvas {
+  max-height: 400px !important;
+}
+
+#comparisons > div {
+  height: 400px !important;
+  max-height: 400px !important;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+/* Tabela porównań */
+#comparisonsTable {
+  margin-top: 15px;
+  overflow-x: auto;
+}
+
+#comparisonsTable table {
+  width: 100%;
+  min-width: 800px;
+}
+
+/* ========================================
+   MEDIA QUERIES
+   ======================================== */
+
+/* Mobile (< 480px) */
 @media (max-width: 480px) {
   main {
     padding: var(--spacing-sm);
@@ -723,9 +828,34 @@ html {
     width: 100%;
     justify-content: center;
   }
+  
+  /* Wykresy na mobile */
+  #category-chart canvas,
+  #comparisons canvas {
+    max-height: 250px !important;
+    height: 250px !important;
+  }
+  
+  #category-chart {
+    min-height: 280px;
+    max-height: 320px;
+  }
+  
+  #comparisons > div {
+    height: 250px !important;
+    max-height: 250px !important;
+  }
+  
+  .chart-legend {
+    gap: 8px;
+  }
+  
+  .legend-item {
+    font-size: var(--font-xs);
+  }
 }
 
-/* Media Queries - Tablet (481px - 768px) */
+/* Tablet (481px - 768px) */
 @media (min-width: 481px) and (max-width: 768px) {
   main {
     padding: var(--spacing-md);
@@ -746,9 +876,26 @@ html {
   .navbar {
     overflow-x: auto;
   }
+  
+  /* Wykresy na tablet */
+  #category-chart canvas,
+  #comparisons canvas {
+    max-height: 300px !important;
+    height: 300px !important;
+  }
+  
+  #category-chart {
+    min-height: 330px;
+    max-height: 380px;
+  }
+  
+  #comparisons > div {
+    height: 300px !important;
+    max-height: 300px !important;
+  }
 }
 
-/* Media Queries - Desktop (769px - 1024px) */
+/* Desktop (769px - 1024px) */
 @media (min-width: 769px) and (max-width: 1024px) {
   main {
     max-width: 900px;
@@ -759,7 +906,7 @@ html {
   }
 }
 
-/* Media Queries - Wide (> 1024px) */
+/* Wide (> 1024px) */
 @media (min-width: 1025px) {
   main {
     max-width: 1200px;
@@ -784,88 +931,9 @@ html {
     box-shadow: none;
     border: 1px solid #ddd;
   }
-}
-
-/* ========================================
-   POPRAWKI WYKRESÓW - Dodaj na końcu main.css
-   ======================================== */
-
-/* Wykres kategorii - OGRANICZONA wysokość */
-#category-chart canvas {
-  max-height: 400px !important;
-  height: 400px !important;
-}
-
-#category-chart {
-  max-height: 500px;
-  overflow: hidden;
-}
-
-/* Wykres porównań - OGRANICZONA wysokość */
-#comparisons canvas {
-  max-height: 400px !important;
-}
-
-#comparisons > div {
-  height: 400px !important;
-  max-height: 400px !important;
-  position: relative;
-}
-
-/* Ogólne ograniczenie dla wszystkich canvas */
-canvas {
-  max-height: 500px !important;
-}
-
-/* Responsive dla małych ekranów */
-@media (max-width: 768px) {
-  #category-chart canvas,
-  #comparisons canvas {
-    max-height: 300px !important;
-    height: 300px !important;
-  }
   
+  #category-chart,
   #comparisons > div {
-    height: 300px !important;
-    max-height: 300px !important;
+    page-break-inside: avoid;
   }
-  
-  #category-chart {
-    max-height: 400px;
-  }
-}
-
-@media (max-width: 480px) {
-  #category-chart canvas,
-  #comparisons canvas {
-    max-height: 250px !important;
-    height: 250px !important;
-  }
-  
-  #comparisons > div {
-    height: 250px !important;
-    max-height: 250px !important;
-  }
-}
-/* Chart legend styles */
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 15px;
-  justify-content: center;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9rem;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  flex-shrink: 0;
 }
