@@ -16,6 +16,41 @@
   
   <!-- Style -->
   <link rel="stylesheet" href="/src/styles/main.css">
+  
+  <style>
+    /* Dodatkowe style dla powiadomień */
+    .notification-btn {
+      position: relative;
+    }
+    
+    .notification-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--danger);
+      color: white;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* Animacja migania dla zaktualizowanych elementów */
+    @keyframes flash-update {
+      0%, 100% { background-color: transparent; }
+      50% { background-color: rgba(255, 229, 100, 0.5); }
+    }
+    
+    .flash-update {
+      animation: flash-update 1s ease-in-out 2;
+    }
+  </style>
 </head>
 <body>
   <!-- Kontener uwierzytelniania (widoczny tylko gdy użytkownik nie jest zalogowany) -->
@@ -75,6 +110,24 @@
         <span class="user-name user-display-name"></span>
       </div>
       <div class="user-actions">
+        <button 
+          id="invitationsBtn" 
+          class="btn-secondary notification-btn"
+          aria-label="Zaproszenia do budżetu"
+          style="position: relative;"
+        >
+          📬 Zaproszenia
+          <span id="invitationsBadge" class="notification-badge" style="display: none;">0</span>
+        </button>
+        <button 
+          id="messagesBtn" 
+          class="btn-secondary notification-btn"
+          aria-label="Wiadomości"
+          style="position: relative;"
+        >
+          💌 Wiadomości
+          <span id="messagesBadge" class="notification-badge" style="display: none;">0</span>
+        </button>
         <button 
           id="editProfileBtn" 
           class="btn-secondary"
@@ -183,12 +236,6 @@
               aria-required="true"
             />
             
-            <label for="addFundsUser">Użytkownik:</label>
-            <select id="addFundsUser" aria-label="Wybierz użytkownika">
-              <option value="Martyna">Martyna</option>
-              <option value="Sławek">Sławek</option>
-            </select>
-            
             <label for="addFundsDesc">Opis:</label>
             <input 
               type="text" 
@@ -261,11 +308,8 @@
               <tr>
                 <th>Data</th>
                 <th>Godzina</th>
-                <th>Użytkownik</th>
                 <th>Opis</th>
                 <th>Kwota (PLN)</th>
-                <th>Edytuj</th>
-                <th>Usuń</th>
                 <th>Akcja</th>
               </tr>
             </thead>
@@ -287,12 +331,6 @@
             aria-label="Data wydatku"
             aria-required="true"
           />
-          
-          <label for="expenseUser">Użytkownik:</label>
-          <select id="expenseUser" aria-label="Wybierz użytkownika">
-            <option value="Martyna">Martyna</option>
-            <option value="Sławek">Sławek</option>
-          </select>
           
           <label for="expenseCategory">Kategoria:</label>
           <input 
@@ -371,13 +409,6 @@
       <section id="comparisons" class="section">
         <h2>📊 Porównania</h2>
         <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-          <label for="comparisonUser">Użytkownik:</label>
-          <select id="comparisonUser" aria-label="Filtruj według użytkownika">
-            <option value="all">Wszyscy</option>
-            <option value="Martyna">Martyna</option>
-            <option value="Sławek">Sławek</option>
-          </select>
-          
           <label for="comparisonPeriod">Okres:</label>
           <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
             <option value="weekly">Tygodniowo (4 tyg.)</option>
@@ -474,7 +505,6 @@
               <tr>
                 <th>Data</th>
                 <th>Godzina</th>
-                <th>Użytkownik</th>
                 <th>Kategoria</th>
                 <th>Opis</th>
                 <th>Ilość</th>

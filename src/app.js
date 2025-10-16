@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v2.0 z pełnym systemem kopert
+// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
 
 import { 
   loginUser, 
@@ -7,7 +7,9 @@ import {
   onAuthChange,
   checkIsAdmin,
   getDisplayName,
-  getCurrentUser
+  getCurrentUser,
+  getPendingInvitesCount,
+  getUnreadMessagesCount
 } from './modules/auth.js';
 
 import {
@@ -23,7 +25,10 @@ import {
   saveIncomes,
   saveEndDates,
   saveSavingGoal,
-  autoRealiseDueTransactions
+  autoRealiseDueTransactions,
+  subscribeToRealtimeUpdates,
+  clearAllListeners,
+  clearCache
 } from './modules/dataManager.js';
 
 import {
@@ -40,7 +45,11 @@ import {
   computeComparisons
 } from './modules/budgetCalculator.js';
 
-import { showProfileModal } from './components/modals.js';
+import { 
+  showProfileModal, 
+  showInvitationsModal,
+  showMessagesModal
+} from './components/modals.js';
 
 import {
   showErrorMessage,
@@ -73,6 +82,30 @@ let editingIncomeId = null;
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
 
+// Callbacks dla powiadomień
+window.onInvitesCountChange = (count) => {
+  updateNotificationBadge('invitationsBadge', count);
+};
+
+window.onMessagesCountChange = (count) => {
+  updateNotificationBadge('messagesBadge', count);
+};
+
+/**
+ * Aktualizuj badge powiadomień
+ */
+function updateNotificationBadge(badgeId, count) {
+  const badge = document.getElementById(badgeId);
+  if (badge) {
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : count;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
 // Nasłuchuj zmiany stanu uwierzytelnienia
 onAuthChange(async (authState) => {
   const { user, isAdmin: adminStatus, displayName } = authState;
@@ -84,8 +117,15 @@ onAuthChange(async (authState) => {
     showApp();
     await loadAllData();
     setupApp();
+    setupRealtimeUpdates();
+    
+    // Załaduj liczniki powiadomień
+    updateNotificationBadge('invitationsBadge', getPendingInvitesCount());
+    updateNotificationBadge('messagesBadge', getUnreadMessagesCount());
   } else {
     console.log('❌ Użytkownik niezalogowany');
+    clearAllListeners();
+    clearCache();
     showAuth();
   }
 });
@@ -146,20 +186,9 @@ function toggleAdminColumns() {
     });
   }
   
-  const incTable = document.getElementById('incomeHistoryTable');
-  if (incTable) {
-    const cells = incTable.querySelectorAll('th:nth-child(6), th:nth-child(7), td:nth-child(6), td:nth-child(7)');
-    cells.forEach(el => el.style.display = 'none');
-    
-    const actionCells = incTable.querySelectorAll('th:nth-child(6), td:nth-child(6)');
-    actionCells.forEach(el => {
-      el.style.display = isAdmin ? '' : 'none';
-    });
-  }
-  
   const expTable = document.getElementById('historyTable');
   if (expTable) {
-    const cells = expTable.querySelectorAll('th:nth-child(8), th:nth-child(9), td:nth-child(8), td:nth-child(9)');
+    const cells = expTable.querySelectorAll('th:nth-child(7), th:nth-child(8), td:nth-child(7), td:nth-child(8)');
     cells.forEach(el => {
       el.style.display = isAdmin ? '' : 'none';
     });
@@ -236,6 +265,64 @@ async function loadAllData() {
     showErrorMessage('Nie udało się załadować danych');
   } finally {
     showLoader(false);
+  }
+}
+
+/**
+ * Konfiguruj aktualizacje real-time
+ */
+function setupRealtimeUpdates() {
+  subscribeToRealtimeUpdates({
+    onCategoriesChange: (categories) => {
+      console.log('📊 Kategorie zaktualizowane');
+      flashElement('categoriesTable');
+      renderCategories();
+      renderExpenseHistory();
+      updateCategorySuggestions();
+      populateCategoryMonthDropdown();
+    },
+    onExpensesChange: (expenses) => {
+      console.log('💸 Wydatki zaktualizowane');
+      flashElement('historyTable');
+      renderExpenseHistory();
+      renderSummary();
+      renderCategories();
+      renderCategoryChart();
+      renderComparisons();
+    },
+    onIncomesChange: (incomes) => {
+      console.log('💰 Źródła finansów zaktualizowane');
+      flashElement('incomeHistoryTable');
+      renderIncomeHistory();
+      renderSources();
+      renderSummary();
+      renderComparisons();
+    },
+    onEndDatesChange: (endDates) => {
+      console.log('📅 Daty końcowe zaktualizowane');
+      renderSummary();
+    },
+    onSavingGoalChange: (goal) => {
+      console.log('🎯 Cel oszczędności zaktualizowany');
+      renderSummary();
+    },
+    onDailyEnvelopeChange: (envelope) => {
+      console.log('📩 Koperta dnia zaktualizowana');
+      renderSummary();
+    }
+  });
+}
+
+/**
+ * Efekt migania dla zaktualizowanego elementu
+ */
+function flashElement(elementId) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.classList.remove('flash-update');
+    setTimeout(() => {
+      element.classList.add('flash-update');
+    }, 10);
   }
 }
 
@@ -502,8 +589,6 @@ async function editCategory(catId) {
   cat.name = trimmed;
   const categories = getCategories();
   await saveCategories(categories);
-  renderCategories();
-  renderExpenseHistory();
 }
 
 /**
@@ -518,9 +603,6 @@ async function deleteCategory(catId) {
   await saveCategories(categories);
   await saveExpenses(expenses);
   
-  renderCategories();
-  renderExpenseHistory();
-  renderSummary();
   showSuccessMessage('Kategoria usunięta!');
 }
 
@@ -567,7 +649,6 @@ function renderExpenseHistory() {
     row.innerHTML = `
       <td>${exp.date}</td>
       <td>${exp.time || '00:00'}</td>
-      <td>${exp.user || getDisplayName()}</td>
       <td>${cat ? cat.name : 'Nieznana'}</td>
       <td>${plannedIcon}${exp.description || '-'}</td>
       <td>${exp.quantity || 1}</td>
@@ -634,7 +715,6 @@ function renderIncomeHistory() {
     row.innerHTML = `
       <td>${inc.date}</td>
       <td>${inc.time || '00:00'}</td>
-      <td>${inc.user || getDisplayName()}</td>
       <td>${iconStr}${descContent}</td>
       <td>${inc.amount.toFixed(2)}</td>
       <td>${actionHtml}</td>
@@ -646,8 +726,6 @@ function renderIncomeHistory() {
     currentIncomePage = page;
     renderIncomeHistory();
   });
-  
-  toggleAdminColumns();
 }
 
 /**
@@ -751,6 +829,14 @@ function renderPagination(containerId, totalItems, currentPage, onPageChange) {
  * Konfiguracja przycisków użytkownika
  */
 function setupUserButtons() {
+  document.getElementById('invitationsBtn')?.addEventListener('click', () => {
+    showInvitationsModal();
+  });
+  
+  document.getElementById('messagesBtn')?.addEventListener('click', () => {
+    showMessagesModal();
+  });
+  
   document.getElementById('editProfileBtn')?.addEventListener('click', () => {
     showProfileModal();
   });
@@ -766,7 +852,7 @@ function setupUserButtons() {
 }
 
 /**
- * Konfiguracja formularza wydatków (bez pola użytkownika)
+ * Konfiguracja formularza wydatków
  */
 function setupExpenseForm() {
   const form = document.getElementById('expenseForm');
@@ -778,10 +864,6 @@ function setupExpenseForm() {
   if (dateInput) dateInput.value = getWarsawDateString();
   
   attachValidator(document.getElementById('expenseAmount'), validateAmount);
-  
-  // Usuń pole użytkownika jeśli istnieje
-  const userRow = form.querySelector('label[for="expenseUser"]')?.parentElement;
-  if (userRow) userRow.remove();
   
   // Obsługa widoczności daty
   const updateDateVisibility = () => {
@@ -874,7 +956,6 @@ function setupExpenseForm() {
       updateDateVisibility();
       
       currentExpensePage = 1;
-      renderAll();
       showSuccessFeedback();
     } catch (error) {
       showErrorMessage('Nie udało się dodać wydatku');
@@ -885,17 +966,13 @@ function setupExpenseForm() {
 }
 
 /**
- * Konfiguracja sekcji źródeł finansów (bez pola użytkownika)
+ * Konfiguracja sekcji źródeł finansów
  */
 function setupSourcesSection() {
   const addBtn = document.getElementById('showAddFundsForm');
   const addContainer = document.getElementById('addFundsContainer');
   const typeSelect = document.getElementById('addFundsType');
   const dateContainer = document.getElementById('addFundsDateContainer');
-  
-  // Usuń pole użytkownika jeśli istnieje
-  const userRow = addContainer?.querySelector('label[for="addFundsUser"]')?.parentElement;
-  if (userRow) userRow.parentElement.removeChild(userRow);
   
   addBtn?.addEventListener('click', () => {
     if (addContainer) addContainer.style.display = 'block';
@@ -964,7 +1041,6 @@ function setupSourcesSection() {
       if (addContainer) addContainer.style.display = 'none';
       
       currentIncomePage = 1;
-      renderAll();
       showSuccessFeedback();
     } catch (error) {
       showErrorMessage('Nie udało się dodać środków');
@@ -1037,7 +1113,6 @@ function setupSourcesSection() {
       const editContainer = document.getElementById('editFundsContainer');
       if (editContainer) editContainer.style.display = 'none';
       
-      renderAll();
       showSuccessFeedback();
     } catch (error) {
       showErrorMessage('Nie udało się edytować stanu środków');
@@ -1068,7 +1143,6 @@ function setupEndDatesForm() {
       showLoader(true);
       await saveEndDates(date1, date2);
       await updateDailyEnvelope();
-      renderAll();
       showSuccessMessage('Daty zaktualizowane!');
     } catch (error) {
       showErrorMessage('Nie udało się zaktualizować dat');
@@ -1103,7 +1177,6 @@ function setupSavingGoalForm() {
       showLoader(true);
       await saveSavingGoal(goal);
       await updateDailyEnvelope();
-      renderAll();
       showSuccessMessage('Cel zaktualizowany!');
     } catch (error) {
       showErrorMessage('Nie udało się zaktualizować celu');
@@ -1383,12 +1456,7 @@ function renderCategoryChart() {
  * Konfiguracja filtrów porównań
  */
 function setupComparisonsFilters() {
-  const userSel = document.getElementById('comparisonUser');
   const periodSel = document.getElementById('comparisonPeriod');
-  
-  userSel?.addEventListener('change', () => {
-    renderComparisons();
-  });
   
   periodSel?.addEventListener('change', () => {
     renderComparisons();
@@ -1399,14 +1467,12 @@ function setupComparisonsFilters() {
  * Renderuj porównania
  */
 function renderComparisons() {
-  const userSel = document.getElementById('comparisonUser');
   const periodSel = document.getElementById('comparisonPeriod');
-  if (!userSel || !periodSel) return;
+  if (!periodSel) return;
   
-  const user = userSel.value;
   const periodType = periodSel.value;
   
-  const results = computeComparisons(periodType, user);
+  const results = computeComparisons(periodType, 'all');
   
   const incomeDiff = [];
   const expenseDiff = [];
@@ -1599,7 +1665,6 @@ window.deleteExpense = async (expId) => {
   await saveExpenses(expenses);
   
   currentExpensePage = 1;
-  renderAll();
   showSuccessFeedback();
 };
 
@@ -1624,8 +1689,6 @@ window.toggleIncomeStatus = async (incId) => {
   await saveIncomes(incomes);
   await updateDailyEnvelope();
   
-  renderIncomeHistory();
-  renderSummary();
   showSuccessFeedback();
 };
 
