@@ -10,16 +10,9 @@ import { ref, get, set, push, update, remove, onValue } from 'firebase/database'
 import { auth, db } from '../config/firebase.js';
 
 /**
- * Email użytkownika z uprawnieniami admina
- * UWAGA: Teraz wszyscy użytkownicy mają pełne uprawnienia
- */
-const ADMIN_EMAIL = 'slawomir.sprawski@gmail.com';
-
-/**
  * Stan uwierzytelnienia użytkownika
  */
 let currentUser = null;
-let isAdmin = false;
 let displayName = '';
 let unreadMessagesCount = 0;
 
@@ -33,8 +26,6 @@ export async function loginUser(email, password) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     currentUser = userCredential.user;
-    // Wszyscy użytkownicy mają teraz pełne uprawnienia
-    isAdmin = true;
     
     await loadUserProfile();
     setupNotificationListeners();
@@ -42,7 +33,6 @@ export async function loginUser(email, password) {
     return {
       success: true,
       user: currentUser,
-      isAdmin,
       displayName
     };
   } catch (error) {
@@ -58,8 +48,6 @@ export async function registerUser(email, password) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     currentUser = userCredential.user;
-    // Wszyscy użytkownicy mają teraz pełne uprawnienia
-    isAdmin = true;
     
     await set(ref(db, `users/${currentUser.uid}/profile`), {
       email: email,
@@ -73,7 +61,6 @@ export async function registerUser(email, password) {
     return {
       success: true,
       user: currentUser,
-      isAdmin,
       displayName
     };
   } catch (error) {
@@ -90,7 +77,6 @@ export async function logoutUser() {
     clearNotificationListeners();
     await signOut(auth);
     currentUser = null;
-    isAdmin = false;
     displayName = '';
     unreadMessagesCount = 0;
     return { success: true };
@@ -523,18 +509,14 @@ export function onAuthChange(callback) {
   return onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     if (user) {
-      // Wszyscy użytkownicy mają pełne uprawnienia
-      isAdmin = true;
       await loadUserProfile();
       setupNotificationListeners();
     } else {
-      isAdmin = false;
       displayName = '';
       clearNotificationListeners();
     }
     callback({
       user: currentUser,
-      isAdmin,
       displayName
     });
   });
@@ -548,10 +530,10 @@ export function getCurrentUser() {
 }
 
 /**
- * Sprawdź czy użytkownik jest adminem
+ * Sprawdź czy użytkownik jest adminem (deprecated - wszyscy mają równe uprawnienia)
  */
 export function checkIsAdmin() {
-  return isAdmin;
+  return true;
 }
 
 /**

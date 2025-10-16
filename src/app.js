@@ -1,4 +1,52 @@
-// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
+/**
+ * Renderuj źródła finansów
+ */
+function renderSources() {
+  const remaining = computeSourcesRemaining();
+  let totalAvailable = 0;
+  remaining.forEach(item => {
+    totalAvailable += item.left;
+  });
+  
+  if (totalAvailable < 0) totalAvailable = 0;
+  
+  const availElem = document.getElementById('availableFunds');
+  if (availElem) {
+    availElem.textContent = totalAvailable.toFixed(2);
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const realised = getIncomes().filter(rec => {
+    if (!rec.planned) return true;
+    const d = new Date(rec.date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() <= today.getTime();
+  });
+  
+  realised.sort((a, b) => {
+    const dtA = new Date(a.date + 'T' + (a.time || '00:00'));
+    const dtB = new Date(b.date + 'T' + (b.time || '00:00'));
+    return dtB - dtA;
+  });
+  
+  const lastRec = realised.length > 0 ? realised[0] : null;
+  const lastElem = document.getElementById('lastIncomeDate');
+  if (lastElem) {
+    if (lastRec) {
+      const dtStr = lastRec.date + (lastRec.time ? (' ' + lastRec.time) : '');
+      lastElem.textContent = dtStr;
+    } else {
+      lastElem.textContent = 'Brak';
+    }
+  }
+  
+  // Pokaż przycisk edycji dla wszystkich
+  const editBtn = document.getElementById('editFundsButton');
+  if (editBtn) {
+    editBtn.style.display = 'inline-flex';
+  }
+}// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
 
 import { 
   loginUser, 
@@ -70,7 +118,6 @@ import {
 import { PAGINATION } from './utils/constants.js';
 
 // Stan aplikacji
-let isAdmin = false;
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let editingExpenseId = null;
@@ -102,11 +149,10 @@ function updateNotificationBadge(badgeId, count) {
 
 // Nasłuchuj zmiany stanu uwierzytelnienia
 onAuthChange(async (authState) => {
-  const { user, isAdmin: adminStatus, displayName } = authState;
+  const { user, displayName } = authState;
   
   if (user) {
     console.log('✅ Użytkownik zalogowany:', displayName);
-    isAdmin = adminStatus;
     
     showApp();
     await loadAllData();
@@ -143,49 +189,13 @@ function showApp() {
   document.querySelectorAll('.user-display-name').forEach(el => {
     el.textContent = displayName;
   });
-  
-  updateAdminUI();
 }
 
 /**
- * Aktualizuj interfejs w zależności od uprawnień admina
- */
-function updateAdminUI() {
-  if (isAdmin) {
-    document.getElementById('editFundsButton')?.style.setProperty('display', 'inline-flex');
-    document.getElementById('setEndDatesButton')?.removeAttribute('disabled');
-    document.getElementById('budgetEndDate1')?.removeAttribute('disabled');
-    document.getElementById('budgetEndDate2')?.removeAttribute('disabled');
-    
-    const savingForm = document.getElementById('savingGoalForm');
-    if (savingForm) {
-      const inputs = savingForm.querySelectorAll('input, button');
-      inputs.forEach(el => el.disabled = false);
-    }
-  }
-  
-  toggleAdminColumns();
-}
-
-/**
- * Przełącz widoczność kolumn admin w tabelach
+ * Przełącz widoczność kolumn w tabelach (nie jest już potrzebne, ale pozostawiam dla kompatybilności)
  */
 function toggleAdminColumns() {
-  const catTable = document.getElementById('categoriesTable');
-  if (catTable) {
-    const cells = catTable.querySelectorAll('th:nth-child(3), th:nth-child(4), td:nth-child(3), td:nth-child(4)');
-    cells.forEach(el => {
-      el.style.display = isAdmin ? '' : 'none';
-    });
-  }
-  
-  const expTable = document.getElementById('historyTable');
-  if (expTable) {
-    const cells = expTable.querySelectorAll('th:nth-child(7), th:nth-child(8), td:nth-child(7), td:nth-child(8)');
-    cells.forEach(el => {
-      el.style.display = isAdmin ? '' : 'none';
-    });
-  }
+  // Wszystkie kolumny są teraz widoczne dla wszystkich
 }
 
 /**
@@ -542,8 +552,8 @@ function renderCategories() {
       .reduce((acc, e) => acc + (e.amount * (e.quantity || 1)), 0);
     
     const row = document.createElement('tr');
-    const editHtml = isAdmin ? `<button class="edit-category" data-id="${cat.id}" style="background:none;border:none;color:#2980b9;cursor:pointer;font-size:1.2rem;">✏️</button>` : '';
-    const deleteHtml = isAdmin ? `<button class="delete-category" data-id="${cat.id}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.2rem;">🗑️</button>` : '';
+    const editHtml = `<button class="edit-category" data-id="${cat.id}" style="background:none;border:none;color:#2980b9;cursor:pointer;font-size:1.2rem;">✏️</button>`;
+    const deleteHtml = `<button class="delete-category" data-id="${cat.id}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.2rem;">🗑️</button>`;
     row.innerHTML = `<td>${cat.name}</td><td>${spent.toFixed(2)}</td><td>${editHtml}</td><td>${deleteHtml}</td>`;
     tbody.appendChild(row);
     
@@ -553,23 +563,18 @@ function renderCategories() {
       datalist.appendChild(opt);
     }
     
-    if (isAdmin) {
-      const editBtn = row.querySelector('button.edit-category');
-      editBtn && editBtn.addEventListener('click', () => editCategory(cat.id));
-      
-      const delBtn = row.querySelector('button.delete-category');
-      delBtn && delBtn.addEventListener('click', () => deleteCategory(cat.id));
-    }
+    const editBtn = row.querySelector('button.edit-category');
+    editBtn && editBtn.addEventListener('click', () => editCategory(cat.id));
+    
+    const delBtn = row.querySelector('button.delete-category');
+    delBtn && delBtn.addEventListener('click', () => deleteCategory(cat.id));
   });
-  
-  toggleAdminColumns();
 }
 
 /**
  * Edytuj kategorię
  */
 async function editCategory(catId) {
-  if (!isAdmin) return;
   const cat = getCategories().find(c => c.id === catId);
   if (!cat) return;
   
@@ -636,8 +641,8 @@ function renderExpenseHistory() {
       plannedIcon = '🕐✔️ ';
     }
     
-    const editHtml = isAdmin ? `<button onclick="window.editExpense('${exp.id}')">✏️</button>` : '';
-    const deleteHtml = isAdmin ? `<button onclick="window.deleteExpense('${exp.id}')">🗑️</button>` : '';
+    const editHtml = `<button onclick="window.editExpense('${exp.id}')">✏️</button>`;
+    const deleteHtml = `<button onclick="window.deleteExpense('${exp.id}')">🗑️</button>`;
     
     row.innerHTML = `
       <td>${exp.date}</td>
@@ -656,8 +661,6 @@ function renderExpenseHistory() {
     currentExpensePage = page;
     renderExpenseHistory();
   });
-  
-  toggleAdminColumns();
 }
 
 /**
@@ -701,7 +704,7 @@ function renderIncomeHistory() {
     }
     
     let actionHtml = '';
-    if (isAdmin && inc.planned) {
+    if (inc.planned) {
       actionHtml = `<button onclick="window.toggleIncomeStatus('${inc.id}')">✅ Zrealizuj</button>`;
     }
     
@@ -978,11 +981,6 @@ function setupSourcesSection() {
   });
   
   document.getElementById('confirmAddFunds')?.addEventListener('click', async () => {
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
-    
     const amount = parseFloat(document.getElementById('addFundsAmount').value);
     const desc = document.getElementById('addFundsDesc').value.trim();
     const typeVal = typeSelect?.value || 'normal';
@@ -1040,8 +1038,6 @@ function setupSourcesSection() {
   
   // Edycja stanu środków
   document.getElementById('editFundsButton')?.addEventListener('click', () => {
-    if (!isAdmin) return;
-    
     const editContainer = document.getElementById('editFundsContainer');
     if (!editContainer) return;
     
@@ -1059,11 +1055,6 @@ function setupSourcesSection() {
   });
   
   document.getElementById('confirmEditFunds')?.addEventListener('click', async () => {
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
-    
     const inputField = document.getElementById('editFundsAmount');
     const newVal = inputField ? parseFloat(inputField.value) : NaN;
     const availElem = document.getElementById('availableFunds');
@@ -1117,13 +1108,13 @@ function setupSourcesSection() {
 function setupEndDatesForm() {
   const form = document.getElementById('endDatesForm');
   
+  // Włącz pola dla wszystkich użytkowników
+  document.getElementById('setEndDatesButton')?.removeAttribute('disabled');
+  document.getElementById('budgetEndDate1')?.removeAttribute('disabled');
+  document.getElementById('budgetEndDate2')?.removeAttribute('disabled');
+  
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
     
     const date1 = document.getElementById('budgetEndDate1').value;
     const date2 = document.getElementById('budgetEndDate2').value;
@@ -1147,13 +1138,14 @@ function setupEndDatesForm() {
 function setupSavingGoalForm() {
   const form = document.getElementById('savingGoalForm');
   
+  // Włącz formularz dla wszystkich użytkowników
+  if (form) {
+    const inputs = form.querySelectorAll('input, button');
+    inputs.forEach(el => el.disabled = false);
+  }
+  
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    if (!isAdmin) {
-      showErrorMessage('Funkcja dostępna tylko dla admina');
-      return;
-    }
     
     const goal = parseFloat(document.getElementById('savingGoal').value);
     
@@ -1623,7 +1615,6 @@ function showSuccessFeedback() {
  * Edytuj wydatek
  */
 window.editExpense = async (expId) => {
-  if (!isAdmin) return;
   const expense = getExpenses().find(e => e.id === expId);
   if (!expense) return;
   
@@ -1661,7 +1652,6 @@ window.deleteExpense = async (expId) => {
  * Przełącz status przychodu (planowany/zrealizowany)
  */
 window.toggleIncomeStatus = async (incId) => {
-  if (!isAdmin) return;
   const inc = getIncomes().find(item => item.id === incId);
   if (!inc) return;
   
