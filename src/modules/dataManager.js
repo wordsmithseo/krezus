@@ -1,11 +1,12 @@
-// src/modules/dataManager.js - Wspólny budżet dla wszystkich użytkowników
-import { ref, get, set, onValue } from 'firebase/database';
+// src/modules/dataManager.js - Indywidualne budżety dla każdego użytkownika
+import { ref, get, set, onValue, off } from 'firebase/database';
 import { db } from '../config/firebase.js';
+import { getUserId } from './auth.js';
 import { parseDateStr, parseDateTime, isRealised, getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 
 /**
- * WAŻNE: Ta aplikacja używa wspólnego budżetu dla wszystkich użytkowników.
- * Ścieżka danych: shared_budget/ (zamiast users/{userId}/)
+ * WAŻNE: Każdy użytkownik ma swój własny budżet
+ * Ścieżka danych: users/{userId}/budget/
  */
 
 let categoriesCache = [];
@@ -16,11 +17,18 @@ let endDate2Cache = '';
 let savingGoalCache = 0;
 let dailyEnvelopeCache = null;
 
+// Referencje do listenerów
+let activeListeners = {};
+
 /**
- * Pobierz ścieżkę do wspólnych danych budżetu
+ * Pobierz ścieżkę do budżetu użytkownika
  */
-function getSharedBudgetPath(path = '') {
-  return `shared_budget/${path}`;
+function getUserBudgetPath(path = '') {
+  const userId = getUserId();
+  if (!userId) {
+    throw new Error('Użytkownik nie jest zalogowany');
+  }
+  return `users/${userId}/budget/${path}`;
 }
 
 /**
@@ -28,7 +36,7 @@ function getSharedBudgetPath(path = '') {
  */
 export async function loadCategories() {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath('categories')));
+    const snapshot = await get(ref(db, getUserBudgetPath('categories')));
     const data = snapshot.val() || {};
     categoriesCache = Object.values(data);
     return categoriesCache;
@@ -43,7 +51,7 @@ export async function loadCategories() {
  */
 export async function loadExpenses() {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath('expenses')));
+    const snapshot = await get(ref(db, getUserBudgetPath('expenses')));
     const data = snapshot.val() || {};
     expensesCache = Object.values(data);
     return expensesCache;
@@ -58,7 +66,7 @@ export async function loadExpenses() {
  */
 export async function loadIncomes() {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath('incomes')));
+    const snapshot = await get(ref(db, getUserBudgetPath('incomes')));
     const data = snapshot.val() || {};
     incomesCache = Object.values(data);
     return incomesCache;
@@ -73,7 +81,7 @@ export async function loadIncomes() {
  */
 export async function loadEndDates() {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath('endDate')));
+    const snapshot = await get(ref(db, getUserBudgetPath('endDate')));
     const data = snapshot.val();
     
     if (typeof data === 'string') {
@@ -99,7 +107,7 @@ export async function loadEndDates() {
  */
 export async function loadSavingGoal() {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath('savingGoal')));
+    const snapshot = await get(ref(db, getUserBudgetPath('savingGoal')));
     const val = snapshot.val();
     savingGoalCache = val ? parseFloat(val) : 0;
     return savingGoalCache;
@@ -114,7 +122,7 @@ export async function loadSavingGoal() {
  */
 export async function loadDailyEnvelope(dateStr) {
   try {
-    const snapshot = await get(ref(db, getSharedBudgetPath(`daily_envelope/${dateStr}`)));
+    const snapshot = await get(ref(db, getUserBudgetPath(`daily_envelope/${dateStr}`)));
     return snapshot.exists() ? snapshot.val() : null;
   } catch (error) {
     console.error('Błąd ładowania koperty dnia:', error);
@@ -132,7 +140,7 @@ export async function saveCategories(categories) {
   });
   
   try {
-    await set(ref(db, getSharedBudgetPath('categories')), obj);
+    await set(ref(db, getUserBudgetPath('categories')), obj);
     categoriesCache = categories;
   } catch (error) {
     console.error('Błąd zapisywania kategorii:', error);
@@ -150,7 +158,7 @@ export async function saveExpenses(expenses) {
   });
   
   try {
-    await set(ref(db, getSharedBudgetPath('expenses')), obj);
+    await set(ref(db, getUserBudgetPath('expenses')), obj);
     expensesCache = expenses;
   } catch (error) {
     console.error('Błąd zapisywania wydatków:', error);
@@ -168,7 +176,7 @@ export async function saveIncomes(incomes) {
   });
   
   try {
-    await set(ref(db, getSharedBudgetPath('incomes')), obj);
+    await set(ref(db, getUserBudgetPath('incomes')), obj);
     incomesCache = incomes;
   } catch (error) {
     console.error('Błąd zapisywania źródeł finansów:', error);
@@ -181,7 +189,7 @@ export async function saveIncomes(incomes) {
  */
 export async function saveEndDates(primary, secondary) {
   try {
-    await set(ref(db, getSharedBudgetPath('endDate')), { 
+    await set(ref(db, getUserBudgetPath('endDate')), { 
       primary: primary || '', 
       secondary: secondary || '' 
     });
@@ -198,7 +206,7 @@ export async function saveEndDates(primary, secondary) {
  */
 export async function saveSavingGoal(goal) {
   try {
-    await set(ref(db, getSharedBudgetPath('savingGoal')), goal);
+    await set(ref(db, getUserBudgetPath('savingGoal')), goal);
     savingGoalCache = goal;
   } catch (error) {
     console.error('Błąd zapisywania celu oszczędności:', error);
@@ -211,7 +219,7 @@ export async function saveSavingGoal(goal) {
  */
 export async function saveDailyEnvelope(dateStr, envelope) {
   try {
-    await set(ref(db, getSharedBudgetPath(`daily_envelope/${dateStr}`)), envelope);
+    await set(ref(db, getUserBudgetPath(`daily_envelope/${dateStr}`)), envelope);
     if (dateStr === getWarsawDateString()) {
       dailyEnvelopeCache = envelope;
     }
@@ -222,7 +230,7 @@ export async function saveDailyEnvelope(dateStr, envelope) {
 }
 
 /**
- * Pobierz wszystkie dane wspólnego budżetu
+ * Pobierz wszystkie dane budżetu użytkownika
  */
 export async function fetchAllData() {
   try {
@@ -309,64 +317,134 @@ export async function autoRealiseDueTransactions() {
 }
 
 /**
+ * Wyczyść wszystkie aktywne listenery
+ */
+export function clearAllListeners() {
+  Object.values(activeListeners).forEach(unsubscribe => {
+    if (typeof unsubscribe === 'function') {
+      unsubscribe();
+    }
+  });
+  activeListeners = {};
+}
+
+/**
  * Nasłuchuj zmian w czasie rzeczywistym
  */
 export function subscribeToRealtimeUpdates(callbacks) {
-  onValue(ref(db, getSharedBudgetPath('categories')), (snapshot) => {
+  // Wyczyść poprzednie listenery
+  clearAllListeners();
+  
+  const userId = getUserId();
+  if (!userId) return;
+  
+  // Categories listener
+  const categoriesRef = ref(db, getUserBudgetPath('categories'));
+  activeListeners.categories = onValue(categoriesRef, (snapshot) => {
     const data = snapshot.val() || {};
-    categoriesCache = Object.values(data);
-    if (callbacks.onCategoriesChange) {
-      callbacks.onCategoriesChange(categoriesCache);
-    }
-  });
-  
-  onValue(ref(db, getSharedBudgetPath('expenses')), (snapshot) => {
-    const data = snapshot.val() || {};
-    expensesCache = Object.values(data);
-    if (callbacks.onExpensesChange) {
-      callbacks.onExpensesChange(expensesCache);
-    }
-  });
-  
-  onValue(ref(db, getSharedBudgetPath('incomes')), (snapshot) => {
-    const data = snapshot.val() || {};
-    incomesCache = Object.values(data);
-    if (callbacks.onIncomesChange) {
-      callbacks.onIncomesChange(incomesCache);
-    }
-  });
-  
-  onValue(ref(db, getSharedBudgetPath('endDate')), (snapshot) => {
-    const data = snapshot.val() || {};
-    if (typeof data === 'string') {
-      endDate1Cache = data;
-      endDate2Cache = '';
-    } else {
-      endDate1Cache = data.primary || '';
-      endDate2Cache = data.secondary || '';
-    }
-    if (callbacks.onEndDatesChange) {
-      callbacks.onEndDatesChange({ primary: endDate1Cache, secondary: endDate2Cache });
-    }
-  });
-  
-  onValue(ref(db, getSharedBudgetPath('savingGoal')), (snapshot) => {
-    const val = snapshot.val();
-    savingGoalCache = val ? parseFloat(val) : 0;
-    if (callbacks.onSavingGoalChange) {
-      callbacks.onSavingGoalChange(savingGoalCache);
-    }
-  });
-  
-  const todayStr = getWarsawDateString();
-  onValue(ref(db, getSharedBudgetPath(`daily_envelope/${todayStr}`)), (snapshot) => {
-    if (snapshot.exists()) {
-      dailyEnvelopeCache = snapshot.val();
-      if (callbacks.onDailyEnvelopeChange) {
-        callbacks.onDailyEnvelopeChange(dailyEnvelopeCache);
+    const newData = Object.values(data);
+    
+    // Sprawdź czy dane się zmieniły
+    if (JSON.stringify(categoriesCache) !== JSON.stringify(newData)) {
+      categoriesCache = newData;
+      if (callbacks.onCategoriesChange) {
+        callbacks.onCategoriesChange(categoriesCache);
       }
     }
   });
+  
+  // Expenses listener
+  const expensesRef = ref(db, getUserBudgetPath('expenses'));
+  activeListeners.expenses = onValue(expensesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const newData = Object.values(data);
+    
+    if (JSON.stringify(expensesCache) !== JSON.stringify(newData)) {
+      expensesCache = newData;
+      if (callbacks.onExpensesChange) {
+        callbacks.onExpensesChange(expensesCache);
+      }
+    }
+  });
+  
+  // Incomes listener
+  const incomesRef = ref(db, getUserBudgetPath('incomes'));
+  activeListeners.incomes = onValue(incomesRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const newData = Object.values(data);
+    
+    if (JSON.stringify(incomesCache) !== JSON.stringify(newData)) {
+      incomesCache = newData;
+      if (callbacks.onIncomesChange) {
+        callbacks.onIncomesChange(incomesCache);
+      }
+    }
+  });
+  
+  // End dates listener
+  const endDateRef = ref(db, getUserBudgetPath('endDate'));
+  activeListeners.endDate = onValue(endDateRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    let newPrimary, newSecondary;
+    
+    if (typeof data === 'string') {
+      newPrimary = data;
+      newSecondary = '';
+    } else {
+      newPrimary = data.primary || '';
+      newSecondary = data.secondary || '';
+    }
+    
+    if (endDate1Cache !== newPrimary || endDate2Cache !== newSecondary) {
+      endDate1Cache = newPrimary;
+      endDate2Cache = newSecondary;
+      if (callbacks.onEndDatesChange) {
+        callbacks.onEndDatesChange({ primary: endDate1Cache, secondary: endDate2Cache });
+      }
+    }
+  });
+  
+  // Saving goal listener
+  const savingGoalRef = ref(db, getUserBudgetPath('savingGoal'));
+  activeListeners.savingGoal = onValue(savingGoalRef, (snapshot) => {
+    const val = snapshot.val();
+    const newGoal = val ? parseFloat(val) : 0;
+    
+    if (savingGoalCache !== newGoal) {
+      savingGoalCache = newGoal;
+      if (callbacks.onSavingGoalChange) {
+        callbacks.onSavingGoalChange(savingGoalCache);
+      }
+    }
+  });
+  
+  // Daily envelope listener
+  const todayStr = getWarsawDateString();
+  const envelopeRef = ref(db, getUserBudgetPath(`daily_envelope/${todayStr}`));
+  activeListeners.envelope = onValue(envelopeRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const newEnvelope = snapshot.val();
+      if (JSON.stringify(dailyEnvelopeCache) !== JSON.stringify(newEnvelope)) {
+        dailyEnvelopeCache = newEnvelope;
+        if (callbacks.onDailyEnvelopeChange) {
+          callbacks.onDailyEnvelopeChange(dailyEnvelopeCache);
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Wyczyść cache przy wylogowaniu
+ */
+export function clearCache() {
+  categoriesCache = [];
+  incomesCache = [];
+  expensesCache = [];
+  endDate1Cache = '';
+  endDate2Cache = '';
+  savingGoalCache = 0;
+  dailyEnvelopeCache = null;
 }
 
 /**

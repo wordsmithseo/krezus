@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, push, update, remove, onValue } from 'firebase/database';
 import { auth, db } from '../config/firebase.js';
 
 /**
@@ -20,12 +20,15 @@ const ADMIN_EMAIL = 'slawomir.sprawski@gmail.com';
 let currentUser = null;
 let isAdmin = false;
 let displayName = '';
+let pendingInvitesCount = 0;
+let unreadMessagesCount = 0;
+
+// Listenery
+let invitesListener = null;
+let messagesListener = null;
 
 /**
  * Logowanie użytkownika
- * @param {string} email - Email użytkownika
- * @param {string} password - Hasło użytkownika
- * @returns {Promise<Object>} - Dane zalogowanego użytkownika
  */
 export async function loginUser(email, password) {
   try {
@@ -33,8 +36,8 @@ export async function loginUser(email, password) {
     currentUser = userCredential.user;
     isAdmin = email === ADMIN_EMAIL;
     
-    // Pobierz nazwę użytkownika z bazy danych
     await loadUserProfile();
+    setupNotificationListeners();
     
     return {
       success: true,
@@ -50,9 +53,6 @@ export async function loginUser(email, password) {
 
 /**
  * Rejestracja nowego użytkownika
- * @param {string} email - Email użytkownika
- * @param {string} password - Hasło użytkownika
- * @returns {Promise<Object>} - Dane zarejestrowanego użytkownika
  */
 export async function registerUser(email, password) {
   try {
@@ -60,7 +60,6 @@ export async function registerUser(email, password) {
     currentUser = userCredential.user;
     isAdmin = email === ADMIN_EMAIL;
     
-    // Utwórz domyślny profil użytkownika
     await set(ref(db, `users/${currentUser.uid}/profile`), {
       email: email,
       displayName: email.split('@')[0],
@@ -68,6 +67,7 @@ export async function registerUser(email, password) {
     });
     
     await loadUserProfile();
+    setupNotificationListeners();
     
     return {
       success: true,
@@ -86,10 +86,13 @@ export async function registerUser(email, password) {
  */
 export async function logoutUser() {
   try {
+    clearNotificationListeners();
     await signOut(auth);
     currentUser = null;
     isAdmin = false;
     displayName = '';
+    pendingInvitesCount = 0;
+    unreadMessagesCount = 0;
     return { success: true };
   } catch (error) {
     console.error('Błąd wylogowania:', error);
@@ -119,7 +122,6 @@ export async function loadUserProfile() {
 
 /**
  * Aktualizuj profil użytkownika
- * @param {string} newDisplayName - Nowa nazwa użytkownika
  */
 export async function updateUserProfile(newDisplayName) {
   if (!currentUser) {
@@ -127,12 +129,10 @@ export async function updateUserProfile(newDisplayName) {
   }
   
   try {
-    // Aktualizuj w Firebase Auth
     await updateProfile(currentUser, {
       displayName: newDisplayName
     });
     
-    // Aktualizuj w Realtime Database
     await set(ref(db, `users/${currentUser.uid}/profile`), {
       email: currentUser.email,
       displayName: newDisplayName,
@@ -148,8 +148,289 @@ export async function updateUserProfile(newDisplayName) {
 }
 
 /**
+ * Wyślij zaproszenie do współdzielenia budżetu
+ */
+export async function sendBudgetInvitation(recipientEmail) {
+  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
+  
+  try {
+    // Znajdź użytkownika po emailu
+    const usersSnapshot = await get(ref(db, 'users'));
+    let recipientUid = null;
+    
+    if (usersSnapshot.exists()) {
+      const users = usersSnapshot.val();
+      for (const [uid, userData] of Object.entries(users)) {
+        if (userData.profile && userData.profile.email === recipientEmail) {
+          recipientUid = uid;
+          break;
+        }
+      }
+    }
+    
+    if (!recipientUid) {
+      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
+    }
+    
+    if (recipientUid === currentUser.uid) {
+      throw new Error('Nie możesz wysłać zaproszenia do samego siebie');
+    }
+    
+    // Sprawdź czy zaproszenie już istnieje
+    const existingInvitesSnapshot = await get(ref(db, `users/${recipientUid}/invitations`));
+    if (existingInvitesSnapshot.exists()) {
+      const invites = existingInvitesSnapshot.val();
+      for (const invite of Object.values(invites)) {
+        if (invite.fromUserId === currentUser.uid && invite.status === 'pending') {
+          throw new Error('Zaproszenie dla tego użytkownika już istnieje');
+        }
+      }
+    }
+    
+    // Utwórz zaproszenie
+    const invitationRef = push(ref(db, `users/${recipientUid}/invitations`));
+    await set(invitationRef, {
+      id: invitationRef.key,
+      fromUserId: currentUser.uid,
+      fromEmail: currentUser.email,
+      fromDisplayName: displayName,
+      toUserId: recipientUid,
+      toEmail: recipientEmail,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Błąd wysyłania zaproszenia:', error);
+    throw error;
+  }
+}
+
+/**
+ * Pobierz oczekujące zaproszenia
+ */
+export async function getPendingInvitations() {
+  if (!currentUser) return [];
+  
+  try {
+    const snapshot = await get(ref(db, `users/${currentUser.uid}/invitations`));
+    if (!snapshot.exists()) return [];
+    
+    const invitations = snapshot.val();
+    return Object.values(invitations).filter(inv => inv.status === 'pending');
+  } catch (error) {
+    console.error('Błąd pobierania zaproszeń:', error);
+    return [];
+  }
+}
+
+/**
+ * Akceptuj zaproszenie do budżetu
+ */
+export async function acceptBudgetInvitation(invitationId) {
+  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
+  
+  try {
+    const inviteRef = ref(db, `users/${currentUser.uid}/invitations/${invitationId}`);
+    const snapshot = await get(inviteRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Zaproszenie nie istnieje');
+    }
+    
+    const invitation = snapshot.val();
+    
+    // Skopiuj budżet nadawcy do odbiorcy
+    const senderBudgetSnapshot = await get(ref(db, `users/${invitation.fromUserId}/budget`));
+    
+    if (senderBudgetSnapshot.exists()) {
+      const senderBudget = senderBudgetSnapshot.val();
+      await set(ref(db, `users/${currentUser.uid}/budget`), senderBudget);
+    }
+    
+    // Oznacz zaproszenie jako zaakceptowane
+    await update(inviteRef, {
+      status: 'accepted',
+      acceptedAt: new Date().toISOString()
+    });
+    
+    // Wyślij wiadomość do nadawcy
+    await sendSystemMessage(
+      invitation.fromUserId,
+      'invitation_accepted',
+      `${displayName} (${currentUser.email}) zaakceptował(a) Twoje zaproszenie do współdzielenia budżetu.`,
+      { invitationId, acceptedBy: currentUser.email }
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Błąd akceptowania zaproszenia:', error);
+    throw error;
+  }
+}
+
+/**
+ * Odrzuć zaproszenie do budżetu
+ */
+export async function rejectBudgetInvitation(invitationId) {
+  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
+  
+  try {
+    const inviteRef = ref(db, `users/${currentUser.uid}/invitations/${invitationId}`);
+    const snapshot = await get(inviteRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Zaproszenie nie istnieje');
+    }
+    
+    const invitation = snapshot.val();
+    
+    // Oznacz zaproszenie jako odrzucone
+    await update(inviteRef, {
+      status: 'rejected',
+      rejectedAt: new Date().toISOString()
+    });
+    
+    // Wyślij wiadomość do nadawcy
+    await sendSystemMessage(
+      invitation.fromUserId,
+      'invitation_rejected',
+      `${displayName} (${currentUser.email}) odrzucił(a) Twoje zaproszenie do współdzielenia budżetu.`,
+      { invitationId, rejectedBy: currentUser.email }
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Błąd odrzucania zaproszenia:', error);
+    throw error;
+  }
+}
+
+/**
+ * Wyślij wiadomość systemową
+ */
+async function sendSystemMessage(recipientUid, type, message, metadata = {}) {
+  const messageRef = push(ref(db, `users/${recipientUid}/messages`));
+  await set(messageRef, {
+    id: messageRef.key,
+    type,
+    message,
+    metadata,
+    read: false,
+    createdAt: new Date().toISOString()
+  });
+}
+
+/**
+ * Pobierz wszystkie wiadomości
+ */
+export async function getMessages() {
+  if (!currentUser) return [];
+  
+  try {
+    const snapshot = await get(ref(db, `users/${currentUser.uid}/messages`));
+    if (!snapshot.exists()) return [];
+    
+    const messages = snapshot.val();
+    return Object.values(messages).sort((a, b) => 
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+  } catch (error) {
+    console.error('Błąd pobierania wiadomości:', error);
+    return [];
+  }
+}
+
+/**
+ * Oznacz wiadomość jako przeczytaną
+ */
+export async function markMessageAsRead(messageId) {
+  if (!currentUser) return;
+  
+  try {
+    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
+      read: true,
+      readAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Błąd oznaczania wiadomości:', error);
+  }
+}
+
+/**
+ * Usuń wiadomość
+ */
+export async function deleteMessage(messageId) {
+  if (!currentUser) return;
+  
+  try {
+    await remove(ref(db, `users/${currentUser.uid}/messages/${messageId}`));
+  } catch (error) {
+    console.error('Błąd usuwania wiadomości:', error);
+    throw error;
+  }
+}
+
+/**
+ * Konfiguruj listenery dla zaproszeń i wiadomości
+ */
+function setupNotificationListeners() {
+  if (!currentUser) return;
+  
+  // Listener dla zaproszeń
+  const invitationsRef = ref(db, `users/${currentUser.uid}/invitations`);
+  invitesListener = onValue(invitationsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const invites = Object.values(snapshot.val());
+      const pending = invites.filter(inv => inv.status === 'pending');
+      pendingInvitesCount = pending.length;
+      
+      // Wywołaj callback jeśli istnieje
+      if (window.onInvitesCountChange) {
+        window.onInvitesCountChange(pendingInvitesCount);
+      }
+    } else {
+      pendingInvitesCount = 0;
+      if (window.onInvitesCountChange) {
+        window.onInvitesCountChange(0);
+      }
+    }
+  });
+  
+  // Listener dla wiadomości
+  const messagesRef = ref(db, `users/${currentUser.uid}/messages`);
+  messagesListener = onValue(messagesRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const messages = Object.values(snapshot.val());
+      const unread = messages.filter(msg => !msg.read);
+      unreadMessagesCount = unread.length;
+      
+      // Wywołaj callback jeśli istnieje
+      if (window.onMessagesCountChange) {
+        window.onMessagesCountChange(unreadMessagesCount);
+      }
+    } else {
+      unreadMessagesCount = 0;
+      if (window.onMessagesCountChange) {
+        window.onMessagesCountChange(0);
+      }
+    }
+  });
+}
+
+/**
+ * Wyczyść listenery
+ */
+function clearNotificationListeners() {
+  if (invitesListener) invitesListener();
+  if (messagesListener) messagesListener();
+  invitesListener = null;
+  messagesListener = null;
+}
+
+/**
  * Nasłuchuj zmian stanu uwierzytelnienia
- * @param {Function} callback - Funkcja wywoływana przy zmianie stanu
  */
 export function onAuthChange(callback) {
   return onAuthStateChanged(auth, async (user) => {
@@ -157,9 +438,11 @@ export function onAuthChange(callback) {
     if (user) {
       isAdmin = user.email === ADMIN_EMAIL;
       await loadUserProfile();
+      setupNotificationListeners();
     } else {
       isAdmin = false;
       displayName = '';
+      clearNotificationListeners();
     }
     callback({
       user: currentUser,
@@ -198,9 +481,21 @@ export function getUserId() {
 }
 
 /**
+ * Pobierz liczbę oczekujących zaproszeń
+ */
+export function getPendingInvitesCount() {
+  return pendingInvitesCount;
+}
+
+/**
+ * Pobierz liczbę nieprzeczytanych wiadomości
+ */
+export function getUnreadMessagesCount() {
+  return unreadMessagesCount;
+}
+
+/**
  * Konwertuj kod błędu Firebase na przyjazną wiadomość
- * @param {string} errorCode - Kod błędu Firebase
- * @returns {string} - Przyjazna wiadomość błędu
  */
 function getAuthErrorMessage(errorCode) {
   const errorMessages = {
