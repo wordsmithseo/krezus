@@ -105,6 +105,21 @@ onAuthChange(async (authState) => {
   
   if (user) {
     console.log('✅ Użytkownik zalogowany:', displayName);
+    console.log('🔑 User ID:', user.uid);
+    
+    // KRYTYCZNE: Wyczyść WSZYSTKO przed załadowaniem danych
+    clearAllListeners();
+    clearCache();
+    
+    // Wyczyść również cache przeglądarki dla tego użytkownika
+    if (window.localStorage) {
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('firebase:')) {
+          console.log('🧹 Czyszczenie Firebase cache:', key);
+        }
+      });
+    }
     
     showApp();
     await loadAllData();
