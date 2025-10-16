@@ -8,7 +8,6 @@ import {
   checkIsAdmin,
   getDisplayName,
   getCurrentUser,
-  getPendingInvitesCount,
   getUnreadMessagesCount
 } from './modules/auth.js';
 
@@ -47,7 +46,6 @@ import {
 
 import { 
   showProfileModal, 
-  showInvitationsModal,
   showMessagesModal
 } from './components/modals.js';
 
@@ -83,10 +81,6 @@ console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
 
 // Callbacks dla powiadomień
-window.onInvitesCountChange = (count) => {
-  updateNotificationBadge('invitationsBadge', count);
-};
-
 window.onMessagesCountChange = (count) => {
   updateNotificationBadge('messagesBadge', count);
 };
@@ -119,8 +113,7 @@ onAuthChange(async (authState) => {
     setupApp();
     setupRealtimeUpdates();
     
-    // Załaduj liczniki powiadomień
-    updateNotificationBadge('invitationsBadge', getPendingInvitesCount());
+    // Załaduj licznik powiadomień
     updateNotificationBadge('messagesBadge', getUnreadMessagesCount());
   } else {
     console.log('❌ Użytkownik niezalogowany');
@@ -829,10 +822,6 @@ function renderPagination(containerId, totalItems, currentPage, onPageChange) {
  * Konfiguracja przycisków użytkownika
  */
 function setupUserButtons() {
-  document.getElementById('invitationsBtn')?.addEventListener('click', () => {
-    showInvitationsModal();
-  });
-  
   document.getElementById('messagesBtn')?.addEventListener('click', () => {
     showMessagesModal();
   });

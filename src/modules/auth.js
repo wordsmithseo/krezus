@@ -11,6 +11,7 @@ import { auth, db } from '../config/firebase.js';
 
 /**
  * Email użytkownika z uprawnieniami admina
+ * UWAGA: Teraz wszyscy użytkownicy mają pełne uprawnienia
  */
 const ADMIN_EMAIL = 'slawomir.sprawski@gmail.com';
 
@@ -20,11 +21,9 @@ const ADMIN_EMAIL = 'slawomir.sprawski@gmail.com';
 let currentUser = null;
 let isAdmin = false;
 let displayName = '';
-let pendingInvitesCount = 0;
 let unreadMessagesCount = 0;
 
 // Listenery
-let invitesListener = null;
 let messagesListener = null;
 
 /**
@@ -34,7 +33,8 @@ export async function loginUser(email, password) {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     currentUser = userCredential.user;
-    isAdmin = email === ADMIN_EMAIL;
+    // Wszyscy użytkownicy mają teraz pełne uprawnienia
+    isAdmin = true;
     
     await loadUserProfile();
     setupNotificationListeners();
@@ -58,7 +58,8 @@ export async function registerUser(email, password) {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     currentUser = userCredential.user;
-    isAdmin = email === ADMIN_EMAIL;
+    // Wszyscy użytkownicy mają teraz pełne uprawnienia
+    isAdmin = true;
     
     await set(ref(db, `users/${currentUser.uid}/profile`), {
       email: email,
@@ -91,7 +92,6 @@ export async function logoutUser() {
     currentUser = null;
     isAdmin = false;
     displayName = '';
-    pendingInvitesCount = 0;
     unreadMessagesCount = 0;
     return { success: true };
   } catch (error) {
@@ -149,6 +149,7 @@ export async function updateUserProfile(newDisplayName) {
 
 /**
  * Wyślij zaproszenie do współdzielenia budżetu
+ * Teraz wysyła jako wiadomość z pełnymi szczegółami budżetu
  */
 export async function sendBudgetInvitation(recipientEmail) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
@@ -176,27 +177,46 @@ export async function sendBudgetInvitation(recipientEmail) {
       throw new Error('Nie możesz wysłać zaproszenia do samego siebie');
     }
     
-    // Sprawdź czy zaproszenie już istnieje
-    const existingInvitesSnapshot = await get(ref(db, `users/${recipientUid}/invitations`));
-    if (existingInvitesSnapshot.exists()) {
-      const invites = existingInvitesSnapshot.val();
-      for (const invite of Object.values(invites)) {
-        if (invite.fromUserId === currentUser.uid && invite.status === 'pending') {
-          throw new Error('Zaproszenie dla tego użytkownika już istnieje');
-        }
+    // Pobierz statystyki budżetu nadawcy
+    const senderBudgetSnapshot = await get(ref(db, `users/${currentUser.uid}/budget`));
+    let budgetStats = {
+      totalIncome: 0,
+      totalExpenses: 0,
+      categoriesCount: 0,
+      savingGoal: 0
+    };
+    
+    if (senderBudgetSnapshot.exists()) {
+      const budget = senderBudgetSnapshot.val();
+      
+      if (budget.incomes) {
+        budgetStats.totalIncome = Object.values(budget.incomes).reduce((sum, inc) => sum + (inc.amount || 0), 0);
+      }
+      
+      if (budget.expenses) {
+        budgetStats.totalExpenses = Object.values(budget.expenses).reduce((sum, exp) => sum + ((exp.amount || 0) * (exp.quantity || 1)), 0);
+      }
+      
+      if (budget.categories) {
+        budgetStats.categoriesCount = Object.keys(budget.categories).length;
+      }
+      
+      if (budget.savingGoal) {
+        budgetStats.savingGoal = budget.savingGoal;
       }
     }
     
-    // Utwórz zaproszenie
-    const invitationRef = push(ref(db, `users/${recipientUid}/invitations`));
-    await set(invitationRef, {
-      id: invitationRef.key,
+    // Utwórz wiadomość z zaproszeniem
+    const messageRef = push(ref(db, `users/${recipientUid}/messages`));
+    await set(messageRef, {
+      id: messageRef.key,
+      type: 'budget_invitation',
       fromUserId: currentUser.uid,
       fromEmail: currentUser.email,
       fromDisplayName: displayName,
-      toUserId: recipientUid,
-      toEmail: recipientEmail,
-      status: 'pending',
+      budgetStats: budgetStats,
+      message: `${displayName} (${currentUser.email}) zaprasza Cię do współdzielenia budżetu.`,
+      read: false,
       createdAt: new Date().toISOString()
     });
     
@@ -208,59 +228,40 @@ export async function sendBudgetInvitation(recipientEmail) {
 }
 
 /**
- * Pobierz oczekujące zaproszenia
+ * Pobierz oczekujące zaproszenia (deprecated - teraz w wiadomościach)
  */
 export async function getPendingInvitations() {
-  if (!currentUser) return [];
-  
-  try {
-    const snapshot = await get(ref(db, `users/${currentUser.uid}/invitations`));
-    if (!snapshot.exists()) return [];
-    
-    const invitations = snapshot.val();
-    return Object.values(invitations).filter(inv => inv.status === 'pending');
-  } catch (error) {
-    console.error('Błąd pobierania zaproszeń:', error);
-    return [];
-  }
+  return [];
 }
 
 /**
  * Akceptuj zaproszenie do budżetu
  */
-export async function acceptBudgetInvitation(invitationId) {
+export async function acceptBudgetInvitation(messageId, fromUserId) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
   
   try {
-    const inviteRef = ref(db, `users/${currentUser.uid}/invitations/${invitationId}`);
-    const snapshot = await get(inviteRef);
-    
-    if (!snapshot.exists()) {
-      throw new Error('Zaproszenie nie istnieje');
-    }
-    
-    const invitation = snapshot.val();
-    
     // Skopiuj budżet nadawcy do odbiorcy
-    const senderBudgetSnapshot = await get(ref(db, `users/${invitation.fromUserId}/budget`));
+    const senderBudgetSnapshot = await get(ref(db, `users/${fromUserId}/budget`));
     
     if (senderBudgetSnapshot.exists()) {
       const senderBudget = senderBudgetSnapshot.val();
       await set(ref(db, `users/${currentUser.uid}/budget`), senderBudget);
     }
     
-    // Oznacz zaproszenie jako zaakceptowane
-    await update(inviteRef, {
+    // Oznacz wiadomość jako przeczytaną i zaakceptowaną
+    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
+      read: true,
       status: 'accepted',
       acceptedAt: new Date().toISOString()
     });
     
     // Wyślij wiadomość do nadawcy
     await sendSystemMessage(
-      invitation.fromUserId,
+      fromUserId,
       'invitation_accepted',
       `${displayName} (${currentUser.email}) zaakceptował(a) Twoje zaproszenie do współdzielenia budżetu.`,
-      { invitationId, acceptedBy: currentUser.email }
+      { acceptedBy: currentUser.email }
     );
     
     return { success: true };
@@ -273,31 +274,23 @@ export async function acceptBudgetInvitation(invitationId) {
 /**
  * Odrzuć zaproszenie do budżetu
  */
-export async function rejectBudgetInvitation(invitationId) {
+export async function rejectBudgetInvitation(messageId, fromUserId) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
   
   try {
-    const inviteRef = ref(db, `users/${currentUser.uid}/invitations/${invitationId}`);
-    const snapshot = await get(inviteRef);
-    
-    if (!snapshot.exists()) {
-      throw new Error('Zaproszenie nie istnieje');
-    }
-    
-    const invitation = snapshot.val();
-    
-    // Oznacz zaproszenie jako odrzucone
-    await update(inviteRef, {
+    // Oznacz wiadomość jako przeczytaną i odrzuconą
+    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
+      read: true,
       status: 'rejected',
       rejectedAt: new Date().toISOString()
     });
     
     // Wyślij wiadomość do nadawcy
     await sendSystemMessage(
-      invitation.fromUserId,
+      fromUserId,
       'invitation_rejected',
       `${displayName} (${currentUser.email}) odrzucił(a) Twoje zaproszenie do współdzielenia budżetu.`,
-      { invitationId, rejectedBy: currentUser.email }
+      { rejectedBy: currentUser.email }
     );
     
     return { success: true };
@@ -373,30 +366,10 @@ export async function deleteMessage(messageId) {
 }
 
 /**
- * Konfiguruj listenery dla zaproszeń i wiadomości
+ * Konfiguruj listenery dla wiadomości
  */
 function setupNotificationListeners() {
   if (!currentUser) return;
-  
-  // Listener dla zaproszeń
-  const invitationsRef = ref(db, `users/${currentUser.uid}/invitations`);
-  invitesListener = onValue(invitationsRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const invites = Object.values(snapshot.val());
-      const pending = invites.filter(inv => inv.status === 'pending');
-      pendingInvitesCount = pending.length;
-      
-      // Wywołaj callback jeśli istnieje
-      if (window.onInvitesCountChange) {
-        window.onInvitesCountChange(pendingInvitesCount);
-      }
-    } else {
-      pendingInvitesCount = 0;
-      if (window.onInvitesCountChange) {
-        window.onInvitesCountChange(0);
-      }
-    }
-  });
   
   // Listener dla wiadomości
   const messagesRef = ref(db, `users/${currentUser.uid}/messages`);
@@ -423,9 +396,7 @@ function setupNotificationListeners() {
  * Wyczyść listenery
  */
 function clearNotificationListeners() {
-  if (invitesListener) invitesListener();
   if (messagesListener) messagesListener();
-  invitesListener = null;
   messagesListener = null;
 }
 
@@ -436,7 +407,8 @@ export function onAuthChange(callback) {
   return onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     if (user) {
-      isAdmin = user.email === ADMIN_EMAIL;
+      // Wszyscy użytkownicy mają pełne uprawnienia
+      isAdmin = true;
       await loadUserProfile();
       setupNotificationListeners();
     } else {
@@ -478,13 +450,6 @@ export function getDisplayName() {
  */
 export function getUserId() {
   return currentUser ? currentUser.uid : null;
-}
-
-/**
- * Pobierz liczbę oczekujących zaproszeń
- */
-export function getPendingInvitesCount() {
-  return pendingInvitesCount;
 }
 
 /**
