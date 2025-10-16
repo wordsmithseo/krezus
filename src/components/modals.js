@@ -8,7 +8,9 @@ import {
   rejectBudgetInvitation,
   getMessages,
   markMessageAsRead,
-  deleteMessage
+  deleteMessage,
+  getSharedUsers,
+  removeSharedUser
 } from '../modules/auth.js';
 import { validateDisplayName, validateEmail } from '../utils/validators.js';
 import { showSuccessMessage, showErrorMessage } from '../utils/errorHandler.js';
@@ -31,7 +33,7 @@ export function createProfileModal() {
   
   modal.innerHTML = `
     <div class="modal-overlay"></div>
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 600px; max-height: 85vh;">
       <div class="modal-header">
         <h2 id="profileModalTitle">Edycja profilu</h2>
         <button 
@@ -42,7 +44,7 @@ export function createProfileModal() {
           ✕
         </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" style="max-height: calc(85vh - 100px); overflow-y: auto;">
         <form id="profileForm">
           <div class="form-group">
             <label for="profileEmail">Email</label>
@@ -98,27 +100,38 @@ export function createProfileModal() {
           </h3>
           <form id="inviteForm">
             <div class="form-group">
-              <label for="inviteEmail">Email użytkownika</label>
+              <label for="inviteEmail">Email użytkowników</label>
               <input 
-                type="email" 
+                type="text" 
                 id="inviteEmail" 
                 required
-                placeholder="email@example.com"
-                aria-label="Email użytkownika do zaproszenia"
+                placeholder="email1@example.com, email2@example.com"
+                aria-label="Email użytkowników do zaproszenia"
                 aria-required="true"
               />
-              <small>Wpisz email użytkownika, którego chcesz zaprosić</small>
+              <small>Możesz podać wiele adresów oddzielonych przecinkami</small>
             </div>
             
             <button 
               type="submit" 
               class="btn-primary"
               style="width: 100%;"
-              aria-label="Wyślij zaproszenie"
+              aria-label="Wyślij zaproszenia"
             >
-              ✉️ Wyślij zaproszenie
+              ✉️ Wyślij zaproszenia
             </button>
           </form>
+          
+          <div style="margin-top: 20px;">
+            <h4 style="margin-bottom: 10px; font-size: 1rem; color: var(--primary);">
+              👥 Współdzielący budżet
+            </h4>
+            <div id="sharedUsersList">
+              <div style="text-align: center; padding: 20px;">
+                <div class="spinner" style="margin: 0 auto; width: 30px; height: 30px;"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -130,7 +143,7 @@ export function createProfileModal() {
 /**
  * Pokaż modal edycji profilu
  */
-export function showProfileModal() {
+export async function showProfileModal() {
   const existing = document.getElementById('profileModal');
   if (existing) {
     existing.remove();
@@ -194,31 +207,44 @@ export function showProfileModal() {
       await updateUserProfile(newDisplayName);
       
       showSuccessMessage('Profil został zaktualizowany');
-      closeModal();
       
       updateUserDisplayInUI(newDisplayName);
+      
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
       
     } catch (error) {
       showErrorMessage('Nie udało się zaktualizować profilu: ' + error.message);
       
       const submitBtn = form.querySelector('button[type="submit"]');
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = '💾 Zapisz';
     }
   });
   
-  // Obsługa formularza zaproszenia
+  // Obsługa formularza zaproszenia - wielokrotne zaproszenia
   const inviteForm = modal.querySelector('#inviteForm');
   inviteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const emailInput = modal.querySelector('#inviteEmail');
-    const email = emailInput.value.trim();
+    const emailsText = emailInput.value.trim();
     
-    const validation = validateEmail(email);
-    if (!validation.valid) {
-      showErrorMessage(validation.error);
+    // Rozdziel emaile po przecinkach lub średnikach
+    const emails = emailsText.split(/[,;]/).map(e => e.trim()).filter(e => e);
+    
+    if (emails.length === 0) {
+      showErrorMessage('Podaj co najmniej jeden adres email');
       return;
+    }
+    
+    // Waliduj wszystkie emaile
+    for (const email of emails) {
+      const validation = validateEmail(email);
+      if (!validation.valid) {
+        showErrorMessage(`Nieprawidłowy email: ${email}`);
+        return;
+      }
     }
     
     try {
@@ -227,22 +253,158 @@ export function showProfileModal() {
       submitBtn.disabled = true;
       submitBtn.textContent = '⏳ Wysyłanie...';
       
-      await sendBudgetInvitation(email);
+      let successCount = 0;
+      let errors = [];
       
-      showSuccessMessage('Zaproszenie zostało wysłane!');
+      // Wysyłaj zaproszenia do wszystkich użytkowników
+      for (const email of emails) {
+        try {
+          await sendBudgetInvitation(email);
+          successCount++;
+        } catch (error) {
+          errors.push(`${email}: ${error.message}`);
+        }
+      }
+      
       emailInput.value = '';
+      
+      if (successCount > 0) {
+        showSuccessMessage(`Wysłano ${successCount} zaproszeń!`);
+      }
+      
+      if (errors.length > 0) {
+        showErrorMessage('Niektóre zaproszenia nie zostały wysłane:\n' + errors.join('\n'));
+      }
+      
+      // Odśwież listę współdzielących
+      await refreshSharedUsersList(modal);
       
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
       
     } catch (error) {
-      showErrorMessage(error.message || 'Nie udało się wysłać zaproszenia');
+      showErrorMessage(error.message || 'Nie udało się wysłać zaproszeń');
       
       const submitBtn = inviteForm.querySelector('button[type="submit"]');
       submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.textContent = '✉️ Wyślij zaproszenia';
     }
   });
+  
+  // Załaduj listę współdzielących użytkowników
+  await refreshSharedUsersList(modal);
+}
+
+/**
+ * Odśwież listę współdzielących użytkowników
+ */
+async function refreshSharedUsersList(modal) {
+  const sharedListContainer = modal.querySelector('#sharedUsersList');
+  if (!sharedListContainer) return;
+  
+  try {
+    const sharedUsers = await getSharedUsers();
+    
+    if (sharedUsers.length === 0) {
+      sharedListContainer.innerHTML = `
+        <div style="text-align: center; padding: 20px; color: #999; font-size: 0.9rem;">
+          Nie współdzielisz budżetu z żadnym użytkownikiem
+        </div>
+      `;
+    } else {
+      sharedListContainer.innerHTML = sharedUsers.map(user => `
+        <div class="shared-user-item" style="
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px;
+          background: #f9f9f9;
+          border-radius: 8px;
+          margin-bottom: 8px;
+          border: 1px solid #e0e0e0;
+        ">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, var(--primary), var(--secondary));
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: bold;
+              font-size: 1.1rem;
+            ">
+              ${user.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style="font-weight: 600; color: var(--text-color);">
+                ${user.displayName}
+              </div>
+              <div style="font-size: 0.85rem; color: #666;">
+                ${user.email}
+              </div>
+            </div>
+          </div>
+          <button 
+            class="remove-shared-user" 
+            data-user-id="${user.uid}"
+            style="
+              background: var(--danger);
+              color: white;
+              border: none;
+              padding: 8px 16px;
+              border-radius: 6px;
+              font-size: 0.85rem;
+              cursor: pointer;
+              transition: opacity 0.2s;
+            "
+            onmouseover="this.style.opacity='0.8'"
+            onmouseout="this.style.opacity='1'"
+          >
+            🗑️ Usuń
+          </button>
+        </div>
+      `).join('');
+      
+      // Obsługa przycisków usuwania
+      sharedListContainer.querySelectorAll('.remove-shared-user').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = btn.getAttribute('data-user-id');
+          const userItem = btn.closest('.shared-user-item');
+          const userName = userItem.querySelector('div > div').textContent;
+          
+          if (!confirm(`Czy na pewno chcesz zakończyć współdzielenie budżetu z użytkownikiem ${userName}?\n\nKażdy z was zachowa własną kopię budżetu z momentu rozłączenia.`)) {
+            return;
+          }
+          
+          try {
+            btn.disabled = true;
+            btn.textContent = '⏳ Usuwanie...';
+            
+            await removeSharedUser(userId);
+            
+            showSuccessMessage(`Zakończono współdzielenie z użytkownikiem ${userName}`);
+            
+            // Odśwież listę
+            await refreshSharedUsersList(modal);
+            
+          } catch (error) {
+            showErrorMessage('Nie udało się usunąć użytkownika: ' + error.message);
+            btn.disabled = false;
+            btn.textContent = '🗑️ Usuń';
+          }
+        });
+      });
+    }
+  } catch (error) {
+    sharedListContainer.innerHTML = `
+      <div style="text-align: center; padding: 20px; color: var(--danger); font-size: 0.9rem;">
+        Nie udało się załadować listy współdzielących
+      </div>
+    `;
+  }
 }
 
 /**
@@ -491,7 +653,7 @@ export async function showMessagesModal() {
                 font-size: 0.9rem;
                 color: #856404;
               ">
-                ⚠️ <strong>Uwaga:</strong> Po akceptacji zaproszenia, Twój obecny budżet zostanie zastąpiony budżetem użytkownika ${msg.fromDisplayName}.
+                ⚠️ <strong>Uwaga:</strong> Po akceptacji zaproszenia, Twój obecny budżet zostanie zastąpiony budżetem użytkownika ${msg.fromDisplayName}. Będziecie współdzielić budżet.
               </div>
               
               <div style="font-size: 0.85rem; color: #999; margin-bottom: 15px;">
@@ -510,6 +672,7 @@ export async function showMessagesModal() {
         const iconMap = {
           'invitation_accepted': '✅',
           'invitation_rejected': '❌',
+          'sharing_removed': '🔗',
           'system': 'ℹ️'
         };
         const icon = iconMap[msg.type] || '💬';
@@ -585,7 +748,7 @@ export async function showMessagesModal() {
           const msgId = btn.getAttribute('data-id');
           const fromUserId = btn.getAttribute('data-from-user');
           
-          if (!confirm('⚠️ Czy na pewno chcesz zaakceptować to zaproszenie?\n\nTwój obecny budżet zostanie CAŁKOWICIE ZASTĄPIONY budżetem nadawcy.\n\nTa operacja jest nieodwracalna!')) {
+          if (!confirm('⚠️ Czy na pewno chcesz zaakceptować to zaproszenie?\n\nTwój obecny budżet zostanie CAŁKOWICIE ZASTĄPIONY budżetem nadawcy.\n\nBędziecie współdzielić budżet.')) {
             return;
           }
           
