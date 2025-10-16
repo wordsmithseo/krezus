@@ -388,6 +388,35 @@ export async function getSharedUsers() {
 }
 
 /**
+ * Odrzuć zaproszenie do budżetu
+ */
+export async function rejectBudgetInvitation(messageId, fromUserId) {
+  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
+  
+  try {
+    // Oznacz wiadomość jako przeczytaną i odrzuconą
+    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
+      read: true,
+      status: 'rejected',
+      rejectedAt: new Date().toISOString()
+    });
+    
+    // Wyślij wiadomość do nadawcy
+    await sendSystemMessage(
+      fromUserId,
+      'invitation_rejected',
+      `${displayName} (${currentUser.email}) odrzucił(a) Twoje zaproszenie do współdzielenia budżetu.`,
+      { rejectedBy: currentUser.email }
+    );
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Błąd odrzucania zaproszenia:', error);
+    throw error;
+  }
+}
+
+/**
  * Wyślij wiadomość systemową
  */
 async function sendSystemMessage(recipientUid, type, message, metadata = {}) {
