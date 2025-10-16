@@ -489,29 +489,37 @@ export function subscribeToRealtimeUpdates(callbacks) {
   
   console.log('🔔 Konfigurowanie listenerów Real-time dla użytkownika:', userId);
   
+  // DEBOUNCE dla listenerów - zapobiega wielokrotnym aktualizacjom
+  let categoriesTimeout = null;
+  let expensesTimeout = null;
+  let incomesTimeout = null;
+  
   // Categories listener
   const categoriesRef = ref(db, getUserBudgetPath('categories'));
   activeListeners.categories = onValue(categoriesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const newData = Object.values(data);
-    
-    // Usuń duplikaty
-    const uniqueData = [];
-    const seenIds = new Set();
-    newData.forEach(item => {
-      if (item && item.id && !seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        uniqueData.push(item);
+    clearTimeout(categoriesTimeout);
+    categoriesTimeout = setTimeout(() => {
+      const data = snapshot.val() || {};
+      const newData = Object.values(data);
+      
+      // Usuń duplikaty
+      const uniqueData = [];
+      const seenIds = new Set();
+      newData.forEach(item => {
+        if (item && item.id && !seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          uniqueData.push(item);
+        }
+      });
+      
+      if (JSON.stringify(categoriesCache) !== JSON.stringify(uniqueData)) {
+        categoriesCache = uniqueData;
+        console.log('🔄 Kategorie zaktualizowane:', categoriesCache.length);
+        if (callbacks.onCategoriesChange) {
+          callbacks.onCategoriesChange(categoriesCache);
+        }
       }
-    });
-    
-    if (JSON.stringify(categoriesCache) !== JSON.stringify(uniqueData)) {
-      categoriesCache = uniqueData;
-      console.log('🔄 Kategorie zaktualizowane:', categoriesCache.length);
-      if (callbacks.onCategoriesChange) {
-        callbacks.onCategoriesChange(categoriesCache);
-      }
-    }
+    }, 100); // Debounce 100ms
   }, (error) => {
     console.error('❌ Błąd listenera kategorii:', error);
   });
@@ -519,63 +527,69 @@ export function subscribeToRealtimeUpdates(callbacks) {
   // Expenses listener
   const expensesRef = ref(db, getUserBudgetPath('expenses'));
   activeListeners.expenses = onValue(expensesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const newData = Object.values(data);
-    
-    // Usuń duplikaty
-    const uniqueData = [];
-    const seenIds = new Set();
-    newData.forEach(item => {
-      if (item && item.id && !seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        uniqueData.push(item);
-      } else if (item && item.id) {
-        console.warn('⚠️ Duplikat wydatku w listenerze:', item.id);
+    clearTimeout(expensesTimeout);
+    expensesTimeout = setTimeout(() => {
+      const data = snapshot.val() || {};
+      const newData = Object.values(data);
+      
+      // Usuń duplikaty
+      const uniqueData = [];
+      const seenIds = new Set();
+      newData.forEach(item => {
+        if (item && item.id && !seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          uniqueData.push(item);
+        } else if (item && item.id) {
+          console.warn('⚠️ Duplikat wydatku w listenerze:', item.id);
+        }
+      });
+      
+      if (JSON.stringify(expensesCache) !== JSON.stringify(uniqueData)) {
+        expensesCache = uniqueData;
+        console.log('🔄 Wydatki zaktualizowane:', expensesCache.length);
+        if (callbacks.onExpensesChange) {
+          callbacks.onExpensesChange(expensesCache);
+        }
       }
-    });
-    
-    if (JSON.stringify(expensesCache) !== JSON.stringify(uniqueData)) {
-      expensesCache = uniqueData;
-      console.log('🔄 Wydatki zaktualizowane:', expensesCache.length);
-      if (callbacks.onExpensesChange) {
-        callbacks.onExpensesChange(expensesCache);
-      }
-    }
+    }, 100); // Debounce 100ms
   }, (error) => {
     console.error('❌ Błąd listenera wydatków:', error);
   });
   
-  // Incomes listener
+  // Incomes listener - NAJWAŻNIEJSZY Z DEBOUNCE
   const incomesRef = ref(db, getUserBudgetPath('incomes'));
   activeListeners.incomes = onValue(incomesRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const newData = Object.values(data);
-    
-    console.log('🔄 Listener przychodów wywołany:', {
-      userId,
-      dataCount: newData.length,
-      path: `users/${userId}/budget/incomes`
-    });
-    
-    // Usuń duplikaty
-    const uniqueData = [];
-    const seenIds = new Set();
-    newData.forEach(item => {
-      if (item && item.id && !seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        uniqueData.push(item);
-      } else if (item && item.id) {
-        console.warn('⚠️ Duplikat przychodu w listenerze:', item.id);
+    clearTimeout(incomesTimeout);
+    incomesTimeout = setTimeout(() => {
+      const data = snapshot.val() || {};
+      const newData = Object.values(data);
+      
+      console.log('🔄 Listener przychodów wywołany (po debounce):', {
+        userId,
+        dataCount: newData.length,
+        path: `users/${userId}/budget/incomes`
+      });
+      
+      // Usuń duplikaty
+      const uniqueData = [];
+      const seenIds = new Set();
+      newData.forEach(item => {
+        if (item && item.id && !seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          uniqueData.push(item);
+        } else if (item && item.id) {
+          console.warn('⚠️ Duplikat przychodu w listenerze:', item.id);
+        }
+      });
+      
+      if (JSON.stringify(incomesCache) !== JSON.stringify(uniqueData)) {
+        incomesCache = uniqueData;
+        console.log('✅ Przychody zaktualizowane:', incomesCache.length);
+        if (callbacks.onIncomesChange) {
+          callbacks.onIncomesChange(incomesCache);
+        }
       }
-    });
-    
-    if (JSON.stringify(incomesCache) !== JSON.stringify(uniqueData)) {
-      incomesCache = uniqueData;
-      console.log('✅ Przychody zaktualizowane:', incomesCache.length);
-      if (callbacks.onIncomesChange) {
-        callbacks.onIncomesChange(incomesCache);
-      }
-    }
+    }, 100); // Debounce 100ms
   }, (error) => {
     console.error('❌ Błąd listenera przychodów:', error);
   });
