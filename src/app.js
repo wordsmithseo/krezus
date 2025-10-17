@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.1.1 - NAPRAWIONA
+// src/app.js - Główna aplikacja Krezus v1.2.0 - KOMPLETNIE ZAKTUALIZOWANA
 import { 
   loginUser, 
   registerUser, 
@@ -32,7 +32,7 @@ import {
 import {
   calculateRealisedTotals,
   calculateSpendingPeriods,
-  calculateDailyLimits,
+  calculateAvailableFunds,
   calculateForecastLimits,
   computeSourcesRemaining,
   checkAnomalies,
@@ -43,6 +43,17 @@ import {
   getTopDescriptionsForCategory,
   computeComparisons
 } from './modules/budgetCalculator.js';
+
+import {
+  setAnalyticsPeriod,
+  setCustomDateRange,
+  calculatePeriodStats,
+  compareToPreviousPeriod,
+  getMostExpensiveCategory,
+  getCategoriesBreakdown,
+  detectAnomalies,
+  getCurrentPeriod
+} from './modules/analytics.js';
 
 import { 
   showProfileModal, 
@@ -76,7 +87,7 @@ let editingExpenseId = null;
 let editingIncomeId = null;
 
 // Wersja aplikacji
-const APP_VERSION = '1.1.1';
+const APP_VERSION = '1.2.0';
 
 // Inicjalizacja
 console.log('🚀 Aplikacja Krezus uruchomiona');
@@ -93,22 +104,32 @@ window.onDisplayNameUpdate = (newName) => {
 };
 
 /**
+ * Ukryj loader
+ */
+function hideLoader() {
+  const loader = document.getElementById('appLoader');
+  if (loader) {
+    loader.style.opacity = '0';
+    setTimeout(() => {
+      loader.style.display = 'none';
+    }, 300);
+  }
+}
+
+/**
  * Aktualizuj nazwę użytkownika we wszystkich miejscach UI
  */
 function updateDisplayNameInUI(displayName) {
-  // Nagłówek aplikacji
   const usernameSpan = document.getElementById('username');
   if (usernameSpan) {
     usernameSpan.textContent = displayName;
   }
   
-  // Przycisk profilu
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) {
     profileBtn.textContent = `👤 ${displayName}`;
   }
   
-  // Inne miejsca gdzie może być wyświetlana nazwa
   const allUsernameElements = document.querySelectorAll('[data-username]');
   allUsernameElements.forEach(el => {
     el.textContent = displayName;
@@ -159,29 +180,19 @@ async function loadAllData() {
 
     console.log('📥 Ładowanie danych dla użytkownika:', userId);
     
-    // Wyczyść cache przed załadowaniem
     await clearCache();
-    
-    // Załaduj dane
     await fetchAllData(userId);
-    
-    // Automatyczna realizacja transakcji
     await autoRealiseDueTransactions();
-    
-    // Aktualizuj kopertę dnia
     await updateDailyEnvelope();
-    
-    // Renderuj wszystko
     await renderAll();
     
-    // Subskrybuj real-time updates
     await subscribeToRealtimeUpdates(userId, {
-      onCategoriesUpdate: renderCategories,
-      onExpensesUpdate: renderExpenses,
-      onIncomesUpdate: renderSources,
-      onEndDateUpdate: renderSummary,
-      onSavingGoalUpdate: renderSummary,
-      onEnvelopeUpdate: () => {
+      onCategoriesChange: renderCategories,
+      onExpensesChange: renderExpenses,
+      onIncomesChange: renderSources,
+      onEndDatesChange: renderSummary,
+      onSavingGoalChange: renderSummary,
+      onDailyEnvelopeChange: () => {
         renderSummary();
         renderDailyEnvelope();
       }
@@ -206,12 +217,11 @@ async function renderAll() {
 }
 
 /**
- * Renderuj podsumowanie - POPRAWIONE: pokazuj limit2 gdy date2 istnieje
+ * Renderuj podsumowanie - ZAKTUALIZOWANE: usunięte limity dzienne
  */
 function renderSummary() {
-  const { sumIncome, sumExpense } = calculateRealisedTotals();
-  const { available, savingGoal, toSpend, limit1, limit2 } = calculateDailyLimits();
-  const { date1, date2, daysLeft1, daysLeft2 } = calculateSpendingPeriods();
+  const { available, savingGoal, toSpend } = calculateAvailableFunds();
+  const { daysLeft1, daysLeft2, date2 } = calculateSpendingPeriods();
   const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
 
   // Stan środków
@@ -219,28 +229,16 @@ function renderSummary() {
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   document.getElementById('toSpend').textContent = toSpend.toFixed(2);
 
-  // Limity dzienne - POPRAWKA: sprawdź czy date2 JEST (nie jest puste)
-  document.getElementById('dailyLimit1').textContent = limit1.toFixed(2);
-  document.getElementById('daysLeft1').textContent = daysLeft1;
-  
-  // POPRAWKA: pokazuj limit2 TYLKO gdy date2 istnieje i nie jest puste
-  const limit2Section = document.getElementById('limit2Section');
-  if (date2 && date2.trim() !== '') {
-    limit2Section.style.display = 'block';
-    document.getElementById('dailyLimit2').textContent = limit2.toFixed(2);
-    document.getElementById('daysLeft2').textContent = daysLeft2;
-  } else {
-    limit2Section.style.display = 'none';
-  }
-
-  // Prognozy - POPRAWKA: pokazuj projectedLimit2 gdy date2 istnieje
+  // Prognozy
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
+  document.getElementById('daysLeft1').textContent = daysLeft1;
   
   const projectedLimit2Section = document.getElementById('projectedLimit2Section');
   if (date2 && date2.trim() !== '') {
     projectedLimit2Section.style.display = 'block';
     document.getElementById('projectedLimit2').textContent = projectedLimit2.toFixed(2);
+    document.getElementById('daysLeft2').textContent = daysLeft2;
   } else {
     projectedLimit2Section.style.display = 'none';
   }
@@ -272,7 +270,6 @@ function renderDailyEnvelope() {
   const gauge = document.getElementById('spendingGauge');
   gauge.style.width = `${percentage}%`;
   
-  // Kolor gauge
   if (percentage < 50) {
     gauge.style.background = 'linear-gradient(90deg, #10b981, #059669)';
   } else if (percentage < 80) {
@@ -280,51 +277,127 @@ function renderDailyEnvelope() {
   } else {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
+  
+  renderSourcesRemaining();
 }
 
 /**
- * Renderuj analitykę
+ * Renderuj analitykę - KOMPLETNIE NOWA
  */
 function renderAnalytics() {
-  // Top kategorie
-  const topCats = getTopCategories(5);
-  const topCatsHtml = topCats.length > 0
-    ? topCats.map(cat => `
-        <div class="top-category-item">
-          <span>${cat.name}</span>
-          <span class="amount">${cat.amount.toFixed(2)} zł</span>
-        </div>
-      `).join('')
-    : '<p class="empty-state">Brak danych do wyświetlenia</p>';
-  
-  document.getElementById('topCategoriesList').innerHTML = topCatsHtml;
+  const stats = calculatePeriodStats();
+  const comparison = compareToPreviousPeriod();
+  const mostExpensive = getMostExpensiveCategory();
+  const breakdown = getCategoriesBreakdown();
+  const anomalies = detectAnomalies();
 
-  // Porównania
-  const comp = computeComparisons();
-  document.getElementById('last7Days').textContent = comp.last7Days.toFixed(2);
-  document.getElementById('prev7Days').textContent = comp.prev7Days.toFixed(2);
-  
-  const changeEl = document.getElementById('weeklyChange');
-  const change = comp.change;
-  changeEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(1)}%`;
-  changeEl.className = change > 0 ? 'change-up' : 'change-down';
+  // Statystyki okresu
+  document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
+  document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
+  document.getElementById('periodTransactions').textContent = stats.totalTransactions;
+
+  // Porównanie
+  const expChange = document.getElementById('expenseChange');
+  expChange.textContent = `${comparison.expenseChange > 0 ? '+' : ''}${comparison.expenseChange.toFixed(1)}%`;
+  expChange.className = comparison.expenseChange > 0 ? 'change-up' : comparison.expenseChange < 0 ? 'change-down' : 'change-neutral';
+
+  const incChange = document.getElementById('incomeChange');
+  incChange.textContent = `${comparison.incomeChange > 0 ? '+' : ''}${comparison.incomeChange.toFixed(1)}%`;
+  incChange.className = comparison.incomeChange > 0 ? 'change-down' : comparison.incomeChange < 0 ? 'change-up' : 'change-neutral';
+
+  const transChange = document.getElementById('transactionChange');
+  transChange.textContent = `${comparison.transactionChange > 0 ? '+' : ''}${comparison.transactionChange.toFixed(1)}%`;
+  transChange.className = comparison.transactionChange > 0 ? 'change-up' : comparison.transactionChange < 0 ? 'change-down' : 'change-neutral';
+
+  // Najkosztowniejsza kategoria
+  const mostExpCat = document.getElementById('mostExpensiveCategory');
+  if (mostExpensive) {
+    mostExpCat.innerHTML = `
+      <div class="top-category-item">
+        <div>
+          <strong>${mostExpensive.category}</strong>
+          <small>${mostExpensive.percentage.toFixed(1)}% wszystkich wydatków</small>
+        </div>
+        <span class="amount">${mostExpensive.amount.toFixed(2)} zł</span>
+      </div>
+    `;
+  } else {
+    mostExpCat.innerHTML = '<p class="empty-state">Brak danych</p>';
+  }
+
+  // Udział kategorii
+  const breakdownDiv = document.getElementById('categoriesBreakdown');
+  if (breakdown.length > 0) {
+    breakdownDiv.innerHTML = breakdown.map(cat => `
+      <div class="category-breakdown-item">
+        <div class="category-breakdown-header">
+          <strong>${cat.category}</strong>
+          <span>${cat.amount.toFixed(2)} zł (${cat.percentage.toFixed(1)}%)</span>
+        </div>
+        <div class="category-breakdown-bar">
+          <div class="category-breakdown-fill" style="width: ${cat.percentage}%"></div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    breakdownDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
+  }
 
   // Anomalie
-  const anomalies = checkAnomalies();
-  const anomaliesHtml = anomalies.length > 0
-    ? anomalies.map(a => `
-        <div class="anomaly-item">
-          <div>
-            <strong>${a.description || 'Brak opisu'}</strong>
-            <small>${a.category || 'Brak kategorii'} • ${formatDateLabel(a.date)}</small>
-          </div>
-          <span class="amount">${a.amount.toFixed(2)} zł</span>
+  const anomaliesDiv = document.getElementById('anomaliesList');
+  if (anomalies.length > 0) {
+    anomaliesDiv.innerHTML = anomalies.map(a => `
+      <div class="anomaly-item">
+        <div>
+          <strong>${a.description || 'Brak opisu'}</strong>
+          <small>${a.category || 'Brak kategorii'} • ${formatDateLabel(a.date)}</small>
         </div>
-      `).join('')
-    : '<p class="empty-state">Brak wykrytych anomalii</p>';
-  
-  document.getElementById('anomaliesList').innerHTML = anomaliesHtml;
+        <span class="amount">${a.amount.toFixed(2)} zł</span>
+      </div>
+    `).join('');
+  } else {
+    anomaliesDiv.innerHTML = '<p class="empty-state">Brak wykrytych anomalii w wybranym okresie</p>';
+  }
 }
+
+/**
+ * Wybierz okres analityczny
+ */
+window.selectPeriod = (days) => {
+  document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+  
+  if (days === 'custom') {
+    document.querySelector('.period-btn:last-child').classList.add('active');
+    document.getElementById('customPeriodInputs').style.display = 'block';
+  } else {
+    event.target.classList.add('active');
+    document.getElementById('customPeriodInputs').style.display = 'none';
+    setAnalyticsPeriod(days);
+    renderAnalytics();
+  }
+};
+
+/**
+ * Zastosuj własny przedział
+ */
+window.applyCustomPeriod = () => {
+  const from = document.getElementById('analyticsDateFrom').value;
+  const to = document.getElementById('analyticsDateTo').value;
+  
+  if (!from || !to) {
+    showErrorMessage('Wybierz obie daty');
+    return;
+  }
+  
+  if (from > to) {
+    showErrorMessage('Data "od" nie może być późniejsza niż data "do"');
+    return;
+  }
+  
+  setCustomDateRange(from, to);
+  renderAnalytics();
+  showSuccessMessage('Zastosowano własny przedział dat');
+};
 
 /**
  * Renderuj kategorie
@@ -346,6 +419,27 @@ function renderCategories() {
   `).join('');
 
   container.innerHTML = html;
+  
+  // Aktualizuj select w formularzu wydatków
+  updateCategorySelect();
+}
+
+/**
+ * Aktualizuj select kategorii
+ */
+function updateCategorySelect() {
+  const select = document.getElementById('expenseCategory');
+  if (!select) return;
+  
+  const categories = getCategories();
+  const currentValue = select.value;
+  
+  select.innerHTML = '<option value="">Wybierz kategorię</option>' +
+    categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
+  
+  if (currentValue && categories.some(c => c.name === currentValue)) {
+    select.value = currentValue;
+  }
 }
 
 /**
@@ -355,10 +449,9 @@ function renderExpenses() {
   const expenses = getExpenses();
   const totalExpenses = expenses.length;
   
-  // Sortuj: najpierw niezrealizowane, potem po dacie malejąco
   const sorted = [...expenses].sort((a, b) => {
-    if (a.realised !== b.realised) {
-      return a.realised ? 1 : -1;
+    if (a.type !== b.type) {
+      return a.type === 'planned' ? -1 : 1;
     }
     return b.date.localeCompare(a.date);
   });
@@ -370,21 +463,22 @@ function renderExpenses() {
   const tbody = document.getElementById('expensesTableBody');
   
   if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
     return;
   }
 
   const html = paginatedExpenses.map(exp => `
-    <tr class="${exp.realised ? 'realised' : 'planned'}">
+    <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
       <td>${formatDateLabel(exp.date)}</td>
+      <td>${exp.time || '-'}</td>
       <td>${exp.amount.toFixed(2)} zł</td>
       <td>${exp.category || 'Brak'}</td>
       <td>${exp.description || '-'}</td>
       <td>${exp.source || 'Brak'}</td>
       <td>
-        <span class="status-badge ${exp.realised ? 'status-realised' : 'status-planned'}">
-          ${exp.realised ? '✓ Zrealizowany' : '⏳ Planowany'}
+        <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
+          ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
         </span>
       </td>
       <td class="actions">
@@ -395,8 +489,6 @@ function renderExpenses() {
   `).join('');
 
   tbody.innerHTML = html;
-
-  // Renderuj paginację
   renderExpensesPagination(totalExpenses);
   updatePaginationVisibility('expensesTableBody', totalExpenses);
 }
@@ -414,11 +506,8 @@ function renderExpensesPagination(total) {
   }
 
   let html = '';
-  
-  // Przycisk poprzedni
   html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage - 1})">◀</button>`;
   
-  // Strony
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentExpensePage - 1 && i <= currentExpensePage + 1)) {
       html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
@@ -427,15 +516,10 @@ function renderExpensesPagination(total) {
     }
   }
   
-  // Przycisk następny
   html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage + 1})">▶</button>`;
-
   container.innerHTML = html;
 }
 
-/**
- * Zmień stronę wydatków
- */
 window.changeExpensePage = (page) => {
   const total = getExpenses().length;
   const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
@@ -445,7 +529,6 @@ window.changeExpensePage = (page) => {
   currentExpensePage = page;
   renderExpenses();
   
-  // Scroll do tabeli
   const tableBody = document.getElementById('expensesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -453,16 +536,15 @@ window.changeExpensePage = (page) => {
 };
 
 /**
- * Renderuj źródła finansów (przychody)
+ * Renderuj przychody
  */
 function renderSources() {
   const incomes = getIncomes();
   const totalIncomes = incomes.length;
   
-  // Sortuj: najpierw niezrealizowane, potem po dacie malejąco
   const sorted = [...incomes].sort((a, b) => {
-    if (a.realised !== b.realised) {
-      return a.realised ? 1 : -1;
+    if (a.type !== b.type) {
+      return a.type === 'planned' ? -1 : 1;
     }
     return b.date.localeCompare(a.date);
   });
@@ -474,20 +556,21 @@ function renderSources() {
   const tbody = document.getElementById('sourcesTableBody');
   
   if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
     return;
   }
 
   const html = paginatedIncomes.map(inc => `
-    <tr class="${inc.realised ? 'realised' : 'planned'}">
+    <tr class="${inc.type === 'planned' ? 'planned' : 'realised'}">
       <td>${formatDateLabel(inc.date)}</td>
+      <td>${inc.time || '-'}</td>
       <td>${inc.amount.toFixed(2)} zł</td>
       <td>${inc.source || 'Brak'}</td>
       <td>${inc.description || '-'}</td>
       <td>
-        <span class="status-badge ${inc.realised ? 'status-realised' : 'status-planned'}">
-          ${inc.realised ? '✓ Zrealizowany' : '⏳ Planowany'}
+        <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
+          ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
         </span>
       </td>
       <td class="actions">
@@ -498,13 +581,8 @@ function renderSources() {
   `).join('');
 
   tbody.innerHTML = html;
-
-  // Renderuj paginację
   renderIncomesPagination(totalIncomes);
   updatePaginationVisibility('sourcesTableBody', totalIncomes);
-  
-  // Pozostałe środki ze źródeł
-  renderSourcesRemaining();
 }
 
 /**
@@ -520,28 +598,20 @@ function renderIncomesPagination(total) {
   }
 
   let html = '';
-  
-  // Przycisk poprzedni
   html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage - 1})">◀</button>`;
   
-  // Strony
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentIncomePage - 1 && i <= currentIncomePage + 1)) {
-      html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''} " onclick="window.changeIncomePage(${i})">${i}</button>`;
+      html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
     } else if (i === currentIncomePage - 2 || i === currentIncomePage + 2) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
   }
   
-  // Przycisk następny
   html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage + 1})">▶</button>`;
-
   container.innerHTML = html;
 }
 
-/**
- * Zmień stronę przychodów
- */
 window.changeIncomePage = (page) => {
   const total = getIncomes().length;
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
@@ -551,7 +621,6 @@ window.changeIncomePage = (page) => {
   currentIncomePage = page;
   renderSources();
   
-  // Scroll do tabeli
   const tableBody = document.getElementById('sourcesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -640,10 +709,11 @@ window.addExpense = async (e) => {
   const form = e.target;
   const amount = parseFloat(form.expenseAmount.value);
   const date = form.expenseDate.value;
+  const type = form.expenseType.value;
+  const time = form.expenseTime.value || '';
   const category = form.expenseCategory.value;
   const description = form.expenseDescription.value.trim();
   const source = form.expenseSource.value.trim();
-  const realised = form.expenseRealised.checked;
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
@@ -654,10 +724,11 @@ window.addExpense = async (e) => {
     id: editingExpenseId || `exp_${Date.now()}`,
     amount,
     date,
+    type,
+    time,
     category,
     description,
     source,
-    realised,
     timestamp: editingExpenseId ? getExpenses().find(e => e.id === editingExpenseId)?.timestamp : getCurrentTimeString()
   };
 
@@ -669,15 +740,15 @@ window.addExpense = async (e) => {
   try {
     await saveExpenses(updated);
     
-    // Aktualizuj kopertę dnia jeśli wydatek jest dzisiejszy i zrealizowany
-    if (realised && date === getWarsawDateString()) {
+    if (type === 'normal' && date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
     
     form.reset();
     form.expenseDate.value = getWarsawDateString();
+    form.expenseType.value = 'normal';
     editingExpenseId = null;
-    document.getElementById('expenseFormTitle').textContent = 'Dodaj wydatek';
+    document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -692,15 +763,15 @@ window.editExpense = (expenseId) => {
   const form = document.getElementById('expenseForm');
   form.expenseAmount.value = expense.amount;
   form.expenseDate.value = expense.date;
+  form.expenseType.value = expense.type || 'normal';
+  form.expenseTime.value = expense.time || '';
   form.expenseCategory.value = expense.category;
   form.expenseDescription.value = expense.description;
   form.expenseSource.value = expense.source;
-  form.expenseRealised.checked = expense.realised;
 
   editingExpenseId = expenseId;
-  document.getElementById('expenseFormTitle').textContent = 'Edytuj wydatek';
+  document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
   
-  // Scroll do formularza
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -714,8 +785,7 @@ window.deleteExpense = async (expenseId) => {
   try {
     await saveExpenses(updated);
     
-    // Aktualizuj kopertę dnia jeśli wydatek był dzisiejszy i zrealizowany
-    if (expense && expense.realised && expense.date === getWarsawDateString()) {
+    if (expense && expense.type === 'normal' && expense.date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
     
@@ -734,9 +804,10 @@ window.addIncome = async (e) => {
   const form = e.target;
   const amount = parseFloat(form.incomeAmount.value);
   const date = form.incomeDate.value;
+  const type = form.incomeType.value;
+  const time = form.incomeTime.value || '';
   const source = form.incomeSource.value.trim();
   const description = form.incomeDescription.value.trim();
-  const realised = form.incomeRealised.checked;
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
@@ -747,9 +818,10 @@ window.addIncome = async (e) => {
     id: editingIncomeId || `inc_${Date.now()}`,
     amount,
     date,
+    type,
+    time,
     source,
     description,
-    realised,
     timestamp: editingIncomeId ? getIncomes().find(i => i.id === editingIncomeId)?.timestamp : getCurrentTimeString()
   };
 
@@ -761,15 +833,15 @@ window.addIncome = async (e) => {
   try {
     await saveIncomes(updated);
     
-    // Aktualizuj kopertę dnia jeśli przychód jest dzisiejszy
     if (date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
     
     form.reset();
     form.incomeDate.value = getWarsawDateString();
+    form.incomeType.value = 'normal';
     editingIncomeId = null;
-    document.getElementById('incomeFormTitle').textContent = 'Dodaj przychód';
+    document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -784,14 +856,14 @@ window.editIncome = (incomeId) => {
   const form = document.getElementById('incomeForm');
   form.incomeAmount.value = income.amount;
   form.incomeDate.value = income.date;
+  form.incomeType.value = income.type || 'normal';
+  form.incomeTime.value = income.time || '';
   form.incomeSource.value = income.source;
   form.incomeDescription.value = income.description;
-  form.incomeRealised.checked = income.realised;
 
   editingIncomeId = incomeId;
-  document.getElementById('incomeFormTitle').textContent = 'Edytuj przychód';
+  document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
   
-  // Scroll do formularza
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -805,7 +877,6 @@ window.deleteIncome = async (incomeId) => {
   try {
     await saveIncomes(updated);
     
-    // Aktualizuj kopertę dnia jeśli przychód był dzisiejszy
     if (income && income.date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
@@ -830,8 +901,6 @@ window.saveSettings = async (e) => {
   try {
     await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
-    
-    // Aktualizuj kopertę dnia po zmianie ustawień
     await updateDailyEnvelope();
     
     showSuccessMessage('Ustawienia zapisane');
@@ -845,18 +914,15 @@ window.saveSettings = async (e) => {
 // ==================== NAWIGACJA ====================
 
 window.showSection = (sectionId) => {
-  // Ukryj wszystkie sekcje
   document.querySelectorAll('.section').forEach(section => {
     section.classList.remove('active');
   });
 
-  // Pokaż wybraną sekcję
   const targetSection = document.getElementById(sectionId);
   if (targetSection) {
     targetSection.classList.add('active');
   }
 
-  // Aktualizuj aktywny przycisk w menu
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
@@ -939,91 +1005,56 @@ window.handleLogout = async () => {
 onAuthChange(async (user) => {
   const authSection = document.getElementById('authSection');
   const appSection = document.getElementById('appSection');
-  const usernameSpan = document.getElementById('username');
-  const profileBtn = document.getElementById('profileBtn');
   const appVersionSpan = document.getElementById('appVersion');
 
   if (user) {
     console.log('✅ Użytkownik zalogowany:', user.displayName || user.email);
     console.log('🔑 User ID:', user.uid);
 
-    // Ukryj sekcję logowania
     authSection.classList.add('hidden');
     appSection.classList.remove('hidden');
 
-    // Wyświetl nazwę użytkownika
     const displayName = await getDisplayName(user.uid);
     updateDisplayNameInUI(displayName);
 
-    // Wyświetl wersję aplikacji
     if (appVersionSpan) {
       appVersionSpan.textContent = `v${APP_VERSION}`;
     }
 
-    // Wyczyść poprzednie dane
-    console.log('🧹 Czyszczenie Firebase cache: firebase:host:krezus-e3070-default-rtdb.firebaseio.com');
+    console.log('🧹 Czyszczenie Firebase cache');
     Object.keys(localStorage).forEach(key => {
       if (key.includes('firebase:host:krezus-e3070-default-rtdb.firebaseio.com')) {
         localStorage.removeItem(key);
       }
     });
 
-    // Załaduj dane użytkownika
     await loadAllData();
 
-    // Sprawdź i wyświetl liczbę nieprzeczytanych wiadomości
     const unreadCount = await getUnreadMessagesCount(user.uid);
     updateNotificationBadge('messagesBadge', unreadCount);
+    
+    hideLoader();
 
   } else {
     console.log('❌ Użytkownik wylogowany');
     
-    // Wyczyść listenery
     await clearAllListeners();
     
-    // Pokaż sekcję logowania
     authSection.classList.remove('hidden');
     appSection.classList.add('hidden');
+    
+    hideLoader();
   }
 });
 
 // Inicjalizacja formularzy
 document.addEventListener('DOMContentLoaded', () => {
-  // Ustaw dzisiejszą datę jako domyślną
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
   
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
-
-  // Załaduj kategorie do selecta wydatków
-  const loadCategoriesSelect = () => {
-    const select = document.getElementById('expenseCategory');
-    if (!select) return;
-    
-    const categories = getCategories();
-    select.innerHTML = '<option value="">Wybierz kategorię</option>' +
-      categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
-  };
-
-  // Nasłuchuj na zmiany kategorii
-  const observer = new MutationObserver(loadCategoriesSelect);
-  const categoriesList = document.getElementById('categoriesList');
-  if (categoriesList) {
-    observer.observe(categoriesList, { childList: true, subtree: true });
-  }
-
-  // Walidatory - POPRAWKA: sprawdź czy element istnieje przed dodaniem walidatora
-  const expenseAmountInput = document.getElementById('expenseAmount');
-  const incomeAmountInput = document.getElementById('incomeAmount');
-  const savingGoalInput = document.querySelector('[name="savingGoal"]');
-  const newCategoryNameInput = document.getElementById('newCategoryName');
-  
-  if (expenseAmountInput) attachValidator(expenseAmountInput, validateAmount);
-  if (incomeAmountInput) attachValidator(incomeAmountInput, validateAmount);
-  if (savingGoalInput) attachValidator(savingGoalInput, (val) => val >= 0);
-  if (newCategoryNameInput) attachValidator(newCategoryNameInput, validateCategoryName);
 
   console.log('✅ Aplikacja Krezus gotowa do działania!');
 });

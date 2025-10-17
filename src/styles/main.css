@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v1.1.0 */
+/* src/styles/main.css - Krezus v1.2.0 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -49,6 +49,44 @@ button:focus {
 
 .hidden {
   display: none !important;
+}
+
+/* ==================== LOADER ==================== */
+
+.app-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loader-spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-loader p {
+  color: white;
+  font-size: 1.2rem;
+  margin-top: 20px;
+  font-weight: 600;
 }
 
 /* ==================== NAGŁÓWEK APLIKACJI ==================== */
@@ -293,6 +331,7 @@ button:focus {
 .section-card h3 {
   color: var(--dark);
   margin-bottom: 15px;
+  margin-top: 25px;
   font-size: 1.2rem;
   font-weight: 600;
 }
@@ -337,7 +376,7 @@ button:focus {
 
 .form-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 15px;
 }
 
@@ -466,8 +505,8 @@ tr.realised {
 }
 
 tr.planned {
-  opacity: 0.7;
-  font-style: italic;
+  opacity: 0.8;
+  background: #fff9e6;
 }
 
 .status-badge {
@@ -478,7 +517,7 @@ tr.planned {
   display: inline-block;
 }
 
-.status-realised {
+.status-normal {
   background: #d1fae5;
   color: #065f46;
 }
@@ -677,9 +716,51 @@ tr.planned {
 
 /* ==================== ANALITYKA ==================== */
 
+.analytics-controls {
+  margin-bottom: 30px;
+}
+
+.period-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.period-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--border);
+  background: white;
+  color: var(--dark);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.period-btn:hover {
+  border-color: var(--primary);
+  background: var(--light-gray);
+}
+
+.period-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.custom-period {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--light-gray);
+  border-radius: 8px;
+}
+
 .top-category-item,
 .source-remaining-item,
-.anomaly-item {
+.anomaly-item,
+.category-breakdown-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -692,7 +773,8 @@ tr.planned {
 
 .top-category-item:hover,
 .source-remaining-item:hover,
-.anomaly-item:hover {
+.anomaly-item:hover,
+.category-breakdown-item:hover {
   background: var(--border);
   transform: translateX(5px);
 }
@@ -719,6 +801,34 @@ tr.planned {
   font-size: 0.85rem;
 }
 
+.category-breakdown-item {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.category-breakdown-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.category-breakdown-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.category-breakdown-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
 .amount {
   font-weight: 700;
   color: var(--dark);
@@ -739,6 +849,11 @@ tr.planned {
 
 .change-down {
   color: var(--success);
+  font-weight: 700;
+}
+
+.change-neutral {
+  color: var(--gray);
   font-weight: 700;
 }
 
@@ -959,6 +1074,10 @@ tr.planned {
 
   th, td {
     padding: 8px;
+  }
+
+  .period-buttons {
+    justify-content: center;
   }
 }
 

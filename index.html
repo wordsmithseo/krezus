@@ -7,8 +7,14 @@
     <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
+    <!-- LOADER -->
+    <div id="appLoader" class="app-loader">
+        <div class="loader-spinner"></div>
+        <p>Ładowanie...</p>
+    </div>
+
     <!-- SEKCJA LOGOWANIA -->
-    <div id="authSection" class="auth-container">
+    <div id="authSection" class="auth-container hidden">
         <h1 class="text-center" style="color: var(--primary); margin-bottom: 30px;">Krezus 💰</h1>
         
         <div class="auth-tabs">
@@ -122,26 +128,6 @@
                         </div>
                     </div>
 
-                    <h3>📅 Limity dzienne</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Okres 1 (Limit dzienny)</div>
-                            <div class="stat-value">
-                                <span id="dailyLimit1">0.00</span>
-                                <span class="stat-unit">zł/dzień</span>
-                            </div>
-                            <div class="stat-label mt-10">Pozostało <span id="daysLeft1">0</span> dni</div>
-                        </div>
-                        <div id="limit2Section" class="stat-card" style="display: none;">
-                            <div class="stat-label">Okres 2 (Limit dzienny)</div>
-                            <div class="stat-value">
-                                <span id="dailyLimit2">0.00</span>
-                                <span class="stat-unit">zł/dzień</span>
-                            </div>
-                            <div class="stat-label mt-10">Pozostało <span id="daysLeft2">0</span> dni</div>
-                        </div>
-                    </div>
-
                     <h3>🔮 Prognozy (z planowanymi)</h3>
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -152,18 +138,20 @@
                             </div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Prognozowany limit (okres 1)</div>
+                            <div class="stat-label">Prognozowany limit (data 1)</div>
                             <div class="stat-value">
                                 <span id="projectedLimit1">0.00</span>
                                 <span class="stat-unit">zł/dzień</span>
                             </div>
+                            <div class="stat-label mt-10">Pozostało <span id="daysLeft1">0</span> dni</div>
                         </div>
                         <div id="projectedLimit2Section" class="stat-card" style="display: none;">
-                            <div class="stat-label">Prognozowany limit (okres 2)</div>
+                            <div class="stat-label">Prognozowany limit (data 2)</div>
                             <div class="stat-value">
                                 <span id="projectedLimit2">0.00</span>
                                 <span class="stat-unit">zł/dzień</span>
                             </div>
+                            <div class="stat-label mt-10">Pozostało <span id="daysLeft2">0</span> dni</div>
                         </div>
                     </div>
 
@@ -230,8 +218,21 @@
                                 <input type="number" name="incomeAmount" step="0.01" required>
                             </div>
                             <div class="form-group">
+                                <label>Typ transakcji</label>
+                                <select id="incomeType" name="incomeType" required>
+                                    <option value="normal">Zwykły</option>
+                                    <option value="planned">Planowany</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Data</label>
                                 <input type="date" id="incomeDate" name="incomeDate" required>
+                            </div>
+                            <div class="form-group" id="incomeTimeGroup">
+                                <label>Godzina (opcjonalnie)</label>
+                                <input type="time" id="incomeTime" name="incomeTime">
                             </div>
                         </div>
                         <div class="form-group">
@@ -241,10 +242,6 @@
                         <div class="form-group">
                             <label>Opis (opcjonalnie)</label>
                             <input type="text" name="incomeDescription" placeholder="Dodatkowe informacje">
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="incomeRealised" name="incomeRealised">
-                            <label for="incomeRealised">Zrealizowany</label>
                         </div>
                         <button type="submit" class="btn btn-success mt-20">Zapisz przychód</button>
                     </form>
@@ -257,15 +254,16 @@
                             <thead>
                                 <tr>
                                     <th>Data</th>
+                                    <th>Godzina</th>
                                     <th>Kwota</th>
                                     <th>Źródło</th>
                                     <th>Opis</th>
-                                    <th>Status</th>
+                                    <th>Typ</th>
                                     <th>Akcje</th>
                                 </tr>
                             </thead>
                             <tbody id="sourcesTableBody">
-                                <tr><td colspan="6" class="empty-state">Brak przychodów do wyświetlenia</td></tr>
+                                <tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -286,8 +284,21 @@
                                 <input type="number" name="expenseAmount" step="0.01" required>
                             </div>
                             <div class="form-group">
+                                <label>Typ transakcji</label>
+                                <select id="expenseType" name="expenseType" required>
+                                    <option value="normal">Zwykły</option>
+                                    <option value="planned">Planowany</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Data</label>
                                 <input type="date" id="expenseDate" name="expenseDate" required>
+                            </div>
+                            <div class="form-group" id="expenseTimeGroup">
+                                <label>Godzina (opcjonalnie)</label>
+                                <input type="time" id="expenseTime" name="expenseTime">
                             </div>
                         </div>
                         <div class="form-row">
@@ -306,10 +317,6 @@
                             <label>Opis</label>
                             <input type="text" name="expenseDescription" placeholder="Na co wydano">
                         </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="expenseRealised" name="expenseRealised">
-                            <label for="expenseRealised">Zrealizowany</label>
-                        </div>
                         <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
                     </form>
                 </div>
@@ -321,16 +328,17 @@
                             <thead>
                                 <tr>
                                     <th>Data</th>
+                                    <th>Godzina</th>
                                     <th>Kwota</th>
                                     <th>Kategoria</th>
                                     <th>Opis</th>
                                     <th>Źródło</th>
-                                    <th>Status</th>
+                                    <th>Typ</th>
                                     <th>Akcje</th>
                                 </tr>
                             </thead>
                             <tbody id="expensesTableBody">
-                                <tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
+                                <tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -365,37 +373,92 @@
                 <div class="section-card">
                     <h2>📈 Analiza wydatków</h2>
                     
-                    <h3>🏆 Top 5 kategorii (ostatnie 30 dni)</h3>
-                    <div id="topCategoriesList"></div>
-                </div>
-
-                <div class="section-card">
-                    <h3>📊 Porównanie tygodniowe</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Ostatnie 7 dni</div>
-                            <div class="stat-value">
-                                <span id="last7Days">0.00</span>
-                                <span class="stat-unit">zł</span>
+                    <!-- Wybór okresu -->
+                    <div class="analytics-controls">
+                        <div class="form-group">
+                            <label>Wybierz okres</label>
+                            <div class="period-buttons">
+                                <button class="period-btn active" onclick="selectPeriod(7)">7 dni</button>
+                                <button class="period-btn" onclick="selectPeriod(14)">14 dni</button>
+                                <button class="period-btn" onclick="selectPeriod(30)">30 dni</button>
+                                <button class="period-btn" onclick="selectPeriod(90)">90 dni</button>
+                                <button class="period-btn" onclick="selectPeriod('custom')">Własny</button>
                             </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Poprzednie 7 dni</div>
-                            <div class="stat-value">
-                                <span id="prev7Days">0.00</span>
-                                <span class="stat-unit">zł</span>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Zmiana</div>
-                            <div class="stat-value">
-                                <span id="weeklyChange">0.0%</span>
+                        
+                        <div id="customPeriodInputs" class="custom-period" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Data od</label>
+                                    <input type="date" id="analyticsDateFrom">
+                                </div>
+                                <div class="form-group">
+                                    <label>Data do</label>
+                                    <input type="date" id="analyticsDateTo">
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: flex-end;">
+                                    <button class="btn btn-primary" onclick="applyCustomPeriod()">Zastosuj</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="section-card">
+                    <!-- Statystyki okresu -->
+                    <h3>📊 Podsumowanie okresu</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card danger">
+                            <div class="stat-label">Wydatki w okresie</div>
+                            <div class="stat-value">
+                                <span id="periodExpenses">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-label">Przychody w okresie</div>
+                            <div class="stat-value">
+                                <span id="periodIncomes">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Liczba transakcji</div>
+                            <div class="stat-value">
+                                <span id="periodTransactions">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Porównanie z poprzednim okresem -->
+                    <h3>🔄 Porównanie z poprzednim okresem</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Zmiana wydatków</div>
+                            <div class="stat-value">
+                                <span id="expenseChange">0.0%</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Zmiana przychodów</div>
+                            <div class="stat-value">
+                                <span id="incomeChange">0.0%</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Zmiana liczby transakcji</div>
+                            <div class="stat-value">
+                                <span id="transactionChange">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top kategorie -->
+                    <h3>🏆 Najkosztowniejsza kategoria</h3>
+                    <div id="mostExpensiveCategory"></div>
+
+                    <h3>📊 Udział kategorii w wydatkach</h3>
+                    <div id="categoriesBreakdown"></div>
+
+                    <!-- Anomalie -->
                     <h3>⚠️ Wykryte anomalie</h3>
                     <div id="anomaliesList"></div>
                 </div>

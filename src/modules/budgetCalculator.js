@@ -1,9 +1,9 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z inteligentną kopertą - NAPRAWIONY
+// src/modules/budgetCalculator.js - Kalkulator budżetu z type zamiast realised
 import { parseDateStr, getWarsawDateString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
 /**
- * Oblicz zrealizowane sumy (bez dzisiejszych transakcji)
+ * Oblicz zrealizowane sumy (type === 'normal', bez dzisiejszych transakcji)
  */
 export function calculateRealisedTotals(dateStr = null) {
     const today = dateStr || getWarsawDateString();
@@ -19,16 +19,16 @@ export function calculateRealisedTotals(dateStr = null) {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    // Przychody (zrealizowane, przed dziś)
+    // Przychody (type === 'normal', przed dziś)
     incomes.forEach(inc => {
-        if (inc.realised && inc.date < today) {
+        if (inc.type === 'normal' && inc.date < today) {
             sumIncome += inc.amount || 0;
         }
     });
 
-    // Wydatki (zrealizowane, przed dziś)
+    // Wydatki (type === 'normal', przed dziś)
     expenses.forEach(exp => {
-        if (exp.realised && exp.date < today) {
+        if (exp.type === 'normal' && exp.date < today) {
             sumExpense += exp.amount || 0;
         }
     });
@@ -71,30 +71,23 @@ export function calculateSpendingPeriods() {
 }
 
 /**
- * Oblicz limity dzienne
+ * Oblicz dostępne środki (bez limitów dziennych)
  */
-export function calculateDailyLimits() {
+export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const available = sumIncome - sumExpense;
     const savingGoal = getSavingGoal();
     const toSpend = available - savingGoal;
     
-    const { daysLeft1, daysLeft2 } = calculateSpendingPeriods();
-    
-    const limit1 = daysLeft1 > 0 ? toSpend / daysLeft1 : 0;
-    const limit2 = daysLeft2 > 0 ? toSpend / daysLeft2 : 0;
-    
     return {
         available,
         savingGoal,
-        toSpend,
-        limit1,
-        limit2
+        toSpend
     };
 }
 
 /**
- * Oblicz prognozy limitów
+ * Oblicz prognozy limitów (z planowanymi transakcjami)
  */
 export function calculateForecastLimits() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
@@ -105,14 +98,16 @@ export function calculateForecastLimits() {
     let futureIncome = 0;
     let futureExpense = 0;
     
+    // Planowane przychody (type === 'planned' ORAZ dziś i w przyszłości)
     incomes.forEach(inc => {
-        if (!inc.realised && inc.date >= today) {
+        if (inc.type === 'planned' && inc.date >= today) {
             futureIncome += inc.amount || 0;
         }
     });
     
+    // Planowane wydatki (type === 'planned' ORAZ dziś i w przyszłości)
     expenses.forEach(exp => {
-        if (!exp.realised && exp.date >= today) {
+        if (exp.type === 'planned' && exp.date >= today) {
             futureExpense += exp.amount || 0;
         }
     });
@@ -145,17 +140,17 @@ export function computeSourcesRemaining() {
     
     const sourcesMap = new Map();
     
-    // Sumuj przychody według źródeł
+    // Sumuj przychody według źródeł (type === 'normal')
     incomes.forEach(inc => {
-        if (inc.realised && inc.date < today) {
+        if (inc.type === 'normal' && inc.date < today) {
             const src = inc.source || 'Brak źródła';
             sourcesMap.set(src, (sourcesMap.get(src) || 0) + (inc.amount || 0));
         }
     });
     
-    // Odejmij wydatki według źródeł
+    // Odejmij wydatki według źródeł (type === 'normal')
     expenses.forEach(exp => {
-        if (exp.realised && exp.date < today) {
+        if (exp.type === 'normal' && exp.date < today) {
             const src = exp.source || 'Brak źródła';
             sourcesMap.set(src, (sourcesMap.get(src) || 0) - (exp.amount || 0));
         }
@@ -180,7 +175,7 @@ export function checkAnomalies() {
     const date30str = getWarsawDateString(d30);
     
     const last30 = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date30str && 
         e.date < today
     );
@@ -195,7 +190,7 @@ export function checkAnomalies() {
     const threshold = Math.max(avg * 2, median * 3);
     
     return expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date30str && 
         (e.amount || 0) > threshold
     );
@@ -213,7 +208,7 @@ export function getGlobalMedian30d() {
     const date30str = getWarsawDateString(d30);
     
     const last30 = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date30str && 
         e.date < today
     );
@@ -225,7 +220,7 @@ export function getGlobalMedian30d() {
 }
 
 /**
- * INTELIGENTNA KOPERTA DNIA - Główny algorytm - NAPRAWIONY
+ * INTELIGENTNA KOPERTA DNIA - Główny algorytm
  */
 export async function updateDailyEnvelope(forDate = null) {
     const targetDate = forDate || getWarsawDateString();
@@ -238,9 +233,11 @@ export async function updateDailyEnvelope(forDate = null) {
     
     const { daysLeft1 } = calculateSpendingPeriods();
     
-    // Pobierz dzisiejsze wpływy (zrealizowane lub planowane na dziś)
+    // Pobierz dzisiejsze wpływy (type === 'normal' na dziś)
     const incomes = getIncomes();
-    const todayIncomes = incomes.filter(inc => inc.date === targetDate);
+    const todayIncomes = incomes.filter(inc => 
+        inc.date === targetDate && inc.type === 'normal'
+    );
     const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
     
     console.log('🧠 === INTELIGENTNA KOPERTA DNIA ===');
@@ -264,7 +261,7 @@ export async function updateDailyEnvelope(forDate = null) {
         const date30str = getWarsawDateString(d30);
         
         const historicalExpenses = expenses.filter(e => 
-            e.realised && 
+            e.type === 'normal' && 
             e.date >= date30str && 
             e.date < targetDate
         );
@@ -307,7 +304,6 @@ export async function updateDailyEnvelope(forDate = null) {
         // Aktualizuj tylko jeśli zmieniły się dodatkowe środki
         if (existing.additionalFunds !== todayIncomesSum) {
             console.log('🔄 Aktualizowanie dodatkowych środków:', todayIncomesSum);
-            // POPRAWKA: przekaż datę jako pierwszy argument (string)
             await saveDailyEnvelope(targetDate, {
                 ...existing,
                 additionalFunds: todayIncomesSum,
@@ -327,7 +323,6 @@ export async function updateDailyEnvelope(forDate = null) {
     };
     
     console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
-    // POPRAWKA: przekaż datę jako pierwszy argument (string), nie obiekt
     await saveDailyEnvelope(targetDate, envelope);
     
     return envelope;
@@ -374,7 +369,7 @@ export function getTopCategories(limit = 5) {
     const date30str = getWarsawDateString(d30);
     
     const last30 = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date30str && 
         e.date < today
     );
@@ -404,7 +399,7 @@ export function getTopDescriptionsForCategory(categoryName, limit = 3) {
     const date30str = getWarsawDateString(d30);
     
     const catExpenses = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date30str && 
         e.date < today &&
         e.category === categoryName
@@ -424,7 +419,7 @@ export function getTopDescriptionsForCategory(categoryName, limit = 3) {
 }
 
 /**
- * Oblicz porównania
+ * Oblicz porównania tygodniowe
  */
 export function computeComparisons() {
     const expenses = getExpenses();
@@ -441,13 +436,13 @@ export function computeComparisons() {
     const date14str = getWarsawDateString(d14);
     
     const last7 = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date7str && 
         e.date < today
     );
     
     const prev7 = expenses.filter(e => 
-        e.realised && 
+        e.type === 'normal' && 
         e.date >= date14str && 
         e.date < date7str
     );

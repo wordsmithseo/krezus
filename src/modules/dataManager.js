@@ -1,15 +1,9 @@
-// src/modules/dataManager.js - NAPRAWIONY: Indywidualne budżety bez przecieków danych
+// src/modules/dataManager.js - Z AUTOMATYCZNĄ MIGRACJĄ realised → type
 
-import { ref, get, set, onValue } from 'firebase/database';
+import { ref, get, set, update, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
-
-/**
- * KRYTYCZNE: Każdy użytkownik ma swój własny budżet
- * Ścieżka danych: users/{userId}/budget/
- * NIE MOŻE być przecieków danych między użytkownikami!
- */
 
 let categoriesCache = [];
 let incomesCache = [];
@@ -19,11 +13,31 @@ let endDate2Cache = '';
 let savingGoalCache = 0;
 let dailyEnvelopeCache = null;
 
-// Referencje do listenerów - MUSI być czyszczone przy wylogowaniu
 let activeListeners = {};
-
-// ID aktualnego użytkownika - dla weryfikacji
 let currentCachedUserId = null;
+
+/**
+ * Migruj starą strukturę (realised) na nową (type)
+ */
+function migrateTransaction(transaction) {
+  if (!transaction) return transaction;
+  
+  // Jeśli już ma type, nie migruj
+  if (transaction.type) return transaction;
+  
+  // Migruj z realised na type
+  if (transaction.realised !== undefined) {
+    transaction.type = transaction.realised ? 'normal' : 'planned';
+    delete transaction.realised;
+    delete transaction.planned;
+    console.log('🔄 Migracja transakcji:', transaction.id, '→ type:', transaction.type);
+  } else {
+    // Domyślnie normal
+    transaction.type = 'normal';
+  }
+  
+  return transaction;
+}
 
 /**
  * Pobierz ścieżkę do budżetu użytkownika
@@ -34,7 +48,6 @@ function getUserBudgetPath(path = '') {
     throw new Error('Użytkownik nie jest zalogowany');
   }
   
-  // KRYTYCZNE: Sprawdź czy cache jest dla tego samego użytkownika
   if (currentCachedUserId && currentCachedUserId !== userId) {
     console.warn('⚠️ Wykryto zmianę użytkownika! Czyszczenie cache...');
     clearCacheInternal();
@@ -44,9 +57,6 @@ function getUserBudgetPath(path = '') {
   return `users/${userId}/budget/${path}`;
 }
 
-/**
- * Wewnętrzne czyszczenie cache (nie eksportowane)
- */
 function clearCacheInternal() {
   categoriesCache = [];
   incomesCache = [];
@@ -67,7 +77,6 @@ export async function loadCategories() {
     const data = snapshot.val() || {};
     const newCategories = Object.values(data);
     
-    // Usuń duplikaty na podstawie ID
     const uniqueCategories = [];
     const seenIds = new Set();
     
@@ -88,7 +97,7 @@ export async function loadCategories() {
 }
 
 /**
- * Załaduj wydatki z Firebase
+ * Załaduj wydatki z Firebase + MIGRACJA
  */
 export async function loadExpenses() {
   try {
@@ -103,20 +112,32 @@ export async function loadExpenses() {
     
     console.log('📊 Pobrano z Firebase:', newExpenses.length, 'wydatków');
     
-    // Usuń duplikaty na podstawie ID
     const uniqueExpenses = [];
     const seenIds = new Set();
+    let needsMigration = false;
     
     newExpenses.forEach(exp => {
       if (exp && exp.id && !seenIds.has(exp.id)) {
         seenIds.add(exp.id);
-        uniqueExpenses.push(exp);
-      } else if (exp && exp.id) {
-        console.warn('⚠️ Duplikat wydatku wykryty i pominięty:', exp.id);
+        
+        // MIGRACJA
+        const migrated = migrateTransaction(exp);
+        if (migrated.type && !exp.type) {
+          needsMigration = true;
+        }
+        
+        uniqueExpenses.push(migrated);
       }
     });
     
     expensesCache = uniqueExpenses;
+    
+    // Zapisz zmigrowane dane
+    if (needsMigration) {
+      console.log('💾 Zapisywanie zmigrowanych wydatków...');
+      await saveExpenses(expensesCache);
+    }
+    
     console.log('✅ Załadowano unikalne wydatki:', expensesCache.length);
     return expensesCache;
   } catch (error) {
@@ -126,7 +147,7 @@ export async function loadExpenses() {
 }
 
 /**
- * Załaduj źródła finansów z Firebase
+ * Załaduj przychody z Firebase + MIGRACJA
  */
 export async function loadIncomes() {
   try {
@@ -134,7 +155,6 @@ export async function loadIncomes() {
     const path = getUserBudgetPath('incomes');
     
     console.log('📥 Ładowanie przychodów dla użytkownika:', userId);
-    console.log('📍 Ścieżka:', path);
     
     const snapshot = await get(ref(db, path));
     const data = snapshot.val() || {};
@@ -142,31 +162,42 @@ export async function loadIncomes() {
     
     console.log('📊 Pobrano z Firebase:', newIncomes.length, 'przychodów');
     
-    // Usuń duplikaty na podstawie ID
     const uniqueIncomes = [];
     const seenIds = new Set();
+    let needsMigration = false;
     
     newIncomes.forEach(inc => {
       if (inc && inc.id && !seenIds.has(inc.id)) {
         seenIds.add(inc.id);
-        uniqueIncomes.push(inc);
-      } else if (inc && inc.id) {
-        console.warn('⚠️ Duplikat przychodu wykryty i pominięty:', inc.id);
+        
+        // MIGRACJA
+        const migrated = migrateTransaction(inc);
+        if (migrated.type && !inc.type) {
+          needsMigration = true;
+        }
+        
+        uniqueIncomes.push(migrated);
       }
     });
     
     incomesCache = uniqueIncomes;
-    console.log('✅ Załadowano unikalne przychody:', incomesCache.length);
     
+    // Zapisz zmigrowane dane
+    if (needsMigration) {
+      console.log('💾 Zapisywanie zmigrowanych przychodów...');
+      await saveIncomes(incomesCache);
+    }
+    
+    console.log('✅ Załadowano unikalne przychody:', incomesCache.length);
     return incomesCache;
   } catch (error) {
-    console.error('❌ Błąd ładowania źródeł finansów:', error);
+    console.error('❌ Błąd ładowania przychodów:', error);
     return [];
   }
 }
 
 /**
- * Załaduj daty końcowe okresów budżetowych
+ * Załaduj daty końcowe
  */
 export async function loadEndDates() {
   try {
@@ -220,13 +251,12 @@ export async function loadDailyEnvelope(dateStr) {
 }
 
 /**
- * Zapisz kategorie do Firebase
+ * Zapisz kategorie
  */
 export async function saveCategories(categories) {
   const obj = {};
   const seenIds = new Set();
   
-  // Usuń duplikaty przed zapisem
   categories.forEach(cat => {
     if (cat && cat.id && !seenIds.has(cat.id)) {
       seenIds.add(cat.id);
@@ -245,7 +275,7 @@ export async function saveCategories(categories) {
 }
 
 /**
- * Zapisz wydatki do Firebase
+ * Zapisz wydatki
  */
 export async function saveExpenses(expenses) {
   const userId = getUserId();
@@ -255,13 +285,10 @@ export async function saveExpenses(expenses) {
   console.log('💾 Zapisywanie wydatków dla użytkownika:', userId);
   console.log('📊 Liczba wydatków do zapisu:', expenses.length);
   
-  // Usuń duplikaty przed zapisem
   expenses.forEach(exp => {
     if (exp && exp.id && !seenIds.has(exp.id)) {
       seenIds.add(exp.id);
       obj[exp.id] = exp;
-    } else if (exp && exp.id) {
-      console.warn('⚠️ Duplikat wydatku pominięty podczas zapisu:', exp.id);
     }
   });
   
@@ -277,7 +304,7 @@ export async function saveExpenses(expenses) {
 }
 
 /**
- * Zapisz źródła finansów do Firebase
+ * Zapisz przychody
  */
 export async function saveIncomes(incomes) {
   const userId = getUserId();
@@ -287,32 +314,26 @@ export async function saveIncomes(incomes) {
   console.log('💾 Zapisywanie przychodów dla użytkownika:', userId);
   console.log('📊 Liczba przychodów do zapisu:', incomes.length);
   
-  // Usuń duplikaty przed zapisem
   incomes.forEach(inc => {
     if (inc && inc.id && !seenIds.has(inc.id)) {
       seenIds.add(inc.id);
       obj[inc.id] = inc;
-    } else if (inc && inc.id) {
-      console.warn('⚠️ Duplikat przychodu pominięty podczas zapisu:', inc.id);
     }
   });
   
   try {
     const path = getUserBudgetPath('incomes');
-    console.log('📍 Zapisywanie do ścieżki:', path);
-    
     await set(ref(db, path), obj);
     incomesCache = Object.values(obj);
-    
     console.log('✅ Zapisano unikalne przychody:', incomesCache.length);
   } catch (error) {
-    console.error('❌ Błąd zapisywania źródeł finansów:', error);
+    console.error('❌ Błąd zapisywania przychodów:', error);
     throw error;
   }
 }
 
 /**
- * Zapisz daty końcowe okresów
+ * Zapisz daty końcowe
  */
 export async function saveEndDates(primary, secondary) {
   try {
@@ -357,7 +378,7 @@ export async function saveDailyEnvelope(dateStr, envelope) {
 }
 
 /**
- * Pobierz wszystkie dane budżetu użytkownika
+ * Pobierz wszystkie dane
  */
 export async function fetchAllData() {
   try {
@@ -397,48 +418,39 @@ export async function fetchAllData() {
 }
 
 /**
- * Automatycznie realizuj planowane transakcje, których termin minął
+ * Automatycznie realizuj planowane transakcje z przeszłości
  */
 export async function autoRealiseDueTransactions() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getWarsawDateString();
   
   let incomesUpdated = false;
   let expensesUpdated = false;
   
   incomesCache.forEach(inc => {
-    if (inc && inc.planned && inc.date) {
-      const dueDate = new Date(inc.date);
-      dueDate.setHours(0, 0, 0, 0);
+    if (inc && inc.type === 'planned' && inc.date < today) {
+      inc.type = 'normal';
+      inc.wasPlanned = true;
       
-      if (dueDate.getTime() <= today.getTime()) {
-        inc.wasPlanned = true;
-        inc.planned = false;
-        
-        if (!inc.time || inc.time.trim() === '') {
-          inc.time = getCurrentTimeString();
-        }
-        
-        incomesUpdated = true;
+      if (!inc.time || inc.time.trim() === '') {
+        inc.time = getCurrentTimeString();
       }
+      
+      incomesUpdated = true;
+      console.log('🔄 Auto-realizacja przychodu:', inc.id);
     }
   });
   
   expensesCache.forEach(exp => {
-    if (exp && exp.planned && exp.date) {
-      const dueDate = new Date(exp.date);
-      dueDate.setHours(0, 0, 0, 0);
+    if (exp && exp.type === 'planned' && exp.date < today) {
+      exp.type = 'normal';
+      exp.wasPlanned = true;
       
-      if (dueDate.getTime() <= today.getTime()) {
-        exp.wasPlanned = true;
-        exp.planned = false;
-        
-        if (!exp.time || exp.time.trim() === '') {
-          exp.time = getCurrentTimeString();
-        }
-        
-        expensesUpdated = true;
+      if (!exp.time || exp.time.trim() === '') {
+        exp.time = getCurrentTimeString();
       }
+      
+      expensesUpdated = true;
+      console.log('🔄 Auto-realizacja wydatku:', exp.id);
     }
   });
   
@@ -454,7 +466,7 @@ export async function autoRealiseDueTransactions() {
 }
 
 /**
- * Wyczyść wszystkie aktywne listenery
+ * Wyczyść wszystkie listenery
  */
 export function clearAllListeners() {
   console.log('🧹 Czyszczenie listenerów Firebase...');
@@ -475,26 +487,23 @@ export function clearAllListeners() {
 }
 
 /**
- * Nasłuchuj zmian w czasie rzeczywistym
+ * Subskrybuj real-time updates
  */
-export function subscribeToRealtimeUpdates(callbacks) {
-  // KRYTYCZNE: Wyczyść poprzednie listenery
+export function subscribeToRealtimeUpdates(userId, callbacks) {
   clearAllListeners();
   
-  const userId = getUserId();
   if (!userId) {
-    console.error('❌ Brak zalogowanego użytkownika - nie można subskrybować');
+    console.error('❌ Brak zalogowanego użytkownika');
     return;
   }
   
   console.log('🔔 Konfigurowanie listenerów Real-time dla użytkownika:', userId);
   
-  // DEBOUNCE dla listenerów - zapobiega wielokrotnym aktualizacjom
   let categoriesTimeout = null;
   let expensesTimeout = null;
   let incomesTimeout = null;
   
-  // Categories listener
+  // Categories
   const categoriesRef = ref(db, getUserBudgetPath('categories'));
   activeListeners.categories = onValue(categoriesRef, (snapshot) => {
     clearTimeout(categoriesTimeout);
@@ -502,7 +511,6 @@ export function subscribeToRealtimeUpdates(callbacks) {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
-      // Usuń duplikaty
       const uniqueData = [];
       const seenIds = new Set();
       newData.forEach(item => {
@@ -519,12 +527,10 @@ export function subscribeToRealtimeUpdates(callbacks) {
           callbacks.onCategoriesChange(categoriesCache);
         }
       }
-    }, 100); // Debounce 100ms
-  }, (error) => {
-    console.error('❌ Błąd listenera kategorii:', error);
+    }, 100);
   });
   
-  // Expenses listener
+  // Expenses
   const expensesRef = ref(db, getUserBudgetPath('expenses'));
   activeListeners.expenses = onValue(expensesRef, (snapshot) => {
     clearTimeout(expensesTimeout);
@@ -532,15 +538,12 @@ export function subscribeToRealtimeUpdates(callbacks) {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
-      // Usuń duplikaty
       const uniqueData = [];
       const seenIds = new Set();
       newData.forEach(item => {
         if (item && item.id && !seenIds.has(item.id)) {
           seenIds.add(item.id);
-          uniqueData.push(item);
-        } else if (item && item.id) {
-          console.warn('⚠️ Duplikat wydatku w listenerze:', item.id);
+          uniqueData.push(migrateTransaction(item));
         }
       });
       
@@ -551,12 +554,10 @@ export function subscribeToRealtimeUpdates(callbacks) {
           callbacks.onExpensesChange(expensesCache);
         }
       }
-    }, 100); // Debounce 100ms
-  }, (error) => {
-    console.error('❌ Błąd listenera wydatków:', error);
+    }, 100);
   });
   
-  // Incomes listener - NAJWAŻNIEJSZY Z DEBOUNCE
+  // Incomes
   const incomesRef = ref(db, getUserBudgetPath('incomes'));
   activeListeners.incomes = onValue(incomesRef, (snapshot) => {
     clearTimeout(incomesTimeout);
@@ -564,37 +565,26 @@ export function subscribeToRealtimeUpdates(callbacks) {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
-      console.log('🔄 Listener przychodów wywołany (po debounce):', {
-        userId,
-        dataCount: newData.length,
-        path: `users/${userId}/budget/incomes`
-      });
-      
-      // Usuń duplikaty
       const uniqueData = [];
       const seenIds = new Set();
       newData.forEach(item => {
         if (item && item.id && !seenIds.has(item.id)) {
           seenIds.add(item.id);
-          uniqueData.push(item);
-        } else if (item && item.id) {
-          console.warn('⚠️ Duplikat przychodu w listenerze:', item.id);
+          uniqueData.push(migrateTransaction(item));
         }
       });
       
       if (JSON.stringify(incomesCache) !== JSON.stringify(uniqueData)) {
         incomesCache = uniqueData;
-        console.log('✅ Przychody zaktualizowane:', incomesCache.length);
+        console.log('🔄 Przychody zaktualizowane:', incomesCache.length);
         if (callbacks.onIncomesChange) {
           callbacks.onIncomesChange(incomesCache);
         }
       }
-    }, 100); // Debounce 100ms
-  }, (error) => {
-    console.error('❌ Błąd listenera przychodów:', error);
+    }, 100);
   });
   
-  // End dates listener
+  // EndDates
   const endDateRef = ref(db, getUserBudgetPath('endDate'));
   activeListeners.endDate = onValue(endDateRef, (snapshot) => {
     const data = snapshot.val() || {};
@@ -615,11 +605,9 @@ export function subscribeToRealtimeUpdates(callbacks) {
         callbacks.onEndDatesChange({ primary: endDate1Cache, secondary: endDate2Cache });
       }
     }
-  }, (error) => {
-    console.error('❌ Błąd listenera dat końcowych:', error);
   });
   
-  // Saving goal listener
+  // SavingGoal
   const savingGoalRef = ref(db, getUserBudgetPath('savingGoal'));
   activeListeners.savingGoal = onValue(savingGoalRef, (snapshot) => {
     const val = snapshot.val();
@@ -631,11 +619,9 @@ export function subscribeToRealtimeUpdates(callbacks) {
         callbacks.onSavingGoalChange(savingGoalCache);
       }
     }
-  }, (error) => {
-    console.error('❌ Błąd listenera celu oszczędności:', error);
   });
   
-  // Daily envelope listener
+  // DailyEnvelope
   const todayStr = getWarsawDateString();
   const envelopeRef = ref(db, getUserBudgetPath(`daily_envelope/${todayStr}`));
   activeListeners.envelope = onValue(envelopeRef, (snapshot) => {
@@ -648,15 +634,13 @@ export function subscribeToRealtimeUpdates(callbacks) {
         }
       }
     }
-  }, (error) => {
-    console.error('❌ Błąd listenera koperty dnia:', error);
   });
   
   console.log('✅ Wszystkie listenery skonfigurowane:', Object.keys(activeListeners));
 }
 
 /**
- * Wyczyść cache przy wylogowaniu - PUBLICZNE
+ * Wyczyść cache
  */
 export function clearCache() {
   console.log('🧹 Czyszczenie cache danych...');
@@ -665,7 +649,7 @@ export function clearCache() {
 }
 
 /**
- * Gettery - ZAWSZE zwracają kopie, nigdy referencje
+ * Gettery
  */
 export function getCategories() {
   return [...categoriesCache];

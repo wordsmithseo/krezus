@@ -1,4 +1,4 @@
-// src/modules/auth.js - Moduł autoryzacji
+// src/modules/auth.js - Moduł autoryzacji - NAPRAWIONY v1.2.0
 import { 
   getAuth, 
   createUserWithEmailAndPassword, 
@@ -199,7 +199,7 @@ export async function sendBudgetInvitation(recipientEmail) {
 
     console.log('📧 Wysyłanie zaproszenia do:', recipientEmail);
 
-    // Znajdź użytkownika po emailu
+    // Znajdź użytkownika po emailu - pobierz tylko profile
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
     
@@ -210,11 +210,12 @@ export async function sendBudgetInvitation(recipientEmail) {
     let recipientUid = null;
     let recipientName = null;
 
+    // Przeszukaj tylko profile użytkowników
     snapshot.forEach((childSnapshot) => {
-      const profile = childSnapshot.val().profile;
-      if (profile && profile.email === recipientEmail) {
+      const userData = childSnapshot.val();
+      if (userData && userData.profile && userData.profile.email === recipientEmail) {
         recipientUid = childSnapshot.key;
-        recipientName = profile.displayName || profile.email;
+        recipientName = userData.profile.displayName || userData.profile.email;
       }
     });
 
@@ -245,15 +246,13 @@ export async function sendBudgetInvitation(recipientEmail) {
       },
       status: 'pending',
       createdAt: new Date().toISOString(),
-      type: 'budget_invitation'
+      type: 'budget_invitation',
+      read: false
     };
 
     // Zapisz zaproszenie w wiadomościach odbiorcy
     const messageRef = ref(db, `users/${recipientUid}/messages/${invitationId}`);
-    await set(messageRef, {
-      ...invitation,
-      read: false
-    });
+    await set(messageRef, invitation);
 
     console.log('✅ Zaproszenie wysłane pomyślnie');
     return invitation;
