@@ -383,18 +383,13 @@
 
       <!-- Wykres kategorii -->
       <section id="category-chart" class="section">
-        <h2>📈 Udział kategorii w wydatkach</h2>
-        <div class="category-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-          <label for="categoryMonthSelect">Miesiąc:</label>
-          <select 
-            id="categoryMonthSelect" 
-            style="min-width:160px;"
-            aria-label="Wybierz miesiąc do wyświetlenia"
-          ></select>
-        </div>
-        <canvas id="categoryChart" width="400" height="300"></canvas>
-        <div id="chartLegend" class="chart-legend"></div>
-      </section>
+  <h2>📈 Udział kategorii w wydatkach</h2>
+  <div class="category-controls">...</div>
+  <div style="position: relative; height: 400px;">
+    <canvas id="categoryChart"></canvas>
+  </div>
+  <div id="chartLegend" class="chart-legend"></div>
+</section>
 
       <!-- Porównania -->
       <section id="comparisons" class="section">

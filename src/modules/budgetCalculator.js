@@ -29,25 +29,45 @@ let envelopeSettings = {
 /**
  * Oblicz sumy zrealizowanych przychodów i wydatków (bez dzisiejszych)
  */
+/**
+ * Oblicz sumy zrealizowanych przychodów i wydatków (bez dzisiejszych) - NAPRAWIONA
+ */
 export function calculateRealisedTotals() {
   const incomes = getIncomes();
   const expenses = getExpenses();
   const todayStr = getWarsawDateString();
   
+  console.log('📊 Obliczanie zrealizowanych sum (bez dzisiejszych)');
+  console.log('📅 Dzisiejsza data:', todayStr);
+  console.log('📥 Liczba przychodów:', incomes.length);
+  console.log('📤 Liczba wydatków:', expenses.length);
+  
   let totalIncome = 0;
   let totalExpense = 0;
   
   incomes.forEach(inc => {
-    if (isRealised(inc) && inc.date < todayStr) {
+    const isRealisedInc = isRealised(inc);
+    const isBeforeToday = inc.date < todayStr;
+    
+    if (isRealisedInc && isBeforeToday) {
+      console.log('✅ Przychód zrealizowany przed dziś:', inc.date, inc.amount);
       totalIncome += inc.amount;
     }
   });
   
   expenses.forEach(exp => {
-    if (isRealised(exp) && exp.date < todayStr) {
-      totalExpense += exp.amount * (exp.quantity || 1);
+    const isRealisedExp = isRealised(exp);
+    const isBeforeToday = exp.date < todayStr;
+    
+    if (isRealisedExp && isBeforeToday) {
+      const cost = exp.amount * (exp.quantity || 1);
+      console.log('✅ Wydatek zrealizowany przed dziś:', exp.date, cost);
+      totalExpense += cost;
     }
   });
+  
+  console.log('📊 SUMA przychodów (zrealizowane, przed dziś):', totalIncome);
+  console.log('📊 SUMA wydatków (zrealizowane, przed dziś):', totalExpense);
   
   return { totalIncome, totalExpense };
 }
@@ -55,23 +75,44 @@ export function calculateRealisedTotals() {
 /**
  * Oblicz bazową kwotę koperty dnia
  */
+/**
+ * Oblicz bazową kwotę koperty dnia - NAPRAWIONA DEBUG VERSION
+ */
 export function computeBaseEnvelope() {
   const { totalIncome, totalExpense } = calculateRealisedTotals();
+  console.log('💰 Całkowite przychody (zrealizowane):', totalIncome);
+  console.log('💸 Całkowite wydatki (zrealizowane):', totalExpense);
+  
   const savingGoal = getSavingGoal();
+  console.log('🎯 Cel oszczędności:', savingGoal);
+  
   const endDates = getEndDates();
+  console.log('📅 Daty końcowe:', endDates);
   
   const remaining = (totalIncome - totalExpense) - savingGoal;
+  console.log('💼 Pozostało po odjęciu celu:', remaining);
+  
   const chosenEnd = envelopeSettings.envelopePeriodEnd === 'secondary' 
     ? endDates.secondary 
     : endDates.primary;
   
+  console.log('📅 Wybrana data końcowa:', chosenEnd);
+  
   const daysLeft = getDaysLeftFor(chosenEnd);
+  console.log('📆 Dni pozostałych:', daysLeft);
   
   let base = 0;
   if (daysLeft > 0 && remaining > 0) {
     const raw = remaining / daysLeft;
+    console.log('➗ Surowa kwota dzienna:', raw);
+    
     const round = envelopeSettings.rounding || 1;
+    console.log('🔢 Zaokrąglenie do:', round);
+    
     base = Math.floor(raw / round) * round;
+    console.log('✅ Bazowa kwota koperty (po zaokrągleniu):', base);
+  } else {
+    console.log('⚠️ Nie można obliczyć koperty - dni lub pozostało <= 0');
   }
   
   return Math.max(0, base);
@@ -80,25 +121,62 @@ export function computeBaseEnvelope() {
 /**
  * Aktualizuj/utwórz kopertę dnia
  */
+/**
+ * Aktualizuj/utwórz kopertę dnia - NAPRAWIONA WERSJA
+ */
 export async function updateDailyEnvelope() {
   if (!DAILY_ENVELOPE.ENABLED) return null;
   
   const dateStr = getWarsawDateString();
+  console.log('📅 Aktualizowanie koperty dla daty:', dateStr);
+  
   let record = await loadDailyEnvelope(dateStr);
+  console.log('📦 Istniejący rekord koperty:', record);
   
   if (!record) {
     const base = computeBaseEnvelope();
+    console.log('💰 Obliczona bazowa kwota koperty:', base);
+    
     const now = new Date();
     const setAt = now.toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
+    
+    // Oblicz dodatkowe środki z dzisiejszych wpływów
+    const incomes = getIncomes();
+    const todayIncomes = incomes.filter(inc => {
+      if (inc.planned) return false;
+      return inc.date === dateStr;
+    });
+    
+    const todayExtra = todayIncomes.reduce((sum, inc) => sum + inc.amount, 0);
+    console.log('💵 Dodatkowe środki z dzisiejszych wpływów:', todayExtra);
     
     record = {
       date: dateStr,
       base_amount: base,
       set_at: setAt,
-      today_extra_from_inflows: 0
+      today_extra_from_inflows: todayExtra
     };
     
+    console.log('✅ Zapisywanie nowej koperty:', record);
     await saveDailyEnvelope(dateStr, record);
+  } else {
+    console.log('ℹ️ Koperta już istnieje dla tego dnia');
+    
+    // Opcjonalnie: Zaktualizuj dodatkowe środki jeśli dodano nowe przychody
+    const incomes = getIncomes();
+    const todayIncomes = incomes.filter(inc => {
+      if (inc.planned) return false;
+      return inc.date === dateStr;
+    });
+    
+    const todayExtra = todayIncomes.reduce((sum, inc) => sum + inc.amount, 0);
+    
+    // Jeśli suma się zmieniła, zaktualizuj
+    if (record.today_extra_from_inflows !== todayExtra) {
+      record.today_extra_from_inflows = todayExtra;
+      console.log('🔄 Aktualizowanie dodatkowych środków:', todayExtra);
+      await saveDailyEnvelope(dateStr, record);
+    }
   }
   
   return record;

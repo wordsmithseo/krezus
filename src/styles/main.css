@@ -514,6 +514,29 @@ table tbody tr:last-child td {
   background: #FDE68A !important;
 }
 
+#category-chart {
+  padding: var(--space-8);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-8);
+  box-shadow: var(--shadow-md);
+  position: relative;
+}
+
+#category-chart canvas {
+  max-height: 400px !important;
+  height: 400px !important;
+}
+
+/* Zapewnij że kontener ma stałą wysokość również na mobile */
+@media (max-width: 640px) {
+  #category-chart canvas {
+    max-height: 300px !important;
+    height: 300px !important;
+  }
+}
+
 /* Chart Controls */
 .category-controls,
 .comparison-controls {

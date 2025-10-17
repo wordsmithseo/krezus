@@ -1390,12 +1390,14 @@ function renderCategoryChart() {
             display: false
           },
           ticks: {
-            color: '#0F172A',
-            font: {
-              size: 12,
-              weight: 600
-            }
-          }
+  color: '#0F172A',
+  font: {
+    size: 12,
+    weight: 600
+  },
+  maxRotation: 45,
+  minRotation: 0
+}
         },
         y: {
           beginAtZero: true,
