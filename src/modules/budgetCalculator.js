@@ -78,64 +78,147 @@ export function calculateRealisedTotals() {
 /**
  * Oblicz bazową kwotę koperty dnia - NAPRAWIONA DEBUG VERSION
  */
-export function computeBaseEnvelope() {
+// INTELIGENTNY SYSTEM KOPERTY DNIA
+// Uwzględnia: nawyki z ostatnich 30 dni, dostępne środki, bezpieczeństwo finansowe
+
+/**
+ * Inteligentny algorytm koperty dnia
+ * Bezpieczny + maksymalne możliwości wydatkowe
+ */
+export function computeSmartEnvelope() {
+  console.log('🧠 === INTELIGENTNA KOPERTA DNIA ===');
+  
+  // 1. Podstawowe dane
   const { totalIncome, totalExpense } = calculateRealisedTotals();
-  console.log('💰 Całkowite przychody (zrealizowane):', totalIncome);
-  console.log('💸 Całkowite wydatki (zrealizowane):', totalExpense);
-  
   const savingGoal = getSavingGoal();
-  console.log('🎯 Cel oszczędności:', savingGoal);
-  
   const endDates = getEndDates();
-  console.log('📅 Daty końcowe:', endDates);
   
-  const remaining = (totalIncome - totalExpense) - savingGoal;
-  console.log('💼 Pozostało po odjęciu celu:', remaining);
+  const availableFunds = totalIncome - totalExpense;
+  const safeReserve = savingGoal;
+  const spendable = Math.max(0, availableFunds - safeReserve);
   
-  const chosenEnd = envelopeSettings.envelopePeriodEnd === 'secondary' 
-    ? endDates.secondary 
-    : endDates.primary;
+  console.log('💰 Dostępne środki:', availableFunds.toFixed(2), 'PLN');
+  console.log('🛡️ Rezerwa (cel oszczędności):', safeReserve.toFixed(2), 'PLN');
+  console.log('💵 Do wydania:', spendable.toFixed(2), 'PLN');
   
-  console.log('📅 Wybrana data końcowa:', chosenEnd);
+  // 2. Analiza nawyków z ostatnich 30 dni
+  const median30d = getGlobalMedian30d();
+  const dailyTotals = getDailyExpenseTotalsLastNDays(30);
+  const avg30d = dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length;
+  const max30d = Math.max(...dailyTotals);
+  const min30d = Math.min(...dailyTotals.filter(x => x > 0));
   
+  console.log('📊 === ANALIZA NAWYKÓW (30 DNI) ===');
+  console.log('📈 Średnia dzienna:', avg30d.toFixed(2), 'PLN');
+  console.log('📊 Mediana dzienna:', median30d.toFixed(2), 'PLN');
+  console.log('⬆️ Maksimum dzienne:', max30d.toFixed(2), 'PLN');
+  console.log('⬇️ Minimum dzienne:', (min30d === Infinity ? 0 : min30d).toFixed(2), 'PLN');
+  
+  // 3. Obliczenia bazowe
+  const chosenEnd = endDates.primary;
   const daysLeft = getDaysLeftFor(chosenEnd);
-  console.log('📆 Dni pozostałych:', daysLeft);
   
-  let base = 0;
-  if (daysLeft > 0 && remaining > 0) {
-    const raw = remaining / daysLeft;
-    console.log('➗ Surowa kwota dzienna:', raw);
-    
-    const round = envelopeSettings.rounding || 1;
-    console.log('🔢 Zaokrąglenie do:', round);
-    
-    base = Math.floor(raw / round) * round;
-    console.log('✅ Bazowa kwota koperty (po zaokrągleniu):', base);
-  } else {
-    console.log('⚠️ Nie można obliczyć koperty - dni lub pozostało <= 0');
+  console.log('📅 Dni do końca okresu:', daysLeft);
+  
+  if (daysLeft <= 0) {
+    console.warn('⚠️ Brak dni do końca okresu - ustaw datę końcową!');
+    return 0;
   }
   
-  return Math.max(0, base);
+  if (spendable <= 0) {
+    console.warn('⚠️ Brak środków do wydania!');
+    return 0;
+  }
+  
+  // 4. Strategia: Bezpieczeństwo + Maksymalne możliwości
+  
+  // A. Prosty limit matematyczny (równy podział)
+  const simpleDailyLimit = spendable / daysLeft;
+  console.log('🔢 Prosty limit matematyczny:', simpleDailyLimit.toFixed(2), 'PLN/dzień');
+  
+  // B. Limit bazujący na nawykach (mediana)
+  const habitBasedLimit = median30d > 0 ? median30d : avg30d;
+  console.log('🎯 Limit bazujący na nawykach:', habitBasedLimit.toFixed(2), 'PLN/dzień');
+  
+  // C. Bufor bezpieczeństwa (10% rezerwy)
+  const safetyBuffer = spendable * 0.10;
+  const spendableWithBuffer = spendable - safetyBuffer;
+  const bufferedLimit = spendableWithBuffer / daysLeft;
+  console.log('🛡️ Limit z buforem bezpieczeństwa (90%):', bufferedLimit.toFixed(2), 'PLN/dzień');
+  
+  // 5. INTELIGENTNY WYBÓR LIMITU
+  let smartLimit = 0;
+  let strategy = '';
+  
+  // Strategia 1: Jeśli nawyki są rozsądne w stosunku do możliwości
+  if (habitBasedLimit <= simpleDailyLimit * 1.2) {
+    // Nawyki są w normie - użyj nawyków z małym buforem
+    smartLimit = Math.min(habitBasedLimit * 1.1, bufferedLimit);
+    strategy = 'Bazując na Twoich nawykach wydatków z ostatnich 30 dni (+10% na elastyczność)';
+    console.log('✅ STRATEGIA: Nawyki w normie');
+  }
+  // Strategia 2: Jeśli nawyki są zbyt wysokie
+  else if (habitBasedLimit > simpleDailyLimit * 1.5) {
+    // Nawyki za wysokie - ogranicz do 80% matematycznego limitu
+    smartLimit = simpleDailyLimit * 0.8;
+    strategy = 'Zachowawczo - Twoje wydatki z ostatnich 30 dni były wysokie';
+    console.log('⚠️ STRATEGIA: Nawyki za wysokie - ograniczenie');
+  }
+  // Strategia 3: Nawyki umiarkowanie wysokie
+  else {
+    // Kompromis między nawykami a matematycznym limitem
+    smartLimit = (habitBasedLimit + bufferedLimit) / 2;
+    strategy = 'Kompromis między nawykami a dostępnymi środkami';
+    console.log('🔄 STRATEGIA: Kompromis');
+  }
+  
+  // 6. Dodatkowe zabezpieczenia
+  
+  // Nie może być większy niż 150% mediany (ochrona przed ekstremami)
+  const maxSafeLimit = median30d > 0 ? median30d * 1.5 : simpleDailyLimit;
+  smartLimit = Math.min(smartLimit, maxSafeLimit);
+  
+  // Nie może być mniejszy niż 50% mediany (minimalna użyteczność)
+  const minUsefulLimit = median30d > 0 ? median30d * 0.5 : simpleDailyLimit * 0.5;
+  smartLimit = Math.max(smartLimit, minUsefulLimit);
+  
+  // Zaokrąglenie
+  const rounding = 10;
+  smartLimit = Math.floor(smartLimit / rounding) * rounding;
+  
+  console.log('🎯 === FINALNA KOPERTA ===');
+  console.log('💡 Inteligentny limit:', smartLimit.toFixed(2), 'PLN/dzień');
+  console.log('📝 Strategia:', strategy);
+  console.log('🔄 Porównanie z prostym limitem:', (simpleDailyLimit - smartLimit).toFixed(2), 'PLN');
+  console.log('📊 % różnicy:', ((smartLimit / simpleDailyLimit - 1) * 100).toFixed(1), '%');
+  
+  // 7. Ostrzeżenia
+  if (smartLimit < avg30d * 0.7) {
+    console.warn('⚠️ UWAGA: Zalecany limit jest znacznie niższy niż Twoje zwykłe wydatki!');
+    console.warn('💡 Rozważ: dodanie środków lub przedłużenie okresu budżetowego');
+  }
+  
+  if (daysLeft < 7) {
+    console.warn('⚠️ UWAGA: Mało czasu do końca okresu budżetowego!');
+  }
+  
+  return Math.max(0, smartLimit);
 }
 
 /**
- * Aktualizuj/utwórz kopertę dnia
- */
-/**
- * Aktualizuj/utwórz kopertę dnia - NAPRAWIONA WERSJA
+ * Zaktualizowana funkcja updateDailyEnvelope używająca inteligentnego algorytmu
  */
 export async function updateDailyEnvelope() {
   if (!DAILY_ENVELOPE.ENABLED) return null;
   
   const dateStr = getWarsawDateString();
-  console.log('📅 Aktualizowanie koperty dla daty:', dateStr);
+  console.log('📅 Aktualizowanie inteligentnej koperty dla daty:', dateStr);
   
   let record = await loadDailyEnvelope(dateStr);
-  console.log('📦 Istniejący rekord koperty:', record);
   
   if (!record) {
-    const base = computeBaseEnvelope();
-    console.log('💰 Obliczona bazowa kwota koperty:', base);
+    const smartBase = computeSmartEnvelope();
+    console.log('💰 Inteligentna bazowa kwota koperty:', smartBase);
     
     const now = new Date();
     const setAt = now.toLocaleString('sv-SE', { timeZone: 'Europe/Warsaw' });
@@ -152,17 +235,18 @@ export async function updateDailyEnvelope() {
     
     record = {
       date: dateStr,
-      base_amount: base,
+      base_amount: smartBase,
       set_at: setAt,
-      today_extra_from_inflows: todayExtra
+      today_extra_from_inflows: todayExtra,
+      strategy: 'smart' // oznacz jako inteligentną kopertę
     };
     
-    console.log('✅ Zapisywanie nowej koperty:', record);
+    console.log('✅ Zapisywanie inteligentnej koperty:', record);
     await saveDailyEnvelope(dateStr, record);
   } else {
     console.log('ℹ️ Koperta już istnieje dla tego dnia');
     
-    // Opcjonalnie: Zaktualizuj dodatkowe środki jeśli dodano nowe przychody
+    // Zaktualizuj dodatkowe środki jeśli dodano nowe przychody
     const incomes = getIncomes();
     const todayIncomes = incomes.filter(inc => {
       if (inc.planned) return false;
@@ -171,7 +255,6 @@ export async function updateDailyEnvelope() {
     
     const todayExtra = todayIncomes.reduce((sum, inc) => sum + inc.amount, 0);
     
-    // Jeśli suma się zmieniła, zaktualizuj
     if (record.today_extra_from_inflows !== todayExtra) {
       record.today_extra_from_inflows = todayExtra;
       console.log('🔄 Aktualizowanie dodatkowych środków:', todayExtra);
@@ -180,6 +263,63 @@ export async function updateDailyEnvelope() {
   }
   
   return record;
+}
+
+/**
+ * Zaktualizowana funkcja renderSummary pokazująca wyjaśnienie inteligentnej koperty
+ */
+function renderEnvelopeExplanation(envelope, spentToday) {
+  const envelopeBase = envelope.base_amount || 0;
+  const envelopeExtra = envelope.today_extra_from_inflows || 0;
+  const envelopeTotal = envelopeBase + envelopeExtra;
+  const remainingToday = envelopeTotal - spentToday;
+  
+  const median30d = getGlobalMedian30d();
+  const { totalIncome, totalExpense } = calculateRealisedTotals();
+  const available = totalIncome - totalExpense;
+  const endDates = getEndDates();
+  const daysLeft = getDaysLeftFor(endDates.primary);
+  const simpleDailyLimit = daysLeft > 0 ? available / daysLeft : 0;
+  
+  const percentOfSimple = simpleDailyLimit > 0 
+    ? ((envelopeBase / simpleDailyLimit - 1) * 100) 
+    : 0;
+  
+  let explanationText = '';
+  let explanationIcon = '🧠';
+  
+  if (Math.abs(percentOfSimple) < 5) {
+    explanationText = 'Równy podział dostępnych środków na pozostałe dni';
+    explanationIcon = '📊';
+  } else if (percentOfSimple > 0) {
+    explanationText = `${percentOfSimple.toFixed(0)}% więcej niż prosty limit - bazując na Twoich nawykach wydatków`;
+    explanationIcon = '📈';
+  } else {
+    explanationText = `${Math.abs(percentOfSimple).toFixed(0)}% mniej niż prosty limit - zachowawcze podejście dla bezpieczeństwa`;
+    explanationIcon = '🛡️';
+  }
+  
+  return `
+    <div style="
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    ">
+      <div style="font-weight: 700; margin-bottom: 6px;">
+        ${explanationIcon} Inteligentny algorytm:
+      </div>
+      <div style="opacity: 0.95;">
+        ${explanationText}
+      </div>
+      <div style="opacity: 0.9; margin-top: 6px; font-size: 0.85rem;">
+        Mediana wydatków (30 dni): ${median30d.toFixed(2)} zł • 
+        Prosty limit: ${simpleDailyLimit.toFixed(2)} zł
+      </div>
+    </div>
+  `;
 }
 
 /**

@@ -143,16 +143,15 @@ main {
 /* Section - Wysokokontr astowy */
 .section {
   background: var(--surface);
-  border: 2px solid var(--border);
+  border: none;
   border-radius: var(--radius-xl);
-  padding: var(--space-8);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: all var(--transition-base);
 }
 
 .section:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   border-color: var(--primary-light);
 }
 
@@ -188,27 +187,23 @@ select {
   width: 100%;
   padding: var(--space-4);
   margin-bottom: var(--space-5);
-  border: 2px solid var(--border-dark);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  background: var(--surface);
-  color: var(--text-primary);
-  transition: all var(--transition-fast);
-  font-family: var(--font-sans);
-  font-weight: 500;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  background: white;
 }
 
 input:focus,
 select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
   background: white;
 }
 
-input:hover:not(:disabled),
-select:hover:not(:disabled) {
-  border-color: var(--primary-light);
+input:hover:not(:disabled):not(:focus),
+select:hover:not(:disabled):not(:focus) {
+  border-color: #CBD5E1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 input:disabled,
@@ -507,11 +502,28 @@ table tbody tr:last-child td {
 }
 
 .planned-row {
-  background: #FEF3C7 !important;
+  background: linear-gradient(135deg, #DBEAFE 0%, #E0E7FF 100%) !important;
+  border-left: 4px solid #3B82F6 !important;
+  position: relative;
 }
 
 .planned-row:hover {
-  background: #FDE68A !important;
+  background: linear-gradient(135deg, #BFDBFE 0%, #C7D2FE 100%) !important;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.planned-row::before {
+  content: '🕐';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  opacity: 0.7;
+}
+
+.planned-row td:first-child {
+  padding-left: 2.5rem !important;
 }
 
 #category-chart {

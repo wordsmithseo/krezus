@@ -392,6 +392,57 @@ function renderSummary() {
     summaryDiv.appendChild(cardDiv);
   }
   
+   if (envelope) {
+    const median30d = getGlobalMedian30d();
+    const { totalIncome, totalExpense } = calculateRealisedTotals();
+    const available = totalIncome - totalExpense;
+    const daysLeft = getDaysLeftFor(endDates.primary);
+    const simpleDailyLimit = daysLeft > 0 ? available / daysLeft : 0;
+    
+    const envelopeBase = envelope.base_amount || 0;
+    const percentOfSimple = simpleDailyLimit > 0 
+      ? ((envelopeBase / simpleDailyLimit - 1) * 100) 
+      : 0;
+    
+    let explanationText = '';
+    let explanationIcon = '🧠';
+    
+    if (Math.abs(percentOfSimple) < 5) {
+      explanationText = 'Równy podział dostępnych środków na pozostałe dni';
+      explanationIcon = '📊';
+    } else if (percentOfSimple > 0) {
+      explanationText = `${percentOfSimple.toFixed(0)}% więcej niż prosty limit - bazując na Twoich nawykach wydatków`;
+      explanationIcon = '📈';
+    } else {
+      explanationText = `${Math.abs(percentOfSimple).toFixed(0)}% mniej niż prosty limit - zachowawcze podejście dla bezpieczeństwa`;
+      explanationIcon = '🛡️';
+    }
+    
+    const explanationDiv = document.createElement('div');
+    explanationDiv.style.cssText = `
+      margin-top: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    `;
+    explanationDiv.innerHTML = `
+      <div style="font-weight: 700; margin-bottom: 6px;">
+        ${explanationIcon} Inteligentny algorytm:
+      </div>
+      <div style="opacity: 0.95;">
+        ${explanationText}
+      </div>
+      <div style="opacity: 0.9; margin-top: 6px; font-size: 0.85rem;">
+        Mediana wydatków (30 dni): ${median30d.toFixed(2)} zł • 
+        Prosty limit: ${simpleDailyLimit.toFixed(2)} zł
+      </div>
+    `;
+    
+    cardDiv.appendChild(explanationDiv);
+  }
+
   // Grupy podsumowania
   const groups = [
     {
@@ -1167,6 +1218,21 @@ function setupCategoryInput() {
         updateCategorySuggestions();
       }
     });
+    expCatInput.addEventListener('blur', () => {
+  setTimeout(() => {
+    const catSuggestions = document.getElementById('categorySuggestions');
+    const descSuggestions = document.getElementById('descriptionSuggestions');
+    const activeElement = document.activeElement;
+    const isClickingOnSuggestion = 
+      (catSuggestions && catSuggestions.contains(activeElement)) ||
+      (descSuggestions && descSuggestions.contains(activeElement));
+    
+    if (!isClickingOnSuggestion) {
+      if (catSuggestions) catSuggestions.style.display = 'none';
+      if (descSuggestions) descSuggestions.style.display = 'none';
+    }
+  }, 200);
+});
   }
 }
 
@@ -1189,20 +1255,26 @@ function updateCategorySuggestions() {
   container.innerHTML = '';
   container.style.display = 'flex';
   
-  topCats.forEach(cat => {
-    const tile = document.createElement('div');
-    tile.className = 'suggestion-tile';
-    tile.textContent = cat.name;
-    tile.addEventListener('click', () => {
-      const catInput = document.getElementById('expenseCategory');
-      if (catInput) {
-        catInput.value = cat.name;
-        updateDescriptionSuggestions();
-        container.style.display = 'none';
-      }
-    });
-    container.appendChild(tile);
-  });
+  tile.addEventListener('click', () => {
+  const catInput = document.getElementById('expenseCategory');
+  if (catInput) {
+    catInput.value = cat.name;
+    catInput.focus();
+    
+    // Wizualna informacja zwrotna
+    tile.style.background = 'var(--primary)';
+    tile.style.color = 'white';
+    tile.style.transform = 'scale(1.05)';
+    
+    setTimeout(() => {
+      tile.style.background = '';
+      tile.style.color = '';
+      tile.style.transform = '';
+    }, 300);
+    
+    updateDescriptionSuggestions();
+  }
+});
 }
 
 /**
