@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v2.0 z indywidualnymi budżetami i real-time updates
+// src/app.js - Główna aplikacja Krezus v2.0 - NAPRAWIONA
 
 import { 
   loginUser, 
@@ -57,8 +57,7 @@ import {
 
 import {
   validateAmount,
-  validateCategoryName,
-  attachValidator
+  validateCategoryName
 } from './utils/validators.js';
 
 import { 
@@ -107,11 +106,9 @@ onAuthChange(async (authState) => {
     console.log('✅ Użytkownik zalogowany:', displayName);
     console.log('🔑 User ID:', user.uid);
     
-    // KRYTYCZNE: Wyczyść WSZYSTKO przed załadowaniem danych
     clearAllListeners();
     clearCache();
     
-    // Wyczyść również cache przeglądarki dla tego użytkownika
     if (window.localStorage) {
       const keys = Object.keys(localStorage);
       keys.forEach(key => {
@@ -126,7 +123,6 @@ onAuthChange(async (authState) => {
     setupApp();
     setupRealtimeUpdates();
     
-    // Załaduj licznik powiadomień
     updateNotificationBadge('messagesBadge', getUnreadMessagesCount());
   } else {
     console.log('❌ Użytkownik niezalogowany');
@@ -252,6 +248,7 @@ function setupRealtimeUpdates() {
       renderCategories();
       renderCategoryChart();
       renderComparisons();
+      updateCategorySuggestions();
     },
     onIncomesChange: (incomes) => {
       console.log('💰 Źródła finansów zaktualizowane');
@@ -370,14 +367,14 @@ function renderSummary() {
       progressPercent = Math.min(100, Math.floor((spentToday / envelopeTotal) * 100));
     }
     
-    let progressColour = '#27ae60';
+    let progressColour = '#10B981';
     const ratio = envelopeTotal > 0 ? (spentToday / envelopeTotal) : 0;
     if (ratio > 1) {
-      progressColour = '#c0392b';
+      progressColour = '#EF4444';
     } else if (ratio > 0.75) {
-      progressColour = '#e67e22';
+      progressColour = '#F59E0B';
     } else if (ratio > 0.5) {
-      progressColour = '#f1c40f';
+      progressColour = '#FBBF24';
     }
     
     const med30Display = getGlobalMedian30d();
@@ -512,8 +509,8 @@ function renderCategories() {
       .reduce((acc, e) => acc + (e.amount * (e.quantity || 1)), 0);
     
     const row = document.createElement('tr');
-    const editHtml = `<button class="edit-category" data-id="${cat.id}" style="background:none;border:none;color:#2980b9;cursor:pointer;font-size:1.2rem;">✏️</button>`;
-    const deleteHtml = `<button class="delete-category" data-id="${cat.id}" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:1.2rem;">🗑️</button>`;
+    const editHtml = `<button class="edit-category" data-id="${cat.id}" style="background:none;border:none;color:#6366F1;cursor:pointer;font-size:1.2rem;">✏️</button>`;
+    const deleteHtml = `<button class="delete-category" data-id="${cat.id}" style="background:none;border:none;color:#EF4444;cursor:pointer;font-size:1.2rem;">🗑️</button>`;
     row.innerHTML = `<td>${cat.name}</td><td>${spent.toFixed(2)}</td><td>${editHtml}</td><td>${deleteHtml}</td>`;
     tbody.appendChild(row);
     
@@ -660,7 +657,7 @@ function renderIncomeHistory() {
     
     let descContent = inc.description || '';
     if (descContent && descContent.toUpperCase() === 'KOREKTA') {
-      descContent = `<span style="color:#c0392b; font-weight:600;">${descContent}</span>`;
+      descContent = `<span style="color:#EF4444; font-weight:600;">${descContent}</span>`;
     }
     
     let actionHtml = '';
@@ -693,7 +690,6 @@ function renderSources() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Oblicz sumę zrealizowanych przychodów
   let totalIncome = 0;
   incomes.forEach(inc => {
     if (!inc.planned) {
@@ -707,7 +703,6 @@ function renderSources() {
     }
   });
   
-  // Oblicz sumę zrealizowanych wydatków
   let totalExpense = 0;
   expenses.forEach(exp => {
     if (!exp.planned) {
@@ -728,7 +723,6 @@ function renderSources() {
     availElem.textContent = totalAvailable.toFixed(2);
   }
   
-  // Znajdź ostatni zrealizowany przychód
   const realised = incomes.filter(rec => {
     if (!rec.planned) return true;
     const d = new Date(rec.date);
@@ -753,7 +747,6 @@ function renderSources() {
     }
   }
   
-  // Pokaż przycisk edycji dla wszystkich
   const editBtn = document.getElementById('editFundsButton');
   if (editBtn) {
     editBtn.style.display = 'inline-flex';
@@ -841,8 +834,6 @@ function setupExpenseForm() {
   const typeSelect = document.getElementById('expenseType');
   
   if (dateInput) dateInput.value = getWarsawDateString();
-  
-  attachValidator(document.getElementById('expenseAmount'), validateAmount);
   
   // Obsługa widoczności daty
   const updateDateVisibility = () => {
@@ -1095,7 +1086,6 @@ function setupSourcesSection() {
 function setupEndDatesForm() {
   const form = document.getElementById('endDatesForm');
   
-  // Włącz pola dla wszystkich użytkowników
   document.getElementById('setEndDatesButton')?.removeAttribute('disabled');
   document.getElementById('budgetEndDate1')?.removeAttribute('disabled');
   document.getElementById('budgetEndDate2')?.removeAttribute('disabled');
@@ -1125,7 +1115,6 @@ function setupEndDatesForm() {
 function setupSavingGoalForm() {
   const form = document.getElementById('savingGoalForm');
   
-  // Włącz formularz dla wszystkich użytkowników
   if (form) {
     const inputs = form.querySelectorAll('input, button');
     inputs.forEach(el => el.disabled = false);
@@ -1161,13 +1150,28 @@ function setupCategoryInput() {
   const expCatInput = document.getElementById('expenseCategory');
   if (expCatInput) {
     expCatInput.addEventListener('input', () => {
-      updateDescriptionSuggestions();
+      const val = expCatInput.value.trim();
+      if (val) {
+        updateDescriptionSuggestions();
+      } else {
+        const descContainer = document.getElementById('descriptionSuggestions');
+        if (descContainer) {
+          descContainer.innerHTML = '';
+          descContainer.style.display = 'none';
+        }
+      }
+    });
+    
+    expCatInput.addEventListener('focus', () => {
+      if (!expCatInput.value.trim()) {
+        updateCategorySuggestions();
+      }
     });
   }
 }
 
 /**
- * Aktualizuj sugestie kategorii
+ * Aktualizuj sugestie kategorii - NAPRAWIONE: Tylko top 5
  */
 function updateCategorySuggestions() {
   const container = document.getElementById('categorySuggestions');
@@ -1194,6 +1198,7 @@ function updateCategorySuggestions() {
       if (catInput) {
         catInput.value = cat.name;
         updateDescriptionSuggestions();
+        container.style.display = 'none';
       }
     });
     container.appendChild(tile);
@@ -1201,7 +1206,7 @@ function updateCategorySuggestions() {
 }
 
 /**
- * Aktualizuj sugestie opisów
+ * Aktualizuj sugestie opisów - NAPRAWIONE: Tylko dla wybranej kategorii
  */
 function updateDescriptionSuggestions() {
   const container = document.getElementById('descriptionSuggestions');
@@ -1211,6 +1216,13 @@ function updateDescriptionSuggestions() {
   if (!catInput) return;
   
   const name = (catInput.value || '').trim().toLowerCase();
+  
+  if (!name) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  
   const categories = getCategories();
   const cat = categories.find(c => c.name && c.name.toLowerCase() === name);
   
@@ -1303,7 +1315,7 @@ function setupMonthSelector() {
 }
 
 /**
- * Renderuj wykres kategorii
+ * Renderuj wykres kategorii - NAPRAWIONY: Spójny styl
  */
 function renderCategoryChart() {
   const canvas = document.getElementById('categoryChart');
@@ -1361,10 +1373,12 @@ function renderCategoryChart() {
     data: {
       labels: labels,
       datasets: [{
-        label: '',
+        label: 'Wydatki (PLN)',
         data: data,
         backgroundColor: colors,
         maxBarThickness: 60,
+        borderRadius: 8,
+        borderSkipped: false
       }]
     },
     options: {
@@ -1372,17 +1386,32 @@ function renderCategoryChart() {
       maintainAspectRatio: false,
       scales: {
         x: {
-          ticks: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-          },
           grid: {
             display: false
+          },
+          ticks: {
+            color: '#0F172A',
+            font: {
+              size: 12,
+              weight: 600
+            }
           }
         },
         y: {
           beginAtZero: true,
+          grid: {
+            color: '#F1F5F9',
+            drawBorder: false
+          },
           ticks: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            color: '#0F172A',
+            font: {
+              size: 12,
+              weight: 600
+            },
+            callback: function(value) {
+              return value.toFixed(0) + ' zł';
+            }
           }
         }
       },
@@ -1391,11 +1420,22 @@ function renderCategoryChart() {
           display: false
         },
         tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleFont: {
+            size: 14,
+            weight: 700
+          },
+          bodyFont: {
+            size: 13,
+            weight: 600
+          },
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: true,
           callbacks: {
             label: function(context) {
-              const idx = context.dataIndex;
-              const val = context.dataset.data[idx];
-              return `${context.chart.data.labels[idx]}: ${val.toFixed(2)} PLN`;
+              const val = context.dataset.data[context.dataIndex];
+              return `Wydatki: ${val.toFixed(2)} PLN`;
             }
           }
         }
@@ -1413,7 +1453,7 @@ function renderCategoryChart() {
       colorBox.className = 'legend-color';
       colorBox.style.backgroundColor = colors[i];
       item.appendChild(colorBox);
-      const text = document.createTextNode(`${lbl} (${data[i].toFixed(2)})`);
+      const text = document.createTextNode(`${lbl} (${data[i].toFixed(2)} zł)`);
       item.appendChild(text);
       legendDiv.appendChild(item);
     });
@@ -1432,7 +1472,7 @@ function setupComparisonsFilters() {
 }
 
 /**
- * Renderuj porównania
+ * Renderuj porównania - NAPRAWIONY: Spójny styl
  */
 function renderComparisons() {
   const periodSel = document.getElementById('comparisonPeriod');
@@ -1475,9 +1515,6 @@ function renderComparisons() {
   const incomeData = results.map(r => parseFloat(r.incomeSum.toFixed(2)));
   const expenseData = results.map(r => parseFloat(r.expenseSum.toFixed(2)));
   
-  const incomeColors = new Array(results.length).fill('rgba(0, 184, 148, 0.8)');
-  const expenseColors = new Array(results.length).fill('#e74c3c');
-  
   window.comparisonsChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1486,14 +1523,18 @@ function renderComparisons() {
         {
           label: 'Nowe źródła finansów',
           data: incomeData,
-          backgroundColor: incomeColors,
-          maxBarThickness: 50
+          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          maxBarThickness: 50,
+          borderRadius: 8,
+          borderSkipped: false
         },
         {
           label: 'Wydatki',
           data: expenseData,
-          backgroundColor: expenseColors,
-          maxBarThickness: 50
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          maxBarThickness: 50,
+          borderRadius: 8,
+          borderSkipped: false
         }
       ]
     },
@@ -1502,22 +1543,62 @@ function renderComparisons() {
       maintainAspectRatio: false,
       scales: {
         x: {
-          ticks: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-          },
           grid: {
             display: false
+          },
+          ticks: {
+            color: '#0F172A',
+            font: {
+              size: 12,
+              weight: 600
+            }
           }
         },
         y: {
           beginAtZero: true,
+          grid: {
+            color: '#F1F5F9',
+            drawBorder: false
+          },
           ticks: {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+            color: '#0F172A',
+            font: {
+              size: 12,
+              weight: 600
+            },
+            callback: function(value) {
+              return value.toFixed(0) + ' zł';
+            }
           }
         }
       },
       plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            font: {
+              size: 13,
+              weight: 600
+            },
+            color: '#0F172A'
+          }
+        },
         tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          titleFont: {
+            size: 14,
+            weight: 700
+          },
+          bodyFont: {
+            size: 13,
+            weight: 600
+          },
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: true,
           callbacks: {
             label: function(context) {
               const idx = context.dataIndex;
@@ -1539,9 +1620,6 @@ function renderComparisons() {
               }
             }
           }
-        },
-        legend: {
-          position: 'bottom'
         }
       }
     }

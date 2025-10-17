@@ -1,4 +1,4 @@
-// src/modules/auth.js
+// src/modules/auth.js - NAPRAWIONY: Współdzielenie budżetu
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
@@ -134,22 +134,23 @@ export async function updateUserProfile(newDisplayName) {
 }
 
 /**
- * Wyślij zaproszenie do współdzielenia budżetu
- * Wysyła wiadomość do użytkownika zarejestrowanego pod danym emailem
+ * Wyślij zaproszenie do współdzielenia budżetu - NAPRAWIONE
  */
 export async function sendBudgetInvitation(recipientEmail) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
   
   try {
-    // Znajdź użytkownika po emailu
+    // Znajdź użytkownika po emailu - NAPRAWIONE: Bez direct ref
     const usersSnapshot = await get(ref(db, 'users'));
     let recipientUid = null;
+    let recipientProfile = null;
     
     if (usersSnapshot.exists()) {
       const users = usersSnapshot.val();
       for (const [uid, userData] of Object.entries(users)) {
         if (userData.profile && userData.profile.email === recipientEmail) {
           recipientUid = uid;
+          recipientProfile = userData.profile;
           break;
         }
       }
@@ -215,7 +216,7 @@ export async function sendBudgetInvitation(recipientEmail) {
       }
     }
     
-    // Utwórz wiadomość z zaproszeniem
+    // Utwórz wiadomość z zaproszeniem - NAPRAWIONE: Tylko do odbiorcy
     const messageRef = push(ref(db, `users/${recipientUid}/messages`));
     await set(messageRef, {
       id: messageRef.key,
@@ -229,16 +230,16 @@ export async function sendBudgetInvitation(recipientEmail) {
       createdAt: new Date().toISOString()
     });
     
+    console.log('✅ Zaproszenie wysłane pomyślnie do:', recipientEmail);
     return { success: true };
   } catch (error) {
-    console.error('Błąd wysyłania zaproszenia:', error);
+    console.error('❌ Błąd wysyłania zaproszenia:', error);
     throw error;
   }
 }
 
 /**
  * Akceptuj zaproszenie do budżetu
- * Tworzy połączenie współdzielenia między użytkownikami
  */
 export async function acceptBudgetInvitation(messageId, fromUserId) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
@@ -305,7 +306,6 @@ export async function acceptBudgetInvitation(messageId, fromUserId) {
 
 /**
  * Usuń użytkownika ze współdzielenia budżetu
- * Każdy użytkownik zachowuje kopię budżetu w momencie rozłączenia
  */
 export async function removeSharedUser(sharedUserId) {
   if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
@@ -336,11 +336,6 @@ export async function removeSharedUser(sharedUserId) {
     }
     
     // Wyślij wiadomość do usuniętego użytkownika
-    const removedUserProfile = await get(ref(db, `users/${sharedUserId}/profile`));
-    const removedUserName = removedUserProfile.exists() 
-      ? (removedUserProfile.val().displayName || removedUserProfile.val().email?.split('@')[0])
-      : 'Użytkownik';
-    
     await sendSystemMessage(
       sharedUserId,
       'sharing_removed',
