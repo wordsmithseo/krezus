@@ -1,538 +1,450 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Krezus - Planer Budżetu</title>
-  
-  <!-- Preconnect do Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Biblioteki zewnętrzne -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-  
-  <!-- Style -->
-  <link rel="stylesheet" href="/src/styles/main.css">
-  
-  <style>
-    /* Dodatkowe style dla powiadomień */
-    .notification-btn {
-      position: relative;
-    }
-    
-    .notification-badge {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      background: var(--danger);
-      color: white;
-      border-radius: 50%;
-      width: 22px;
-      height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: bold;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    /* Animacja migania dla zaktualizowanych elementów */
-    @keyframes flash-update {
-      0%, 100% { background-color: transparent; }
-      50% { background-color: rgba(255, 229, 100, 0.5); }
-    }
-    
-    .flash-update {
-      animation: flash-update 1s ease-in-out 2;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krezus - Inteligentny Budżet Osobisty</title>
+    <link rel="stylesheet" href="src/styles/main.css">
 </head>
 <body>
-  <!-- Kontener uwierzytelniania (widoczny tylko gdy użytkownik nie jest zalogowany) -->
-  <div id="authContainer" class="auth-container" style="display: none;">
-    <h2 id="authTitle">Logowanie</h2>
-    <form id="authForm">
-      <div class="form-group">
-        <label for="authEmail">Email</label>
-        <input 
-          type="email" 
-          id="authEmail" 
-          required
-          aria-label="Adres email"
-          aria-required="true"
-          placeholder="twoj@email.com"
-        />
-      </div>
-      
-      <div class="form-group">
-        <label for="authPassword">Hasło</label>
-        <input 
-          type="password" 
-          id="authPassword" 
-          required
-          minlength="6"
-          aria-label="Hasło użytkownika"
-          aria-required="true"
-          placeholder="Minimum 6 znaków"
-        />
-      </div>
-      
-      <button 
-        type="submit" 
-        id="authSubmit"
-        aria-label="Zaloguj się do aplikacji"
-      >
-        🔐 Zaloguj się
-      </button>
-    </form>
-    
-    <div class="auth-toggle">
-      <p>
-        <span id="authToggleText">Nie masz konta?</span>
-        <a href="#" id="authToggleLink">Zarejestruj się</a>
-      </p>
-    </div>
-  </div>
-
-  <!-- Kontener głównej aplikacji (widoczny tylko po zalogowaniu) -->
-  <div id="appContainer" style="display: none;">
-    <header>Krezus</header>
-    
-    <!-- Informacje o użytkowniku -->
-    <div class="user-info">
-      <div>
-        <span>Zalogowano jako: </span>
-        <span class="user-name user-display-name"></span>
-      </div>
-      <div class="user-actions">
-        <button 
-          id="messagesBtn" 
-          class="btn-secondary notification-btn"
-          aria-label="Wiadomości"
-          style="position: relative;"
-        >
-          💌 Wiadomości
-          <span id="messagesBadge" class="notification-badge" style="display: none;">0</span>
-        </button>
-        <button 
-          id="editProfileBtn" 
-          class="btn-secondary"
-          aria-label="Edytuj profil użytkownika"
-        >
-          👤 Edytuj profil
-        </button>
-        <button 
-          id="logoutBtn" 
-          class="btn-secondary"
-          aria-label="Wyloguj się z aplikacji"
-        >
-          🚪 Wyloguj
-        </button>
-      </div>
-    </div>
-    
-    <!-- Loader (wyświetlany podczas ładowania danych) -->
-    <div id="loader" class="loader-overlay">
-      <div class="spinner"></div>
-    </div>
-    
-    <!-- NOWA NAWIGACJA - Lepsze nazwy i organizacja -->
-    <nav class="navbar" role="navigation" aria-label="Główna nawigacja">
-      <div class="nav-section">
-        <span class="nav-section-title">📊 Przegląd</span>
-        <a href="#summary-section">Podsumowanie budżetu</a>
-        <a href="#category-chart">Wykres kategorii</a>
-        <a href="#comparisons">Porównanie okresów</a>
-      </div>
-      
-      <div class="nav-section">
-        <span class="nav-section-title">💰 Finanse</span>
-        <a href="#sources">Źródła finansów</a>
-        <a href="#income-history">Historia przychodów</a>
-      </div>
-      
-      <div class="nav-section">
-        <span class="nav-section-title">💸 Wydatki</span>
-        <a href="#add-expense">Dodaj wydatek</a>
-        <a href="#expense-history">Historia wydatków</a>
-        <a href="#categories">Zarządzaj kategoriami</a>
-      </div>
-      
-      <div class="nav-section">
-        <span class="nav-section-title">⚙️ Ustawienia</span>
-        <a href="#set-end-date">Okresy budżetowe</a>
-        <a href="#saving-goal">Cel oszczędności</a>
-      </div>
-    </nav>
-
-    <main>
-      <!-- Podsumowanie -->
-      <section id="summary-section" class="section">
-        <h2>📊 Podsumowanie budżetu</h2>
-        <div id="summary"></div>
-        <div id="anomalyMessage" style="margin-top:15px;padding:10px;border:1px solid #c0392b;background-color:#ffe6e6;color:#c0392b;display:none;border-radius:5px;"></div>
+    <!-- SEKCJA LOGOWANIA -->
+    <div id="authSection" class="auth-container">
+        <h1 class="text-center" style="color: var(--primary); margin-bottom: 30px;">Krezus 💰</h1>
         
-        <!-- Prognozowane limity -->
-        <div id="forecastSummaryContainer" style="margin-top:20px;">
-          <h3 id="forecastSummaryHeader" style="margin-bottom:10px; font-size:1.1rem; color: var(--primary); display:flex; align-items:center; gap:8px;">
-            🔮 Prognozowane limity
-          </h3>
-          <div id="forecastSummary" class="summary-items"></div>
+        <div class="auth-tabs">
+            <button class="tab-btn active" onclick="showAuthTab('login')">Logowanie</button>
+            <button class="tab-btn" onclick="showAuthTab('register')">Rejestracja</button>
         </div>
-        
-        <!-- Wskaźnik tempa wydatków -->
-        <div id="spendingGaugeContainer"></div>
-      </section>
 
-      <!-- Źródła finansów -->
-      <section id="sources" class="section">
-        <h2>💼 Źródła finansów</h2>
-        <div id="sourcesSummary">
-          <p style="font-size:1.1rem; margin-bottom:8px;">
-            <strong>Dostępne środki:</strong> <span id="availableFunds">0.00</span> PLN
-          </p>
-          <p style="font-size:0.95rem; margin-bottom:15px;">
-            <strong>Data ostatniego dodania środków:</strong> <span id="lastIncomeDate">Brak</span>
-          </p>
-          
-          <!-- Formularz edycji stanu (tylko admin) -->
-          <div id="editFundsContainer" style="display:none; margin-bottom:15px;">
-            <label for="editFundsAmount" style="font-weight:600;">Nowa kwota dostępna (PLN):</label>
-            <input 
-              type="number" 
-              id="editFundsAmount" 
-              min="0" 
-              step="0.01"
-              aria-label="Nowa kwota dostępnych środków"
-            />
-            <div style="display:flex; gap:10px;">
-              <button 
-                type="button" 
-                id="confirmEditFunds"
-                aria-label="Zatwierdź edycję stanu środków"
-              >
-                Zatwierdź
-              </button>
-              <button 
-                type="button" 
-                id="cancelEditFunds" 
-                class="btn-secondary"
-                aria-label="Anuluj edycję stanu środków"
-              >
-                Anuluj
-              </button>
+        <!-- Formularz logowania -->
+        <div id="loginTab" class="tab-content active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Hasło</label>
+                    <input type="password" name="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Zaloguj się</button>
+            </form>
+        </div>
+
+        <!-- Formularz rejestracji -->
+        <div id="registerTab" class="tab-content">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Nazwa użytkownika</label>
+                    <input type="text" name="registerDisplayName" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>Hasło (min. 6 znaków)</label>
+                    <input type="password" name="registerPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Zarejestruj się</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- GŁÓWNA APLIKACJA -->
+    <div id="appSection" class="hidden">
+        <!-- Nagłówek -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="app-title">
+                    <h1>Krezus</h1>
+                    <span id="appVersion" class="app-version"></span>
+                </div>
+                <div class="header-user">
+                    <div class="user-info">
+                        <span id="username"></span>
+                    </div>
+                    <button class="notification-btn" onclick="openMessages()" title="Wiadomości">
+                        ✉️
+                        <span id="messagesBadge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+                    <button id="profileBtn" class="btn-profile" onclick="openProfile()">
+                        👤 Profil
+                    </button>
+                    <button class="btn-logout" onclick="handleLogout()">Wyloguj</button>
+                </div>
             </div>
-          </div>
-          
-          <!-- Formularz dodawania środków -->
-          <div id="addFundsContainer" style="display:none; margin-bottom:15px;">
-            <label for="addFundsAmount">Kwota (PLN):</label>
-            <input 
-              type="number" 
-              id="addFundsAmount" 
-              min="0" 
-              step="0.01"
-              required
-              aria-label="Kwota nowych środków"
-              aria-required="true"
-            />
-            
-            <label for="addFundsDesc">Opis:</label>
-            <input 
-              type="text" 
-              id="addFundsDesc" 
-              placeholder="Np. pensja, dodatkowy dochód"
-              aria-label="Opis źródła finansów"
-            />
-            
-            <label for="addFundsType">Typ:</label>
-            <select id="addFundsType" aria-label="Typ transakcji">
-              <option value="normal">Zwykły</option>
-              <option value="planned">Planowany</option>
-            </select>
-            
-            <div id="addFundsDateContainer" style="display:none;">
-              <label for="addFundsDate">Data:</label>
-              <input 
-                type="date" 
-                id="addFundsDate"
-                aria-label="Data planowanego wpływu"
-              />
+        </header>
+
+        <!-- Nawigacja -->
+        <nav class="app-nav">
+            <div class="nav-container">
+                <div class="nav-menu">
+                    <button class="nav-btn active" onclick="showSection('summarySection')">📊 Podsumowanie</button>
+                    <button class="nav-btn" onclick="showSection('envelopeSection')">📩 Koperta dnia</button>
+                    <button class="nav-btn" onclick="showSection('sourcesSection')">💰 Przychody</button>
+                    <button class="nav-btn" onclick="showSection('expensesSection')">💸 Wydatki</button>
+                    <button class="nav-btn" onclick="showSection('categoriesSection')">🏷️ Kategorie</button>
+                    <button class="nav-btn" onclick="showSection('analyticsSection')">📈 Analityka</button>
+                    <button class="nav-btn" onclick="showSection('settingsSection')">⚙️ Ustawienia</button>
+                </div>
             </div>
+        </nav>
+
+        <!-- Container -->
+        <div class="container">
+            <!-- SEKCJA: Podsumowanie budżetu -->
+            <section id="summarySection" class="section active">
+                <div class="section-card">
+                    <h2>💰 Podsumowanie budżetu</h2>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card success">
+                            <div class="stat-label">Dostępne środki</div>
+                            <div class="stat-value">
+                                <span id="availableFunds">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-label">Cel oszczędności (rezerwa)</div>
+                            <div class="stat-value">
+                                <span id="savingGoal">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Do wydania</div>
+                            <div class="stat-value">
+                                <span id="toSpend">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>📅 Limity dzienne</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Okres 1 (Limit dzienny)</div>
+                            <div class="stat-value">
+                                <span id="dailyLimit1">0.00</span>
+                                <span class="stat-unit">zł/dzień</span>
+                            </div>
+                            <div class="stat-label mt-10">Pozostało <span id="daysLeft1">0</span> dni</div>
+                        </div>
+                        <div id="limit2Section" class="stat-card" style="display: none;">
+                            <div class="stat-label">Okres 2 (Limit dzienny)</div>
+                            <div class="stat-value">
+                                <span id="dailyLimit2">0.00</span>
+                                <span class="stat-unit">zł/dzień</span>
+                            </div>
+                            <div class="stat-label mt-10">Pozostało <span id="daysLeft2">0</span> dni</div>
+                        </div>
+                    </div>
+
+                    <h3>🔮 Prognozy (z planowanymi)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Prognozowane dostępne środki</div>
+                            <div class="stat-value">
+                                <span id="projectedAvailable">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Prognozowany limit (okres 1)</div>
+                            <div class="stat-value">
+                                <span id="projectedLimit1">0.00</span>
+                                <span class="stat-unit">zł/dzień</span>
+                            </div>
+                        </div>
+                        <div id="projectedLimit2Section" class="stat-card" style="display: none;">
+                            <div class="stat-label">Prognozowany limit (okres 2)</div>
+                            <div class="stat-value">
+                                <span id="projectedLimit2">0.00</span>
+                                <span class="stat-unit">zł/dzień</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>📊 Planowane transakcje</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card success">
+                            <div class="stat-label">Planowane przychody</div>
+                            <div class="stat-value">
+                                <span id="futureIncome">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-label">Planowane wydatki</div>
+                            <div class="stat-value">
+                                <span id="futureExpense">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Koperta dnia -->
+            <section id="envelopeSection" class="section">
+                <div class="section-card">
+                    <h2>📩 Koperta dnia</h2>
+                    
+                    <div class="envelope-container">
+                        <div class="stat-label">Koperta dnia:</div>
+                        <div class="envelope-amount">
+                            <span id="envelopeAmount">0.00</span> zł
+                        </div>
+                        
+                        <div class="spending-gauge">
+                            <div id="spendingGauge" class="gauge-fill" style="width: 0%"></div>
+                        </div>
+                        
+                        <div class="envelope-details">
+                            <div>
+                                <strong>Wydano:</strong> <span id="envelopeSpent">0.00</span> zł
+                            </div>
+                            <div>
+                                <strong>Pozostało:</strong> <span id="envelopeRemaining">0.00</span> zł
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h3>💼 Pozostałe środki ze źródeł</h3>
+                    <div id="sourcesRemainingList"></div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Źródła finansów (Przychody) -->
+            <section id="sourcesSection" class="section">
+                <div class="section-card">
+                    <h2 id="incomeFormTitle">💰 Dodaj przychód</h2>
+                    <form id="incomeForm" onsubmit="addIncome(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kwota (zł)</label>
+                                <input type="number" name="incomeAmount" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Data</label>
+                                <input type="date" id="incomeDate" name="incomeDate" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Źródło</label>
+                            <input type="text" name="incomeSource" placeholder="np. Wynagrodzenie, Premia">
+                        </div>
+                        <div class="form-group">
+                            <label>Opis (opcjonalnie)</label>
+                            <input type="text" name="incomeDescription" placeholder="Dodatkowe informacje">
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="incomeRealised" name="incomeRealised">
+                            <label for="incomeRealised">Zrealizowany</label>
+                        </div>
+                        <button type="submit" class="btn btn-success mt-20">Zapisz przychód</button>
+                    </form>
+                </div>
+
+                <div class="section-card">
+                    <h3>📋 Historia przychodów</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Kwota</th>
+                                    <th>Źródło</th>
+                                    <th>Opis</th>
+                                    <th>Status</th>
+                                    <th>Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sourcesTableBody">
+                                <tr><td colspan="6" class="empty-state">Brak przychodów do wyświetlenia</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-container">
+                        <div id="incomesPagination"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Wydatki -->
+            <section id="expensesSection" class="section">
+                <div class="section-card">
+                    <h2 id="expenseFormTitle">💸 Dodaj wydatek</h2>
+                    <form id="expenseForm" onsubmit="addExpense(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kwota (zł)</label>
+                                <input type="number" name="expenseAmount" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Data</label>
+                                <input type="date" id="expenseDate" name="expenseDate" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kategoria</label>
+                                <select id="expenseCategory" name="expenseCategory" required>
+                                    <option value="">Wybierz kategorię</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Źródło</label>
+                                <input type="text" name="expenseSource" placeholder="Skąd wzięto środki">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Opis</label>
+                            <input type="text" name="expenseDescription" placeholder="Na co wydano">
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="expenseRealised" name="expenseRealised">
+                            <label for="expenseRealised">Zrealizowany</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
+                    </form>
+                </div>
+
+                <div class="section-card">
+                    <h3>📋 Historia wydatków</h3>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Kwota</th>
+                                    <th>Kategoria</th>
+                                    <th>Opis</th>
+                                    <th>Źródło</th>
+                                    <th>Status</th>
+                                    <th>Akcje</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesTableBody">
+                                <tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-container">
+                        <div id="expensesPagination"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Kategorie -->
+            <section id="categoriesSection" class="section">
+                <div class="section-card">
+                    <h2>🏷️ Zarządzaj kategoriami</h2>
+                    
+                    <div class="form-group">
+                        <label>Nowa kategoria</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="newCategoryName" placeholder="Nazwa kategorii" style="flex: 1;">
+                            <button class="btn btn-success" onclick="addCategory()">Dodaj</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-20">
+                        <h3>📋 Lista kategorii</h3>
+                        <div id="categoriesList"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Analityka -->
+            <section id="analyticsSection" class="section">
+                <div class="section-card">
+                    <h2>📈 Analiza wydatków</h2>
+                    
+                    <h3>🏆 Top 5 kategorii (ostatnie 30 dni)</h3>
+                    <div id="topCategoriesList"></div>
+                </div>
+
+                <div class="section-card">
+                    <h3>📊 Porównanie tygodniowe</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Ostatnie 7 dni</div>
+                            <div class="stat-value">
+                                <span id="last7Days">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Poprzednie 7 dni</div>
+                            <div class="stat-value">
+                                <span id="prev7Days">0.00</span>
+                                <span class="stat-unit">zł</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Zmiana</div>
+                            <div class="stat-value">
+                                <span id="weeklyChange">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h3>⚠️ Wykryte anomalie</h3>
+                    <div id="anomaliesList"></div>
+                </div>
+            </section>
+
+            <!-- SEKCJA: Ustawienia -->
+            <section id="settingsSection" class="section">
+                <div class="section-card">
+                    <h2>⚙️ Ustawienia budżetu</h2>
+                    
+                    <form onsubmit="saveSettings(event)">
+                        <div class="form-group">
+                            <label>Data końcowa okresu 1 (główny okres)</label>
+                            <input type="date" name="endDate1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data końcowa okresu 2 (opcjonalnie)</label>
+                            <input type="date" name="endDate2">
+                            <small class="text-muted">Pozostaw puste jeśli chcesz używać tylko jednego okresu</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Cel oszczędności / Rezerwa (zł)</label>
+                            <input type="number" name="savingGoal" step="0.01" min="0" value="0">
+                            <small class="text-muted">Kwota która zostanie odjęta od dostępnych środków</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Skrypty -->
+    <script type="module" src="src/app.js"></script>
+    
+    <script>
+        // Przełączanie tabów autoryzacji
+        function showAuthTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            <div style="display:flex; gap:10px;">
-              <button 
-                type="button" 
-                id="confirmAddFunds"
-                aria-label="Zatwierdź dodanie środków"
-              >
-                Zatwierdź
-              </button>
-              <button 
-                type="button" 
-                id="cancelAddFunds" 
-                class="btn-secondary"
-                aria-label="Anuluj dodawanie środków"
-              >
-                Anuluj
-              </button>
-            </div>
-          </div>
-          
-          <!-- Przyciski akcji -->
-          <div id="sourcesButtons" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button 
-              type="button" 
-              id="showAddFundsForm"
-              aria-label="Pokaż formularz dodawania środków"
-            >
-              ➕ Dodaj środki
-            </button>
-            <button 
-              type="button" 
-              id="editFundsButton" 
-              style="display:none;"
-              aria-label="Edytuj stan dostępnych środków"
-            >
-              ✏️ Edytuj stan
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Historia źródeł finansów -->
-      <section id="income-history" class="section">
-        <h2>🕐 Historia przychodów</h2>
-        <div style="overflow-x: auto;">
-          <table id="incomeHistoryTable" class="history-table">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Godzina</th>
-                <th>Opis</th>
-                <th>Kwota (PLN)</th>
-                <th>Akcja</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div id="incomePagination" class="pagination-controls"></div>
-      </section>
-
-      <!-- Dodaj wydatek -->
-      <section id="add-expense" class="section">
-        <h2>🛒 Dodaj nowy wydatek</h2>
-        <form id="expenseForm">
-          <label for="expenseDate">Data:</label>
-          <input 
-            type="date" 
-            id="expenseDate" 
-            required
-            aria-label="Data wydatku"
-            aria-required="true"
-          />
-          
-          <label for="expenseCategory">Kategoria:</label>
-          <input 
-            list="categoryList" 
-            id="expenseCategory" 
-            required
-            aria-label="Wybierz lub wpisz kategorię"
-            aria-required="true"
-          />
-          <datalist id="categoryList"></datalist>
-          <div id="categorySuggestions" class="suggestions-container"></div>
-          
-          <label for="expenseQuantity">Ilość:</label>
-          <input 
-            type="number" 
-            id="expenseQuantity" 
-            min="1" 
-            value="1" 
-            required
-            aria-label="Ilość"
-            aria-required="true"
-          />
-          
-          <label for="expenseAmount">Kwota (PLN):</label>
-          <input 
-            type="number" 
-            id="expenseAmount" 
-            min="0" 
-            step="0.01" 
-            required
-            pattern="[0-9]+(\.[0-9]{1,2})?"
-            aria-label="Kwota wydatku"
-            aria-required="true"
-          />
-          
-          <label for="expenseDesc">Opis:</label>
-          <input 
-            type="text" 
-            id="expenseDesc" 
-            placeholder="Np. zakupy spożywcze"
-            aria-label="Opis wydatku"
-          />
-          <div id="descriptionSuggestions" class="suggestions-container"></div>
-          
-          <label for="expenseType">Typ:</label>
-          <select id="expenseType" aria-label="Typ transakcji">
-            <option value="normal">Zwykły</option>
-            <option value="planned">Planowany</option>
-          </select>
-          
-          <button 
-            type="submit"
-            aria-label="Dodaj wydatek do budżetu"
-          >
-            ➖ Dodaj wydatek
-          </button>
-        </form>
-      </section>
-
-      <!-- Wykres kategorii -->
-      <section id="category-chart" class="section">
-        <h2>📈 Wykres wydatków wg kategorii</h2>
-        <div class="category-controls">
-          <label for="categoryMonthSelect">Miesiąc:</label>
-          <select id="categoryMonthSelect" aria-label="Wybierz miesiąc">
-            <option value="">Wszystkie</option>
-          </select>
-        </div>
-        <div style="position: relative; height: 400px;">
-          <canvas id="categoryChart"></canvas>
-        </div>
-        <div id="chartLegend" class="chart-legend"></div>
-      </section>
-
-      <!-- Porównania -->
-      <section id="comparisons" class="section">
-        <h2>📊 Porównanie wydatków w czasie</h2>
-        <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
-          <label for="comparisonPeriod">Okres:</label>
-          <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
-            <option value="weekly">Tygodniowo (4 tyg.)</option>
-            <option value="monthly">Miesięcznie (6 mies.)</option>
-          </select>
-        </div>
-        <div style="height:400px;">
-          <canvas id="comparisonsChart"></canvas>
-        </div>
-        <div id="comparisonsTable" style="overflow-x:auto;margin-top:15px;"></div>
-      </section>
-
-      <!-- Ustaw końce okresu budżetowego -->
-      <section id="set-end-date" class="section">
-        <h2>📆 Okresy budżetowe</h2>
-        <form id="endDatesForm">
-          <label for="budgetEndDate1">Data końcowa 1:</label>
-          <input 
-            type="date" 
-            id="budgetEndDate1" 
-            required 
-            disabled
-            aria-label="Pierwsza data końcowa okresu budżetowego"
-          />
-          
-          <label for="budgetEndDate2">Data końcowa 2:</label>
-          <input 
-            type="date" 
-            id="budgetEndDate2" 
-            required 
-            disabled
-            aria-label="Druga data końcowa okresu budżetowego"
-          />
-          
-          <button 
-            id="setEndDatesButton" 
-            type="submit" 
-            disabled
-            aria-label="Ustaw daty końcowe okresów budżetowych"
-          >
-            📅 Ustaw daty końcowe
-          </button>
-        </form>
-      </section>
-
-      <!-- Ustaw cel oszczędności -->
-      <section id="saving-goal" class="section">
-        <h2>🏖 Cel oszczędności</h2>
-        <form id="savingGoalForm">
-          <label for="savingGoal">Kwota do oszczędzenia (PLN):</label>
-          <input 
-            type="number" 
-            id="savingGoal" 
-            min="0" 
-            step="0.01"
-            pattern="[0-9]+(\.[0-9]{1,2})?"
-            aria-label="Kwota celu oszczędności"
-          />
-          <button 
-            type="submit"
-            aria-label="Ustaw cel oszczędności"
-          >
-            💰 Ustaw cel
-          </button>
-        </form>
-      </section>
-
-      <!-- Twoje kategorie -->
-      <section id="categories" class="section">
-        <h2>📂 Zarządzaj kategoriami wydatków</h2>
-        <div id="categoriesSection">
-          <div style="overflow-x: auto;">
-            <table id="categoriesTable">
-              <thead>
-                <tr>
-                  <th>Kategoria</th>
-                  <th>Wydatki (PLN)</th>
-                  <th>Edytuj</th>
-                  <th>Usuń</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- Historia wydatków -->
-      <section id="expense-history" class="section">
-        <h2>🧾 Historia wszystkich wydatków</h2>
-        <div style="overflow-x: auto;">
-          <table id="historyTable" class="history-table">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Godzina</th>
-                <th>Kategoria</th>
-                <th>Opis</th>
-                <th>Ilość</th>
-                <th>Kwota (PLN)</th>
-                <th>Edytuj</th>
-                <th>Usuń</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div id="expensePagination" class="pagination-controls"></div>
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer-info">
-      <p>Autor: Sławomir Sprawski | Wersja 2.0</p>
-    </footer>
-  </div>
-
-  <!-- Główny skrypt aplikacji (moduł ES6) -->
-  <script type="module" src="/src/app.js"></script>
+            if (tab === 'login') {
+                document.querySelector('.tab-btn:first-child').classList.add('active');
+                document.getElementById('loginTab').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:last-child').classList.add('active');
+                document.getElementById('registerTab').classList.add('active');
+            }
+        }
+    </script>
 </body>
 </html>

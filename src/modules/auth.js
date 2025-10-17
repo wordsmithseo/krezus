@@ -1,70 +1,62 @@
-// src/modules/auth.js - NAPRAWIONY: Współdzielenie budżetu
+// src/modules/auth.js - Moduł autoryzacji z zarządzaniem zapro szeniami
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
   updateProfile
 } from 'firebase/auth';
-import { ref, get, set, push, update, remove, onValue } from 'firebase/database';
-import { auth, db } from '../config/firebase.js';
+
+import { ref, get, set, update, onValue, off } from 'firebase/database';
+import { db } from '../config/firebase.js';
+
+const auth = getAuth();
+
+let currentUser = null;
+let messagesUnsubscribe = null;
 
 /**
- * Stan uwierzytelnienia użytkownika
+ * Rejestracja nowego użytkownika
  */
-let currentUser = null;
-let displayName = '';
-let unreadMessagesCount = 0;
-
-// Listenery
-let messagesListener = null;
+export async function registerUser(email, password, displayName) {
+  try {
+    console.log('📝 Rejestracja użytkownika:', email);
+    
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Ustaw nazwę użytkownika
+    await updateProfile(user, { displayName });
+    
+    // Zapisz nazwę użytkownika w bazie danych
+    await set(ref(db, `users/${user.uid}/profile`), {
+      displayName,
+      email,
+      createdAt: new Date().toISOString()
+    });
+    
+    console.log('✅ Użytkownik zarejestrowany:', displayName);
+    return user;
+  } catch (error) {
+    console.error('❌ Błąd rejestracji:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
 
 /**
  * Logowanie użytkownika
  */
 export async function loginUser(email, password) {
   try {
+    console.log('🔐 Logowanie użytkownika:', email);
+    
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    currentUser = userCredential.user;
+    console.log('✅ Użytkownik zalogowany:', userCredential.user.displayName || email);
     
-    await loadUserProfile();
-    setupNotificationListeners();
-    
-    return {
-      success: true,
-      user: currentUser,
-      displayName
-    };
+    return userCredential.user;
   } catch (error) {
-    console.error('Błąd logowania:', error);
-    throw new Error(getAuthErrorMessage(error.code));
-  }
-}
-
-/**
- * Rejestracja nowego użytkownika
- */
-export async function registerUser(email, password) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    currentUser = userCredential.user;
-    
-    await set(ref(db, `users/${currentUser.uid}/profile`), {
-      email: email,
-      displayName: email.split('@')[0],
-      createdAt: new Date().toISOString()
-    });
-    
-    await loadUserProfile();
-    setupNotificationListeners();
-    
-    return {
-      success: true,
-      user: currentUser,
-      displayName
-    };
-  } catch (error) {
-    console.error('Błąd rejestracji:', error);
+    console.error('❌ Błąd logowania:', error);
     throw new Error(getAuthErrorMessage(error.code));
   }
 }
@@ -74,446 +66,43 @@ export async function registerUser(email, password) {
  */
 export async function logoutUser() {
   try {
-    clearNotificationListeners();
+    console.log('👋 Wylogowywanie użytkownika');
+    
+    // Wyczyść listener wiadomości
+    if (messagesUnsubscribe) {
+      messagesUnsubscribe();
+      messagesUnsubscribe = null;
+    }
+    
     await signOut(auth);
     currentUser = null;
-    displayName = '';
-    unreadMessagesCount = 0;
-    return { success: true };
+    
+    console.log('✅ Użytkownik wylogowany');
   } catch (error) {
-    console.error('Błąd wylogowania:', error);
-    throw new Error('Nie udało się wylogować');
-  }
-}
-
-/**
- * Pobierz profil użytkownika z bazy danych
- */
-export async function loadUserProfile() {
-  if (!currentUser) return;
-  
-  try {
-    const snapshot = await get(ref(db, `users/${currentUser.uid}/profile`));
-    if (snapshot.exists()) {
-      const profile = snapshot.val();
-      displayName = profile.displayName || currentUser.email.split('@')[0];
-    } else {
-      displayName = currentUser.email.split('@')[0];
-    }
-  } catch (error) {
-    console.error('Błąd ładowania profilu:', error);
-    displayName = currentUser.email.split('@')[0];
-  }
-}
-
-/**
- * Aktualizuj profil użytkownika
- */
-export async function updateUserProfile(newDisplayName) {
-  if (!currentUser) {
-    throw new Error('Brak zalogowanego użytkownika');
-  }
-  
-  try {
-    await updateProfile(currentUser, {
-      displayName: newDisplayName
-    });
-    
-    await set(ref(db, `users/${currentUser.uid}/profile`), {
-      email: currentUser.email,
-      displayName: newDisplayName,
-      updatedAt: new Date().toISOString()
-    });
-    
-    displayName = newDisplayName;
-    return { success: true, displayName };
-  } catch (error) {
-    console.error('Błąd aktualizacji profilu:', error);
-    throw new Error('Nie udało się zaktualizować profilu');
-  }
-}
-
-/**
- * Wyślij zaproszenie do współdzielenia budżetu - NAPRAWIONE
- */
-export async function sendBudgetInvitation(recipientEmail) {
-  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
-  
-  try {
-    // Znajdź użytkownika po emailu - NAPRAWIONE: Bez direct ref
-    const usersSnapshot = await get(ref(db, 'users'));
-    let recipientUid = null;
-    let recipientProfile = null;
-    
-    if (usersSnapshot.exists()) {
-      const users = usersSnapshot.val();
-      for (const [uid, userData] of Object.entries(users)) {
-        if (userData.profile && userData.profile.email === recipientEmail) {
-          recipientUid = uid;
-          recipientProfile = userData.profile;
-          break;
-        }
-      }
-    }
-    
-    if (!recipientUid) {
-      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
-    }
-    
-    if (recipientUid === currentUser.uid) {
-      throw new Error('Nie możesz wysłać zaproszenia do samego siebie');
-    }
-    
-    // Sprawdź czy użytkownik już współdzieli budżet
-    const sharedUsersSnapshot = await get(ref(db, `users/${currentUser.uid}/sharedWith`));
-    if (sharedUsersSnapshot.exists()) {
-      const sharedUsers = Object.values(sharedUsersSnapshot.val());
-      if (sharedUsers.some(u => u.uid === recipientUid)) {
-        throw new Error('Ten użytkownik już współdzieli z Tobą budżet');
-      }
-    }
-    
-    // Sprawdź czy już wysłano zaproszenie
-    const recipientMessages = await get(ref(db, `users/${recipientUid}/messages`));
-    if (recipientMessages.exists()) {
-      const messages = Object.values(recipientMessages.val());
-      const existingInvite = messages.find(m => 
-        m.type === 'budget_invitation' && 
-        m.fromUserId === currentUser.uid && 
-        (!m.status || m.status === 'pending')
-      );
-      if (existingInvite) {
-        throw new Error('Zaproszenie dla tego użytkownika już oczekuje na odpowiedź');
-      }
-    }
-    
-    // Pobierz statystyki budżetu nadawcy
-    const senderBudgetSnapshot = await get(ref(db, `users/${currentUser.uid}/budget`));
-    let budgetStats = {
-      totalIncome: 0,
-      totalExpenses: 0,
-      categoriesCount: 0,
-      savingGoal: 0
-    };
-    
-    if (senderBudgetSnapshot.exists()) {
-      const budget = senderBudgetSnapshot.val();
-      
-      if (budget.incomes) {
-        budgetStats.totalIncome = Object.values(budget.incomes).reduce((sum, inc) => sum + (inc.amount || 0), 0);
-      }
-      
-      if (budget.expenses) {
-        budgetStats.totalExpenses = Object.values(budget.expenses).reduce((sum, exp) => sum + ((exp.amount || 0) * (exp.quantity || 1)), 0);
-      }
-      
-      if (budget.categories) {
-        budgetStats.categoriesCount = Object.keys(budget.categories).length;
-      }
-      
-      if (budget.savingGoal) {
-        budgetStats.savingGoal = budget.savingGoal;
-      }
-    }
-    
-    // Utwórz wiadomość z zaproszeniem - NAPRAWIONE: Tylko do odbiorcy
-    const messageRef = push(ref(db, `users/${recipientUid}/messages`));
-    await set(messageRef, {
-      id: messageRef.key,
-      type: 'budget_invitation',
-      fromUserId: currentUser.uid,
-      fromEmail: currentUser.email,
-      fromDisplayName: displayName,
-      budgetStats: budgetStats,
-      message: `${displayName} (${currentUser.email}) zaprasza Cię do współdzielenia budżetu.`,
-      read: false,
-      createdAt: new Date().toISOString()
-    });
-    
-    console.log('✅ Zaproszenie wysłane pomyślnie do:', recipientEmail);
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Błąd wysyłania zaproszenia:', error);
+    console.error('❌ Błąd wylogowania:', error);
     throw error;
   }
 }
 
 /**
- * Akceptuj zaproszenie do budżetu
- */
-export async function acceptBudgetInvitation(messageId, fromUserId) {
-  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
-  
-  try {
-    // Skopiuj budżet nadawcy do odbiorcy
-    const senderBudgetSnapshot = await get(ref(db, `users/${fromUserId}/budget`));
-    
-    if (senderBudgetSnapshot.exists()) {
-      const senderBudget = senderBudgetSnapshot.val();
-      await set(ref(db, `users/${currentUser.uid}/budget`), senderBudget);
-    }
-    
-    // Pobierz dane nadawcy
-    const senderProfileSnapshot = await get(ref(db, `users/${fromUserId}/profile`));
-    const senderProfile = senderProfileSnapshot.exists() ? senderProfileSnapshot.val() : {};
-    
-    // Dodaj nadawcę do listy współdzielących u odbiorcy
-    const sharedUserData = {
-      uid: fromUserId,
-      email: senderProfile.email || '',
-      displayName: senderProfile.displayName || senderProfile.email?.split('@')[0] || 'Użytkownik',
-      addedAt: new Date().toISOString()
-    };
-    
-    const receiverSharedRef = push(ref(db, `users/${currentUser.uid}/sharedWith`));
-    await set(receiverSharedRef, sharedUserData);
-    
-    // Dodaj odbiorcę do listy współdzielących u nadawcy
-    const receiverProfileSnapshot = await get(ref(db, `users/${currentUser.uid}/profile`));
-    const receiverProfile = receiverProfileSnapshot.exists() ? receiverProfileSnapshot.val() : {};
-    
-    const receiverSharedUserData = {
-      uid: currentUser.uid,
-      email: receiverProfile.email || currentUser.email,
-      displayName: receiverProfile.displayName || displayName,
-      addedAt: new Date().toISOString()
-    };
-    
-    const senderSharedRef = push(ref(db, `users/${fromUserId}/sharedWith`));
-    await set(senderSharedRef, receiverSharedUserData);
-    
-    // Oznacz wiadomość jako przeczytaną i zaakceptowaną
-    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
-      read: true,
-      status: 'accepted',
-      acceptedAt: new Date().toISOString()
-    });
-    
-    // Wyślij wiadomość do nadawcy
-    await sendSystemMessage(
-      fromUserId,
-      'invitation_accepted',
-      `${displayName} (${currentUser.email}) zaakceptował(a) Twoje zaproszenie do współdzielenia budżetu.`,
-      { acceptedBy: currentUser.email }
-    );
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Błąd akceptowania zaproszenia:', error);
-    throw error;
-  }
-}
-
-/**
- * Usuń użytkownika ze współdzielenia budżetu
- */
-export async function removeSharedUser(sharedUserId) {
-  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
-  
-  try {
-    // Usuń użytkownika z mojej listy współdzielących
-    const mySharedSnapshot = await get(ref(db, `users/${currentUser.uid}/sharedWith`));
-    if (mySharedSnapshot.exists()) {
-      const sharedUsers = mySharedSnapshot.val();
-      for (const [key, user] of Object.entries(sharedUsers)) {
-        if (user.uid === sharedUserId) {
-          await remove(ref(db, `users/${currentUser.uid}/sharedWith/${key}`));
-          break;
-        }
-      }
-    }
-    
-    // Usuń mnie z listy współdzielących tego użytkownika
-    const theirSharedSnapshot = await get(ref(db, `users/${sharedUserId}/sharedWith`));
-    if (theirSharedSnapshot.exists()) {
-      const sharedUsers = theirSharedSnapshot.val();
-      for (const [key, user] of Object.entries(sharedUsers)) {
-        if (user.uid === currentUser.uid) {
-          await remove(ref(db, `users/${sharedUserId}/sharedWith/${key}`));
-          break;
-        }
-      }
-    }
-    
-    // Wyślij wiadomość do usuniętego użytkownika
-    await sendSystemMessage(
-      sharedUserId,
-      'sharing_removed',
-      `${displayName} (${currentUser.email}) zakończył(a) współdzielenie budżetu z Tobą. Zachowałeś kopię budżetu z momentu rozłączenia.`,
-      { removedBy: currentUser.email }
-    );
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Błąd usuwania współdzielenia:', error);
-    throw error;
-  }
-}
-
-/**
- * Pobierz listę użytkowników współdzielących budżet
- */
-export async function getSharedUsers() {
-  if (!currentUser) return [];
-  
-  try {
-    const snapshot = await get(ref(db, `users/${currentUser.uid}/sharedWith`));
-    if (!snapshot.exists()) return [];
-    
-    const sharedUsers = snapshot.val();
-    return Object.values(sharedUsers);
-  } catch (error) {
-    console.error('Błąd pobierania współdzielących użytkowników:', error);
-    return [];
-  }
-}
-
-/**
- * Odrzuć zaproszenie do budżetu
- */
-export async function rejectBudgetInvitation(messageId, fromUserId) {
-  if (!currentUser) throw new Error('Brak zalogowanego użytkownika');
-  
-  try {
-    // Oznacz wiadomość jako przeczytaną i odrzuconą
-    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
-      read: true,
-      status: 'rejected',
-      rejectedAt: new Date().toISOString()
-    });
-    
-    // Wyślij wiadomość do nadawcy
-    await sendSystemMessage(
-      fromUserId,
-      'invitation_rejected',
-      `${displayName} (${currentUser.email}) odrzucił(a) Twoje zaproszenie do współdzielenia budżetu.`,
-      { rejectedBy: currentUser.email }
-    );
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Błąd odrzucania zaproszenia:', error);
-    throw error;
-  }
-}
-
-/**
- * Wyślij wiadomość systemową
- */
-async function sendSystemMessage(recipientUid, type, message, metadata = {}) {
-  const messageRef = push(ref(db, `users/${recipientUid}/messages`));
-  await set(messageRef, {
-    id: messageRef.key,
-    type,
-    message,
-    metadata,
-    read: false,
-    createdAt: new Date().toISOString()
-  });
-}
-
-/**
- * Pobierz wszystkie wiadomości
- */
-export async function getMessages() {
-  if (!currentUser) return [];
-  
-  try {
-    const snapshot = await get(ref(db, `users/${currentUser.uid}/messages`));
-    if (!snapshot.exists()) return [];
-    
-    const messages = snapshot.val();
-    return Object.values(messages).sort((a, b) => 
-      new Date(b.createdAt) - new Date(a.createdAt)
-    );
-  } catch (error) {
-    console.error('Błąd pobierania wiadomości:', error);
-    return [];
-  }
-}
-
-/**
- * Oznacz wiadomość jako przeczytaną
- */
-export async function markMessageAsRead(messageId) {
-  if (!currentUser) return;
-  
-  try {
-    await update(ref(db, `users/${currentUser.uid}/messages/${messageId}`), {
-      read: true,
-      readAt: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Błąd oznaczania wiadomości:', error);
-  }
-}
-
-/**
- * Usuń wiadomość
- */
-export async function deleteMessage(messageId) {
-  if (!currentUser) return;
-  
-  try {
-    await remove(ref(db, `users/${currentUser.uid}/messages/${messageId}`));
-  } catch (error) {
-    console.error('Błąd usuwania wiadomości:', error);
-    throw error;
-  }
-}
-
-/**
- * Konfiguruj listenery dla wiadomości
- */
-function setupNotificationListeners() {
-  if (!currentUser) return;
-  
-  // Listener dla wiadomości
-  const messagesRef = ref(db, `users/${currentUser.uid}/messages`);
-  messagesListener = onValue(messagesRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const messages = Object.values(snapshot.val());
-      const unread = messages.filter(msg => !msg.read);
-      unreadMessagesCount = unread.length;
-      
-      // Wywołaj callback jeśli istnieje
-      if (window.onMessagesCountChange) {
-        window.onMessagesCountChange(unreadMessagesCount);
-      }
-    } else {
-      unreadMessagesCount = 0;
-      if (window.onMessagesCountChange) {
-        window.onMessagesCountChange(0);
-      }
-    }
-  });
-}
-
-/**
- * Wyczyść listenery
- */
-function clearNotificationListeners() {
-  if (messagesListener) messagesListener();
-  messagesListener = null;
-}
-
-/**
- * Nasłuchuj zmian stanu uwierzytelnienia
+ * Nasłuchuj na zmiany stanu uwierzytelnienia
  */
 export function onAuthChange(callback) {
   return onAuthStateChanged(auth, async (user) => {
     currentUser = user;
+    
     if (user) {
-      await loadUserProfile();
-      setupNotificationListeners();
+      // Subskrybuj wiadomości użytkownika
+      subscribeToMessages(user.uid);
     } else {
-      displayName = '';
-      clearNotificationListeners();
+      // Wyczyść listener wiadomości
+      if (messagesUnsubscribe) {
+        messagesUnsubscribe();
+        messagesUnsubscribe = null;
+      }
     }
-    callback({
-      user: currentUser,
-      displayName
-    });
+    
+    callback(user);
   });
 }
 
@@ -521,52 +110,366 @@ export function onAuthChange(callback) {
  * Pobierz aktualnego użytkownika
  */
 export function getCurrentUser() {
-  return currentUser;
+  return currentUser || auth.currentUser;
 }
 
 /**
- * Sprawdź czy użytkownik jest adminem (deprecated - wszyscy mają równe uprawnienia)
+ * Pobierz ID użytkownika
  */
-export function checkIsAdmin() {
-  return true;
+export function getUserId() {
+  const user = getCurrentUser();
+  return user ? user.uid : null;
 }
 
 /**
  * Pobierz nazwę wyświetlaną użytkownika
  */
-export function getDisplayName() {
-  return displayName || (currentUser ? currentUser.email.split('@')[0] : '');
+export async function getDisplayName(uid) {
+  try {
+    const user = getCurrentUser();
+    
+    // Jeśli to ten sam użytkownik co zalogowany, użyj danych z auth
+    if (user && user.uid === uid && user.displayName) {
+      return user.displayName;
+    }
+    
+    // W przeciwnym razie pobierz z bazy danych
+    const profileRef = ref(db, `users/${uid}/profile`);
+    const snapshot = await get(profileRef);
+    
+    if (snapshot.exists()) {
+      const profile = snapshot.val();
+      return profile.displayName || profile.email || 'Użytkownik';
+    }
+    
+    return 'Użytkownik';
+  } catch (error) {
+    console.error('❌ Błąd pobierania nazwy użytkownika:', error);
+    return 'Użytkownik';
+  }
 }
 
 /**
- * Pobierz UID aktualnego użytkownika
+ * Aktualizuj nazwę wyświetlaną użytkownika
  */
-export function getUserId() {
-  return currentUser ? currentUser.uid : null;
+export async function updateDisplayName(uid, newDisplayName) {
+  try {
+    console.log('📝 Aktualizacja nazwy użytkownika:', newDisplayName);
+    
+    const user = getCurrentUser();
+    
+    if (!user || user.uid !== uid) {
+      throw new Error('Nie masz uprawnień do tej operacji');
+    }
+    
+    // Aktualizuj w Firebase Auth
+    await updateProfile(user, { displayName: newDisplayName });
+    
+    // Aktualizuj w bazie danych
+    await update(ref(db, `users/${uid}/profile`), {
+      displayName: newDisplayName,
+      updatedAt: new Date().toISOString()
+    });
+    
+    console.log('✅ Nazwa użytkownika zaktualizowana');
+    
+    // Wywołaj callback jeśli istnieje
+    if (window.onDisplayNameUpdate) {
+      window.onDisplayNameUpdate(newDisplayName);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Błąd aktualizacji nazwy użytkownika:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sprawdź czy użytkownik jest administratorem
+ */
+export async function checkIsAdmin(uid) {
+  try {
+    const adminRef = ref(db, `admins/${uid}`);
+    const snapshot = await get(adminRef);
+    return snapshot.exists() && snapshot.val() === true;
+  } catch (error) {
+    console.error('❌ Błąd sprawdzania uprawnień admina:', error);
+    return false;
+  }
+}
+
+// ==================== ZAPROSZENIA DO BUDŻETU ====================
+
+/**
+ * Wyślij zaproszenie do współdzielenia budżetu
+ */
+export async function sendBudgetInvitation(recipientEmail) {
+  try {
+    const sender = getCurrentUser();
+    if (!sender) {
+      throw new Error('Musisz być zalogowany');
+    }
+
+    console.log('📧 Wysyłanie zaproszenia do:', recipientEmail);
+
+    // Znajdź użytkownika po emailu
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) {
+      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
+    }
+
+    let recipientUid = null;
+    let recipientName = null;
+
+    snapshot.forEach((childSnapshot) => {
+      const profile = childSnapshot.val().profile;
+      if (profile && profile.email === recipientEmail) {
+        recipientUid = childSnapshot.key;
+        recipientName = profile.displayName || profile.email;
+      }
+    });
+
+    if (!recipientUid) {
+      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
+    }
+
+    if (recipientUid === sender.uid) {
+      throw new Error('Nie możesz wysłać zaproszenia do siebie');
+    }
+
+    // Pobierz dane nadawcy
+    const senderName = await getDisplayName(sender.uid);
+
+    // Utwórz zaproszenie
+    const invitationId = `inv_${Date.now()}`;
+    const invitation = {
+      id: invitationId,
+      from: {
+        uid: sender.uid,
+        email: sender.email,
+        displayName: senderName
+      },
+      to: {
+        uid: recipientUid,
+        email: recipientEmail,
+        displayName: recipientName
+      },
+      status: 'pending', // pending, accepted, rejected
+      createdAt: new Date().toISOString(),
+      type: 'budget_invitation'
+    };
+
+    // Zapisz zaproszenie w wiadomościach odbiorcy
+    const messageRef = ref(db, `users/${recipientUid}/messages/${invitationId}`);
+    await set(messageRef, {
+      ...invitation,
+      read: false
+    });
+
+    console.log('✅ Zaproszenie wysłane pomyślnie');
+    return invitation;
+
+  } catch (error) {
+    console.error(' ❌ Błąd wysyłania zaproszenia:', error);
+    throw error;
+  }
+}
+
+/**
+ * Odpowiedz na zaproszenie do budżetu
+ */
+export async function respondToInvitation(invitationId, accept) {
+  try {
+    const user = getCurrentUser();
+    if (!user) {
+      throw new Error('Musisz być zalogowany');
+    }
+
+    console.log(`${accept ? '✅' : '❌'} Odpowiadanie na zaproszenie:`, invitationId);
+
+    // Pobierz zaproszenie
+    const invitationRef = ref(db, `users/${user.uid}/messages/${invitationId}`);
+    const snapshot = await get(invitationRef);
+
+    if (!snapshot.exists()) {
+      throw new Error('Zaproszenie nie istnieje');
+    }
+
+    const invitation = snapshot.val();
+
+    if (invitation.status !== 'pending') {
+      throw new Error('To zaproszenie zostało już przetworzone');
+    }
+
+    // Aktualizuj status zaproszenia
+    await update(invitationRef, {
+      status: accept ? 'accepted' : 'rejected',
+      respondedAt: new Date().toISOString(),
+      read: true
+    });
+
+    if (accept) {
+      // Jeśli zaproszenie zaakceptowane, skopiuj dane budżetu nadawcy
+      const senderUid = invitation.from.uid;
+      const recipientUid = user.uid;
+
+      console.log('📋 Kopiowanie budżetu z:', senderUid, 'do:', recipientUid);
+
+      // Pobierz dane budżetu nadawcy
+      const senderBudgetRef = ref(db, `users/${senderUid}/budget`);
+      const senderBudgetSnapshot = await get(senderBudgetRef);
+
+      if (senderBudgetSnapshot.exists()) {
+        const senderBudget = senderBudgetSnapshot.val();
+        
+        // Zapisz dane budżetu nadawcy do budżetu odbiorcy
+        const recipientBudgetRef = ref(db, `users/${recipientUid}/budget`);
+        await set(recipientBudgetRef, senderBudget);
+        
+        console.log('✅ Budżet skopiowany pomyślnie');
+      }
+    }
+
+    // Wyślij powiadomienie do nadawcy
+    const notificationId = `notif_${Date.now()}`;
+    const notification = {
+      id: notificationId,
+      type: 'invitation_response',
+      from: {
+        uid: user.uid,
+        email: user.email,
+        displayName: await getDisplayName(user.uid)
+      },
+      invitationId: invitationId,
+      accepted: accept,
+      createdAt: new Date().toISOString(),
+      read: false,
+      message: accept 
+        ? 'Zaakceptował(a) Twoje zaproszenie do współdzielenia budżetu'
+        : 'Odrzucił(a) Twoje zaproszenie do współdzielenia budżetu'
+    };
+
+    const senderNotifRef = ref(db, `users/${invitation.from.uid}/messages/${notificationId}`);
+    await set(senderNotifRef, notification);
+
+    console.log('✅ Odpowiedź na zaproszenie wysłana');
+    return true;
+
+  } catch (error) {
+    console.error('❌ Błąd odpowiadania na zaproszenie:', error);
+    throw error;
+  }
+}
+
+/**
+ * Pobierz wszystkie wiadomości użytkownika
+ */
+export async function getUserMessages(uid) {
+  try {
+    const messagesRef = ref(db, `users/${uid}/messages`);
+    const snapshot = await get(messagesRef);
+
+    if (!snapshot.exists()) {
+      return [];
+    }
+
+    const messages = [];
+    snapshot.forEach((childSnapshot) => {
+      messages.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val()
+      });
+    });
+
+    // Sortuj od najnowszych
+    return messages.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+  } catch (error) {
+    console.error('❌ Błąd pobierania wiadomości:', error);
+    return [];
+  }
+}
+
+/**
+ * Oznacz wiadomość jako przeczytaną
+ */
+export async function markMessageAsRead(uid, messageId) {
+  try {
+    const messageRef = ref(db, `users/${uid}/messages/${messageId}`);
+    await update(messageRef, { read: true });
+    console.log('✅ Wiadomość oznaczona jako przeczytana');
+  } catch (error) {
+    console.error('❌ Błąd oznaczania wiadomości:', error);
+    throw error;
+  }
+}
+
+/**
+ * Usuń wiadomość
+ */
+export async function deleteMessage(uid, messageId) {
+  try {
+    const messageRef = ref(db, `users/${uid}/messages/${messageId}`);
+    await set(messageRef, null);
+    console.log('✅ Wiadomość usunięta');
+  } catch (error) {
+    console.error('❌ Błąd usuwania wiadomości:', error);
+    throw error;
+  }
 }
 
 /**
  * Pobierz liczbę nieprzeczytanych wiadomości
  */
-export function getUnreadMessagesCount() {
-  return unreadMessagesCount;
+export async function getUnreadMessagesCount(uid) {
+  try {
+    const messages = await getUserMessages(uid);
+    return messages.filter(m => !m.read).length;
+  } catch (error) {
+    console.error('❌ Błąd liczenia nieprzeczytanych wiadomości:', error);
+    return 0;
+  }
 }
 
 /**
- * Konwertuj kod błędu Firebase na przyjazną wiadomość
+ * Subskrybuj real-time aktualizacje wiadomości
+ */
+function subscribeToMessages(uid) {
+  if (messagesUnsubscribe) {
+    messagesUnsubscribe();
+  }
+
+  const messagesRef = ref(db, `users/${uid}/messages`);
+  
+  messagesUnsubscribe = onValue(messagesRef, async (snapshot) => {
+    const count = await getUnreadMessagesCount(uid);
+    
+    if (window.onMessagesCountChange) {
+      window.onMessagesCountChange(count);
+    }
+  });
+}
+
+/**
+ * Pomocnicza funkcja do tłumaczenia błędów Firebase Auth
  */
 function getAuthErrorMessage(errorCode) {
   const errorMessages = {
+    'auth/email-already-in-use': 'Ten adres email jest już używany',
     'auth/invalid-email': 'Nieprawidłowy adres email',
+    'auth/operation-not-allowed': 'Operacja niedozwolona',
+    'auth/weak-password': 'Hasło jest za słabe',
     'auth/user-disabled': 'Konto użytkownika zostało wyłączone',
     'auth/user-not-found': 'Nie znaleziono użytkownika',
     'auth/wrong-password': 'Nieprawidłowe hasło',
-    'auth/email-already-in-use': 'Email jest już używany',
-    'auth/weak-password': 'Hasło jest zbyt słabe (min. 6 znaków)',
-    'auth/network-request-failed': 'Błąd połączenia sieciowego',
     'auth/too-many-requests': 'Zbyt wiele prób logowania. Spróbuj później',
-    'auth/invalid-credential': 'Nieprawidłowe dane logowania'
+    'auth/network-request-failed': 'Błąd połączenia sieciowego'
   };
-  
-  return errorMessages[errorCode] || 'Wystąpił błąd. Spróbuj ponownie';
+
+  return errorMessages[errorCode] || 'Wystąpił nieznany błąd';
 }
