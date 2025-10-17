@@ -141,24 +141,39 @@
       <div class="spinner"></div>
     </div>
     
-    <!-- Nawigacja -->
+    <!-- NOWA NAWIGACJA - Lepsze nazwy i organizacja -->
     <nav class="navbar" role="navigation" aria-label="Główna nawigacja">
-      <a href="#summary-section">Podsumowanie</a>
-      <a href="#add-expense">Dodaj wydatek</a>
-      <a href="#category-chart">Wykres</a>
-      <a href="#comparisons">Porównania</a>
-      <a href="#set-end-date">Ustaw koniec</a>
-      <a href="#saving-goal">Cel oszczędności</a>
-      <a href="#categories">Kategorie</a>
-      <a href="#sources">Źródła finansów</a>
-      <a href="#income-history">Historia źródeł finansów</a>
-      <a href="#expense-history">Historia wydatków</a>
+      <div class="nav-section">
+        <span class="nav-section-title">📊 Przegląd</span>
+        <a href="#summary-section">Podsumowanie budżetu</a>
+        <a href="#category-chart">Wykres kategorii</a>
+        <a href="#comparisons">Porównanie okresów</a>
+      </div>
+      
+      <div class="nav-section">
+        <span class="nav-section-title">💰 Finanse</span>
+        <a href="#sources">Źródła finansów</a>
+        <a href="#income-history">Historia przychodów</a>
+      </div>
+      
+      <div class="nav-section">
+        <span class="nav-section-title">💸 Wydatki</span>
+        <a href="#add-expense">Dodaj wydatek</a>
+        <a href="#expense-history">Historia wydatków</a>
+        <a href="#categories">Zarządzaj kategoriami</a>
+      </div>
+      
+      <div class="nav-section">
+        <span class="nav-section-title">⚙️ Ustawienia</span>
+        <a href="#set-end-date">Okresy budżetowe</a>
+        <a href="#saving-goal">Cel oszczędności</a>
+      </div>
     </nav>
 
     <main>
       <!-- Podsumowanie -->
       <section id="summary-section" class="section">
-        <h2>📊 Podsumowanie</h2>
+        <h2>📊 Podsumowanie budżetu</h2>
         <div id="summary"></div>
         <div id="anomalyMessage" style="margin-top:15px;padding:10px;border:1px solid #c0392b;background-color:#ffe6e6;color:#c0392b;display:none;border-radius:5px;"></div>
         
@@ -292,7 +307,7 @@
 
       <!-- Historia źródeł finansów -->
       <section id="income-history" class="section">
-        <h2>🕐 Historia źródeł finansów</h2>
+        <h2>🕐 Historia przychodów</h2>
         <div style="overflow-x: auto;">
           <table id="incomeHistoryTable" class="history-table">
             <thead>
@@ -312,7 +327,7 @@
 
       <!-- Dodaj wydatek -->
       <section id="add-expense" class="section">
-        <h2>🛒 Dodaj wydatek</h2>
+        <h2>🛒 Dodaj nowy wydatek</h2>
         <form id="expenseForm">
           <label for="expenseDate">Data:</label>
           <input 
@@ -383,17 +398,22 @@
 
       <!-- Wykres kategorii -->
       <section id="category-chart" class="section">
-  <h2>📈 Udział kategorii w wydatkach</h2>
-  <div class="category-controls">...</div>
-  <div style="position: relative; height: 400px;">
-    <canvas id="categoryChart"></canvas>
-  </div>
-  <div id="chartLegend" class="chart-legend"></div>
-</section>
+        <h2>📈 Wykres wydatków wg kategorii</h2>
+        <div class="category-controls">
+          <label for="categoryMonthSelect">Miesiąc:</label>
+          <select id="categoryMonthSelect" aria-label="Wybierz miesiąc">
+            <option value="">Wszystkie</option>
+          </select>
+        </div>
+        <div style="position: relative; height: 400px;">
+          <canvas id="categoryChart"></canvas>
+        </div>
+        <div id="chartLegend" class="chart-legend"></div>
+      </section>
 
       <!-- Porównania -->
       <section id="comparisons" class="section">
-        <h2>📊 Porównania</h2>
+        <h2>📊 Porównanie wydatków w czasie</h2>
         <div class="comparison-controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px;">
           <label for="comparisonPeriod">Okres:</label>
           <select id="comparisonPeriod" aria-label="Wybierz okres porównania">
@@ -409,7 +429,7 @@
 
       <!-- Ustaw końce okresu budżetowego -->
       <section id="set-end-date" class="section">
-        <h2>📆 Ustaw końce okresu budżetowego</h2>
+        <h2>📆 Okresy budżetowe</h2>
         <form id="endDatesForm">
           <label for="budgetEndDate1">Data końcowa 1:</label>
           <input 
@@ -442,7 +462,7 @@
 
       <!-- Ustaw cel oszczędności -->
       <section id="saving-goal" class="section">
-        <h2>🏖 Ustaw cel oszczędności</h2>
+        <h2>🏖 Cel oszczędności</h2>
         <form id="savingGoalForm">
           <label for="savingGoal">Kwota do oszczędzenia (PLN):</label>
           <input 
@@ -464,7 +484,7 @@
 
       <!-- Twoje kategorie -->
       <section id="categories" class="section">
-        <h2>📂 Twoje kategorie</h2>
+        <h2>📂 Zarządzaj kategoriami wydatków</h2>
         <div id="categoriesSection">
           <div style="overflow-x: auto;">
             <table id="categoriesTable">
@@ -484,7 +504,7 @@
 
       <!-- Historia wydatków -->
       <section id="expense-history" class="section">
-        <h2>🧾 Historia wydatków</h2>
+        <h2>🧾 Historia wszystkich wydatków</h2>
         <div style="overflow-x: auto;">
           <table id="historyTable" class="history-table">
             <thead>
