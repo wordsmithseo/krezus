@@ -41,7 +41,8 @@ import {
   calculateSpendingGauge,
   getTopCategories,
   getTopDescriptionsForCategory,
-  computeComparisons
+  computeComparisons,
+  calculateRealisedTotals
 } from './modules/budgetCalculator.js';
 
 import { 
@@ -63,7 +64,8 @@ import {
 import { 
   getWarsawDateString, 
   getCurrentTimeString,
-  formatDateLabel
+  formatDateLabel,
+  getDaysLeftFor
 } from './utils/dateHelpers.js';
 
 import { PAGINATION } from './utils/constants.js';
@@ -390,16 +392,14 @@ function renderSummary() {
       `<div class="daily-envelope-progress"><div class="daily-envelope-progress-bar" style="width:${progressPercent}%;background:${progressColour};"></div></div>` +
       (overspend > 0 ? `<div class="daily-envelope-overspend">Pożyczyłeś z jutra: ${overspend.toFixed(2)} zł</div>` : '');
     summaryDiv.appendChild(cardDiv);
-  }
-  
-   if (envelope) {
+    
+    // Wyjaśnienie inteligentnego algorytmu
     const median30d = getGlobalMedian30d();
     const { totalIncome, totalExpense } = calculateRealisedTotals();
     const available = totalIncome - totalExpense;
     const daysLeft = getDaysLeftFor(endDates.primary);
     const simpleDailyLimit = daysLeft > 0 ? available / daysLeft : 0;
     
-    const envelopeBase = envelope.base_amount || 0;
     const percentOfSimple = simpleDailyLimit > 0 
       ? ((envelopeBase / simpleDailyLimit - 1) * 100) 
       : 0;
@@ -1218,26 +1218,27 @@ function setupCategoryInput() {
         updateCategorySuggestions();
       }
     });
-    expCatInput.addEventListener('blur', () => {
-  setTimeout(() => {
-    const catSuggestions = document.getElementById('categorySuggestions');
-    const descSuggestions = document.getElementById('descriptionSuggestions');
-    const activeElement = document.activeElement;
-    const isClickingOnSuggestion = 
-      (catSuggestions && catSuggestions.contains(activeElement)) ||
-      (descSuggestions && descSuggestions.contains(activeElement));
     
-    if (!isClickingOnSuggestion) {
-      if (catSuggestions) catSuggestions.style.display = 'none';
-      if (descSuggestions) descSuggestions.style.display = 'none';
-    }
-  }, 200);
-});
+    expCatInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        const catSuggestions = document.getElementById('categorySuggestions');
+        const descSuggestions = document.getElementById('descriptionSuggestions');
+        const activeElement = document.activeElement;
+        const isClickingOnSuggestion = 
+          (catSuggestions && catSuggestions.contains(activeElement)) ||
+          (descSuggestions && descSuggestions.contains(activeElement));
+        
+        if (!isClickingOnSuggestion) {
+          if (catSuggestions) catSuggestions.style.display = 'none';
+          if (descSuggestions) descSuggestions.style.display = 'none';
+        }
+      }, 200);
+    });
   }
 }
 
 /**
- * Aktualizuj sugestie kategorii - NAPRAWIONE: Tylko top 5
+ * Aktualizuj sugestie kategorii
  */
 function updateCategorySuggestions() {
   const container = document.getElementById('categorySuggestions');
@@ -1255,30 +1256,37 @@ function updateCategorySuggestions() {
   container.innerHTML = '';
   container.style.display = 'flex';
   
-  tile.addEventListener('click', () => {
-  const catInput = document.getElementById('expenseCategory');
-  if (catInput) {
-    catInput.value = cat.name;
-    catInput.focus();
+  topCats.forEach(cat => {
+    const tile = document.createElement('div');
+    tile.className = 'suggestion-tile';
+    tile.textContent = cat.name;
     
-    // Wizualna informacja zwrotna
-    tile.style.background = 'var(--primary)';
-    tile.style.color = 'white';
-    tile.style.transform = 'scale(1.05)';
+    tile.addEventListener('click', () => {
+      const catInput = document.getElementById('expenseCategory');
+      if (catInput) {
+        catInput.value = cat.name;
+        catInput.focus();
+        
+        tile.style.background = 'var(--primary)';
+        tile.style.color = 'white';
+        tile.style.transform = 'scale(1.05)';
+        
+        setTimeout(() => {
+          tile.style.background = '';
+          tile.style.color = '';
+          tile.style.transform = '';
+        }, 300);
+        
+        updateDescriptionSuggestions();
+      }
+    });
     
-    setTimeout(() => {
-      tile.style.background = '';
-      tile.style.color = '';
-      tile.style.transform = '';
-    }, 300);
-    
-    updateDescriptionSuggestions();
-  }
-});
+    container.appendChild(tile);
+  });
 }
 
 /**
- * Aktualizuj sugestie opisów - NAPRAWIONE: Tylko dla wybranej kategorii
+ * Aktualizuj sugestie opisów
  */
 function updateDescriptionSuggestions() {
   const container = document.getElementById('descriptionSuggestions');
@@ -1387,7 +1395,7 @@ function setupMonthSelector() {
 }
 
 /**
- * Renderuj wykres kategorii - NAPRAWIONY: Spójny styl
+ * Renderuj wykres kategorii
  */
 function renderCategoryChart() {
   const canvas = document.getElementById('categoryChart');
@@ -1462,14 +1470,14 @@ function renderCategoryChart() {
             display: false
           },
           ticks: {
-  color: '#0F172A',
-  font: {
-    size: 12,
-    weight: 600
-  },
-  maxRotation: 45,
-  minRotation: 0
-}
+            color: '#0F172A',
+            font: {
+              size: 12,
+              weight: 600
+            },
+            maxRotation: 45,
+            minRotation: 0
+          }
         },
         y: {
           beginAtZero: true,
@@ -1546,7 +1554,7 @@ function setupComparisonsFilters() {
 }
 
 /**
- * Renderuj porównania - NAPRAWIONY: Spójny styl
+ * Renderuj porównania
  */
 function renderComparisons() {
   const periodSel = document.getElementById('comparisonPeriod');
