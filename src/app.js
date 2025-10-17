@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.1.0
+// src/app.js - Główna aplikacja Krezus v1.1.1 - NAPRAWIONA
 import { 
   loginUser, 
   registerUser, 
@@ -76,7 +76,7 @@ let editingExpenseId = null;
 let editingIncomeId = null;
 
 // Wersja aplikacji
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 
 // Inicjalizacja
 console.log('🚀 Aplikacja Krezus uruchomiona');
@@ -206,7 +206,7 @@ async function renderAll() {
 }
 
 /**
- * Renderuj podsumowanie
+ * Renderuj podsumowanie - POPRAWIONE: pokazuj limit2 gdy date2 istnieje
  */
 function renderSummary() {
   const { sumIncome, sumExpense } = calculateRealisedTotals();
@@ -219,27 +219,30 @@ function renderSummary() {
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   document.getElementById('toSpend').textContent = toSpend.toFixed(2);
 
-  // Limity dzienne
+  // Limity dzienne - POPRAWKA: sprawdź czy date2 JEST (nie jest puste)
   document.getElementById('dailyLimit1').textContent = limit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
   
-  if (date2) {
-    document.getElementById('limit2Section').style.display = 'block';
+  // POPRAWKA: pokazuj limit2 TYLKO gdy date2 istnieje i nie jest puste
+  const limit2Section = document.getElementById('limit2Section');
+  if (date2 && date2.trim() !== '') {
+    limit2Section.style.display = 'block';
     document.getElementById('dailyLimit2').textContent = limit2.toFixed(2);
     document.getElementById('daysLeft2').textContent = daysLeft2;
   } else {
-    document.getElementById('limit2Section').style.display = 'none';
+    limit2Section.style.display = 'none';
   }
 
-  // Prognozy
+  // Prognozy - POPRAWKA: pokazuj projectedLimit2 gdy date2 istnieje
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   
-  if (date2) {
-    document.getElementById('projectedLimit2Section').style.display = 'block';
+  const projectedLimit2Section = document.getElementById('projectedLimit2Section');
+  if (date2 && date2.trim() !== '') {
+    projectedLimit2Section.style.display = 'block';
     document.getElementById('projectedLimit2').textContent = projectedLimit2.toFixed(2);
   } else {
-    document.getElementById('projectedLimit2Section').style.display = 'none';
+    projectedLimit2Section.style.display = 'none';
   }
 
   // Planowane
@@ -443,7 +446,10 @@ window.changeExpensePage = (page) => {
   renderExpenses();
   
   // Scroll do tabeli
-  document.getElementById('expensesTableBody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const tableBody = document.getElementById('expensesTableBody');
+  if (tableBody) {
+    tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 };
 
 /**
@@ -521,7 +527,7 @@ function renderIncomesPagination(total) {
   // Strony
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentIncomePage - 1 && i <= currentIncomePage + 1)) {
-      html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
+      html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''} " onclick="window.changeIncomePage(${i})">${i}</button>`;
     } else if (i === currentIncomePage - 2 || i === currentIncomePage + 2) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
@@ -546,7 +552,10 @@ window.changeIncomePage = (page) => {
   renderSources();
   
   // Scroll do tabeli
-  document.getElementById('sourcesTableBody').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const tableBody = document.getElementById('sourcesTableBody');
+  if (tableBody) {
+    tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 };
 
 /**
@@ -819,7 +828,7 @@ window.saveSettings = async (e) => {
   const savingGoal = parseFloat(form.savingGoal.value) || 0;
 
   try {
-    await saveEndDates({ date1: endDate1, date2: endDate2 });
+    await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
     
     // Aktualizuj kopertę dnia po zmianie ustawień
@@ -1005,11 +1014,16 @@ document.addEventListener('DOMContentLoaded', () => {
     observer.observe(categoriesList, { childList: true, subtree: true });
   }
 
-  // Walidatory
-  attachValidator('expenseAmount', validateAmount);
-  attachValidator('incomeAmount', validateAmount);
-  attachValidator('savingGoal', (val) => val >= 0);
-  attachValidator('newCategoryName', validateCategoryName);
+  // Walidatory - POPRAWKA: sprawdź czy element istnieje przed dodaniem walidatora
+  const expenseAmountInput = document.getElementById('expenseAmount');
+  const incomeAmountInput = document.getElementById('incomeAmount');
+  const savingGoalInput = document.querySelector('[name="savingGoal"]');
+  const newCategoryNameInput = document.getElementById('newCategoryName');
+  
+  if (expenseAmountInput) attachValidator(expenseAmountInput, validateAmount);
+  if (incomeAmountInput) attachValidator(incomeAmountInput, validateAmount);
+  if (savingGoalInput) attachValidator(savingGoalInput, (val) => val >= 0);
+  if (newCategoryNameInput) attachValidator(newCategoryNameInput, validateCategoryName);
 
   console.log('✅ Aplikacja Krezus gotowa do działania!');
 });

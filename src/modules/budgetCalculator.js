@@ -1,4 +1,4 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z inteligentną kopertą
+// src/modules/budgetCalculator.js - Kalkulator budżetu z inteligentną kopertą - NAPRAWIONY
 import { parseDateStr, getWarsawDateString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
@@ -43,7 +43,9 @@ export function calculateRealisedTotals(dateStr = null) {
  * Oblicz okresy wydatkowe
  */
 export function calculateSpendingPeriods() {
-    const { date1, date2 } = getEndDates();
+    const endDates = getEndDates();
+    const date1 = endDates.primary || endDates.date1 || '';
+    const date2 = endDates.secondary || endDates.date2 || '';
     const today = getWarsawDateString();
     
     let daysLeft1 = 0;
@@ -223,7 +225,7 @@ export function getGlobalMedian30d() {
 }
 
 /**
- * INTELIGENTNA KOPERTA DNIA - Główny algorytm
+ * INTELIGENTNA KOPERTA DNIA - Główny algorytm - NAPRAWIONY
  */
 export async function updateDailyEnvelope(forDate = null) {
     const targetDate = forDate || getWarsawDateString();
@@ -305,7 +307,8 @@ export async function updateDailyEnvelope(forDate = null) {
         // Aktualizuj tylko jeśli zmieniły się dodatkowe środki
         if (existing.additionalFunds !== todayIncomesSum) {
             console.log('🔄 Aktualizowanie dodatkowych środków:', todayIncomesSum);
-            await saveDailyEnvelope({
+            // POPRAWKA: przekaż datę jako pierwszy argument (string)
+            await saveDailyEnvelope(targetDate, {
                 ...existing,
                 additionalFunds: todayIncomesSum,
                 totalAmount: existing.baseAmount + todayIncomesSum
@@ -324,7 +327,8 @@ export async function updateDailyEnvelope(forDate = null) {
     };
     
     console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
-    await saveDailyEnvelope(envelope);
+    // POPRAWKA: przekaż datę jako pierwszy argument (string), nie obiekt
+    await saveDailyEnvelope(targetDate, envelope);
     
     return envelope;
 }
