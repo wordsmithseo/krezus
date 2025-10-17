@@ -1,4 +1,4 @@
-// src/modules/auth.js - Moduł autoryzacji z zarządzaniem zapro szeniami
+// src/modules/auth.js - Moduł autoryzacji
 import { 
   getAuth, 
   createUserWithEmailAndPassword, 
@@ -185,20 +185,6 @@ export async function updateDisplayName(uid, newDisplayName) {
   }
 }
 
-/**
- * Sprawdź czy użytkownik jest administratorem
- */
-export async function checkIsAdmin(uid) {
-  try {
-    const adminRef = ref(db, `admins/${uid}`);
-    const snapshot = await get(adminRef);
-    return snapshot.exists() && snapshot.val() === true;
-  } catch (error) {
-    console.error('❌ Błąd sprawdzania uprawnień admina:', error);
-    return false;
-  }
-}
-
 // ==================== ZAPROSZENIA DO BUDŻETU ====================
 
 /**
@@ -257,7 +243,7 @@ export async function sendBudgetInvitation(recipientEmail) {
         email: recipientEmail,
         displayName: recipientName
       },
-      status: 'pending', // pending, accepted, rejected
+      status: 'pending',
       createdAt: new Date().toISOString(),
       type: 'budget_invitation'
     };
@@ -273,7 +259,7 @@ export async function sendBudgetInvitation(recipientEmail) {
     return invitation;
 
   } catch (error) {
-    console.error(' ❌ Błąd wysyłania zaproszenia:', error);
+    console.error('❌ Błąd wysyłania zaproszenia:', error);
     throw error;
   }
 }
@@ -468,7 +454,8 @@ function getAuthErrorMessage(errorCode) {
     'auth/user-not-found': 'Nie znaleziono użytkownika',
     'auth/wrong-password': 'Nieprawidłowe hasło',
     'auth/too-many-requests': 'Zbyt wiele prób logowania. Spróbuj później',
-    'auth/network-request-failed': 'Błąd połączenia sieciowego'
+    'auth/network-request-failed': 'Błąd połączenia sieciowego',
+    'auth/invalid-credential': 'Nieprawidłowe dane logowania'
   };
 
   return errorMessages[errorCode] || 'Wystąpił nieznany błąd';

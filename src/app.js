@@ -4,7 +4,6 @@ import {
   registerUser, 
   logoutUser, 
   onAuthChange,
-  checkIsAdmin,
   getDisplayName,
   updateDisplayName,
   getCurrentUser,
