@@ -7,7 +7,7 @@ import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, 
  */
 export function calculateRealisedTotals(dateStr = null) {
     const today = dateStr || getWarsawDateString();
-    console.log('📊 Obliczanie zrealizowanych sum (bez dzisiejszych)');
+    console.log('📊 Obliczanie zrealizowanych sum (WŁĄCZNIE z dzisiejszymi)');
     console.log('📅 Dzisiejsza data:', today);
     
     const incomes = getIncomes();
@@ -19,22 +19,24 @@ export function calculateRealisedTotals(dateStr = null) {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    // Przychody (type === 'normal', przed dziś)
+    // ✅ ZMIEŃ < na <=
+    // Przychody (type === 'normal', do dziś WŁĄCZNIE)
     incomes.forEach(inc => {
-        if (inc.type === 'normal' && inc.date < today) {
+        if (inc.type === 'normal' && inc.date <= today) {
             sumIncome += inc.amount || 0;
         }
     });
 
-    // Wydatki (type === 'normal', przed dziś)
+    // ✅ ZMIEŃ < na <=
+    // Wydatki (type === 'normal', do dziś WŁĄCZNIE)
     expenses.forEach(exp => {
-        if (exp.type === 'normal' && exp.date < today) {
+        if (exp.type === 'normal' && exp.date <= today) {
             sumExpense += exp.amount || 0;
         }
     });
 
-    console.log('📊 SUMA przychodów (zrealizowane, przed dziś):', sumIncome);
-    console.log('📊 SUMA wydatków (zrealizowane, przed dziś):', sumExpense);
+    console.log('📊 SUMA przychodów (zrealizowane, do dziś włącznie):', sumIncome);
+    console.log('📊 SUMA wydatków (zrealizowane, do dziś włącznie):', sumExpense);
 
     return { sumIncome, sumExpense };
 }
@@ -177,7 +179,7 @@ export function checkAnomalies() {
     const last30 = expenses.filter(e => 
         e.type === 'normal' && 
         e.date >= date30str && 
-        e.date < today
+        e.date <= today
     );
     
     if (last30.length === 0) return [];
@@ -263,7 +265,7 @@ export async function updateDailyEnvelope(forDate = null) {
         const historicalExpenses = expenses.filter(e => 
             e.type === 'normal' && 
             e.date >= date30str && 
-            e.date < targetDate
+            e.date <= targetDate
         );
         
         if (historicalExpenses.length >= 5) {

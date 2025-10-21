@@ -430,39 +430,28 @@ function setupCategorySuggestions() {
   
   // Renderuj przyciski kategorii
   renderCategoryButtons(topCategories);
+
+categoryInput.addEventListener('input', () => {
+  const value = categoryInput.value.trim().toLowerCase();
   
-  categoryInput.addEventListener('focus', () => {
-    if (categoryInput.value.trim() === '') {
-      showCategorySuggestions(topCategories);
-      renderCategoryButtons(topCategories);
-    }
-  });
-
-  categoryInput.addEventListener('input', () => {
-    const value = categoryInput.value.trim().toLowerCase();
+  if (value === '') {
+    // Pokaż top 5 kategorii
+    renderCategoryButtons(topCategories);
+  } else {
+    // Filtruj kategorie
+    const allCategories = getCategories();
+    const filtered = allCategories.filter(c => 
+      c.name.toLowerCase().includes(value)
+    ).slice(0, 5);
     
-    if (value === '') {
-      showCategorySuggestions(topCategories);
-      renderCategoryButtons(topCategories);
+    if (filtered.length > 0) {
+      renderCategoryButtons(filtered.map(c => ({ name: c.name, amount: 0 })));
     } else {
-      const allCategories = getCategories();
-      const filtered = allCategories.filter(c => 
-        c.name.toLowerCase().includes(value)
-      ).slice(0, 5);
-      
-      showCategorySuggestions(filtered.map(c => ({ name: c.name, amount: 0 })));
-      categoryButtons.innerHTML = '';
+      categoryButtons.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem; padding: 10px;">Brak pasujących kategorii</p>';
     }
-  });
+  }
+});
 
-  document.addEventListener('click', (e) => {
-    if (!categoryInput.contains(e.target) && !categorySuggestions.contains(e.target) && !categoryButtons.contains(e.target)) {
-      categorySuggestions.innerHTML = '';
-    }
-    if (descriptionInput && !descriptionInput.contains(e.target) && !descriptionSuggestions.contains(e.target)) {
-      descriptionSuggestions.innerHTML = '';
-    }
-  });
 
   function renderCategoryButtons(categories) {
     if (categories.length === 0) {
@@ -892,6 +881,11 @@ window.addCategory = async () => {
   try {
     await saveCategories(updated);
     input.value = '';
+    
+    // ✅ DODAJ TE DWA WYWOŁANIA:
+    renderCategories();
+    setupCategorySuggestions();
+    
     showSuccessMessage('Kategoria dodana');
   } catch (error) {
     console.error('❌ Błąd dodawania kategorii:', error);
