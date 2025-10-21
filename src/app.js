@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.3.0
+// src/app.js - Główna aplikacja Krezus v1.4.0
 import { 
   loginUser, 
   registerUser, 
@@ -8,7 +8,8 @@ import {
   updateDisplayName,
   getCurrentUser,
   getBudgetUsers,
-  subscribeToBudgetUsers
+  subscribeToBudgetUsers,
+  deleteBudgetUser
 } from './modules/auth.js';
 
 import {
@@ -57,7 +58,8 @@ import {
 } from './modules/analytics.js';
 
 import { 
-  showProfileModal
+  showProfileModal,
+  showPasswordModal
 } from './components/modals.js';
 
 import {
@@ -88,21 +90,15 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-// Wersja aplikacji
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
-// Inicjalizacja
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
 
-// Callback dla aktualizacji nazwy użytkownika
 window.onDisplayNameUpdate = (newName) => {
   updateDisplayNameInUI(newName);
 };
 
-/**
- * Ukryj loader
- */
 function hideLoader() {
   const loader = document.getElementById('appLoader');
   if (loader) {
@@ -113,29 +109,18 @@ function hideLoader() {
   }
 }
 
-/**
- * Aktualizuj nazwę użytkownika we wszystkich miejscach UI
- */
 function updateDisplayNameInUI(displayName) {
   const usernameSpan = document.getElementById('username');
-  if (usernameSpan) {
-    usernameSpan.textContent = displayName;
-  }
+  if (usernameSpan) usernameSpan.textContent = displayName;
   
   const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) {
-    profileBtn.textContent = `👤 ${displayName}`;
-  }
+  if (profileBtn) profileBtn.textContent = `👤 ${displayName}`;
   
-  const allUsernameElements = document.querySelectorAll('[data-username]');
-  allUsernameElements.forEach(el => {
+  document.querySelectorAll('[data-username]').forEach(el => {
     el.textContent = displayName;
   });
 }
 
-/**
- * Sprawdź i ukryj paginację jeśli nie jest potrzebna
- */
 function updatePaginationVisibility(tableId, totalItems) {
   const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
   if (!paginationContainer) return;
@@ -149,9 +134,6 @@ function updatePaginationVisibility(tableId, totalItems) {
   }
 }
 
-/**
- * Załaduj wszystkie dane
- */
 async function loadAllData() {
   try {
     const userId = getCurrentUser()?.uid;
@@ -187,9 +169,6 @@ async function loadAllData() {
   }
 }
 
-/**
- * Załaduj użytkowników budżetu
- */
 async function loadBudgetUsers(uid) {
   if (budgetUsersUnsubscribe) {
     budgetUsersUnsubscribe();
@@ -201,9 +180,6 @@ async function loadBudgetUsers(uid) {
   });
 }
 
-/**
- * Aktualizuj selecty użytkowników w formularzach
- */
 function updateBudgetUsersSelects() {
   const expenseUserSelect = document.getElementById('expenseUser');
   const incomeUserSelect = document.getElementById('incomeUser');
@@ -230,17 +206,11 @@ function updateBudgetUsersSelects() {
   }
 }
 
-/**
- * Pobierz nazwę użytkownika budżetu po ID
- */
 function getBudgetUserName(userId) {
   const user = budgetUsersCache.find(u => u.id === userId);
   return user ? user.name : 'Nieznany';
 }
 
-/**
- * Renderuj wszystko
- */
 async function renderAll() {
   renderCategories();
   renderExpenses();
@@ -248,12 +218,9 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
-  loadSettingsToForm();
+  setupCategorySuggestions();
 }
 
-/**
- * Renderuj podsumowanie
- */
 function renderSummary() {
   const { available, savingGoal, toSpend } = calculateAvailableFunds();
   const { daysLeft1, daysLeft2, date2 } = calculateSpendingPeriods();
@@ -280,17 +247,16 @@ function renderSummary() {
   document.getElementById('futureExpense').textContent = futureExpense.toFixed(2);
 }
 
-/**
- * Renderuj kopertę dnia
- */
 function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
   const { spent, total, percentage, remaining } = calculateSpendingGauge();
+  const median = getGlobalMedian30d();
 
   if (!envelope) {
     document.getElementById('envelopeAmount').textContent = '0.00';
     document.getElementById('envelopeSpent').textContent = '0.00';
     document.getElementById('envelopeRemaining').textContent = '0.00';
+    document.getElementById('envelopeMedian').textContent = '0.00';
     document.getElementById('spendingGauge').style.width = '0%';
     return;
   }
@@ -298,6 +264,7 @@ function renderDailyEnvelope() {
   document.getElementById('envelopeAmount').textContent = total.toFixed(2);
   document.getElementById('envelopeSpent').textContent = spent.toFixed(2);
   document.getElementById('envelopeRemaining').textContent = remaining.toFixed(2);
+  document.getElementById('envelopeMedian').textContent = median.toFixed(2);
   
   const gauge = document.getElementById('spendingGauge');
   gauge.style.width = `${percentage}%`;
@@ -309,11 +276,10 @@ function renderDailyEnvelope() {
   } else {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
+  
+  renderSourcesRemaining();
 }
 
-/**
- * Renderuj analitykę
- */
 function renderAnalytics() {
   const stats = calculatePeriodStats();
   const comparison = compareToPreviousPeriod();
@@ -327,15 +293,12 @@ function renderAnalytics() {
 
   const expChange = document.getElementById('expenseChange');
   expChange.textContent = `${comparison.expenseChange > 0 ? '+' : ''}${comparison.expenseChange.toFixed(1)}%`;
-  expChange.className = comparison.expenseChange > 0 ? 'change-up' : comparison.expenseChange < 0 ? 'change-down' : 'change-neutral';
 
   const incChange = document.getElementById('incomeChange');
   incChange.textContent = `${comparison.incomeChange > 0 ? '+' : ''}${comparison.incomeChange.toFixed(1)}%`;
-  incChange.className = comparison.incomeChange > 0 ? 'change-down' : comparison.incomeChange < 0 ? 'change-up' : 'change-neutral';
 
   const transChange = document.getElementById('transactionChange');
   transChange.textContent = `${comparison.transactionChange > 0 ? '+' : ''}${comparison.transactionChange.toFixed(1)}%`;
-  transChange.className = comparison.transactionChange > 0 ? 'change-up' : comparison.transactionChange < 0 ? 'change-down' : 'change-neutral';
 
   const mostExpCat = document.getElementById('mostExpensiveCategory');
   if (mostExpensive) {
@@ -381,13 +344,10 @@ function renderAnalytics() {
       </div>
     `).join('');
   } else {
-    anomaliesDiv.innerHTML = '<p class="empty-state">Brak wykrytych anomalii w wybranym okresie</p>';
+    anomaliesDiv.innerHTML = '<p class="empty-state">Brak wykrytych anomalii</p>';
   }
 }
 
-/**
- * Wybierz okres analityczny
- */
 window.selectPeriod = (days) => {
   document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
   
@@ -402,9 +362,6 @@ window.selectPeriod = (days) => {
   }
 };
 
-/**
- * Zastosuj własny przedział
- */
 window.applyCustomPeriod = () => {
   const from = document.getElementById('analyticsDateFrom').value;
   const to = document.getElementById('analyticsDateTo').value;
@@ -424,11 +381,9 @@ window.applyCustomPeriod = () => {
   showSuccessMessage('Zastosowano własny przedział dat');
 };
 
-/**
- * Renderuj kategorie
- */
 function renderCategories() {
   const categories = getCategories();
+  const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
   
   if (categories.length === 0) {
@@ -436,92 +391,176 @@ function renderCategories() {
     return;
   }
 
-  const html = categories.map(cat => `
+  const categoryStats = categories.map(cat => {
+    const count = expenses.filter(e => e.category === cat.name).length;
+    return { ...cat, count };
+  });
+
+  const html = categoryStats.map(cat => `
     <div class="category-item">
-      <span class="category-name">${cat.name}</span>
-      <button class="btn-icon" onclick="window.deleteCategory('${cat.id}')">🗑️</button>
+      <div>
+        <span class="category-name">${cat.name}</span>
+        <span class="category-count">(${cat.count} wydatków)</span>
+      </div>
+      <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name}')">🗑️</button>
     </div>
   `).join('');
 
   container.innerHTML = html;
-  
-  updateTopCategoriesButtons();
+  updateCategorySelect();
 }
 
-/**
- * Aktualizuj przyciski top 5 kategorii
- */
-function updateTopCategoriesButtons() {
-  const expenses = getExpenses();
-  const today = getWarsawDateString();
+function updateCategorySelect() {
+  setupCategorySuggestions();
+}
+
+function setupCategorySuggestions() {
+  const categoryInput = document.getElementById('expenseCategory');
+  const categorySuggestions = document.getElementById('categorySuggestions');
+  const descriptionInput = document.getElementById('expenseDescription');
+  const descriptionSuggestions = document.getElementById('descriptionSuggestions');
   
-  // Ostatnie 30 dni
-  const d30 = new Date();
-  d30.setDate(d30.getDate() - 30);
-  const date30str = getWarsawDateString(d30);
+  if (!categoryInput || !categorySuggestions) return;
+
+  const topCategories = getTopCategories(5);
   
-  const last30 = expenses.filter(e => 
-    e.type === 'normal' && 
-    e.date >= date30str && 
-    e.date < today
-  );
-  
-  // Zlicz kategorie
-  const categoryCount = new Map();
-  last30.forEach(exp => {
-    const cat = exp.category || '';
-    if (cat) {
-      categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+  categoryInput.addEventListener('focus', () => {
+    if (categoryInput.value.trim() === '') {
+      showCategorySuggestions(topCategories);
     }
   });
-  
-  // Sortuj i weź top 5
-  const top5 = Array.from(categoryCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name]) => name);
-  
-  const container = document.getElementById('topCategoriesButtons');
-  if (!container) return;
-  
-  if (top5.length === 0) {
-    container.innerHTML = '';
-    return;
-  }
-  
-  container.innerHTML = top5.map(cat => `
-    <button type="button" class="category-quick-btn" onclick="selectQuickCategory('${cat}')">${cat}</button>
-  `).join('');
-}
 
-/**
- * Wybierz kategorię z szybkiego przycisku
- */
-window.selectQuickCategory = (categoryName) => {
-  const input = document.getElementById('expenseCategory');
-  if (input) {
-    input.value = categoryName;
+  categoryInput.addEventListener('input', () => {
+    const value = categoryInput.value.trim().toLowerCase();
     
-    // Zaznacz przycisk
-    document.querySelectorAll('.category-quick-btn').forEach(btn => {
-      btn.classList.remove('active');
-      if (btn.textContent === categoryName) {
-        btn.classList.add('active');
+    if (value === '') {
+      showCategorySuggestions(topCategories);
+    } else {
+      const allCategories = getCategories();
+      const filtered = allCategories.filter(c => 
+        c.name.toLowerCase().includes(value)
+      ).slice(0, 5);
+      
+      showCategorySuggestions(filtered.map(c => ({ name: c.name, amount: 0 })));
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!categoryInput.contains(e.target) && !categorySuggestions.contains(e.target)) {
+      categorySuggestions.innerHTML = '';
+    }
+    if (descriptionInput && !descriptionInput.contains(e.target) && !descriptionSuggestions.contains(e.target)) {
+      descriptionSuggestions.innerHTML = '';
+    }
+  });
+
+  function showCategorySuggestions(suggestions) {
+    if (suggestions.length === 0) {
+      categorySuggestions.innerHTML = '';
+      return;
+    }
+
+    const html = suggestions.map(cat => `
+      <div class="suggestion-item" onclick="selectCategory('${cat.name}')">
+        ${cat.name}
+      </div>
+    `).join('');
+
+    categorySuggestions.innerHTML = html;
+  }
+
+  if (descriptionInput && descriptionSuggestions) {
+    categoryInput.addEventListener('change', () => {
+      const category = categoryInput.value.trim();
+      if (category) {
+        updateDescriptionSuggestions(category);
+      }
+    });
+
+    descriptionInput.addEventListener('focus', () => {
+      const category = categoryInput.value.trim();
+      if (category && descriptionInput.value.trim() === '') {
+        updateDescriptionSuggestions(category);
+      }
+    });
+
+    descriptionInput.addEventListener('input', () => {
+      const category = categoryInput.value.trim();
+      const value = descriptionInput.value.trim().toLowerCase();
+      
+      if (!category) {
+        descriptionSuggestions.innerHTML = '';
+        return;
+      }
+
+      if (value === '') {
+        updateDescriptionSuggestions(category);
+      } else {
+        const expenses = getExpenses();
+        const categoryExpenses = expenses.filter(e => e.category === category);
+        const descriptions = [...new Set(categoryExpenses.map(e => e.description).filter(d => d))];
+        const filtered = descriptions.filter(d => d.toLowerCase().includes(value)).slice(0, 5);
+        
+        showDescriptionSuggestions(filtered);
       }
     });
   }
-};
 
-/**
- * Aktualizuj select kategorii (stara funkcja - już nieużywana, ale zostawiam dla kompatybilności)
- */
-function updateCategorySelect() {
-  // Ta funkcja nie jest już potrzebna, ale zostawiam ją dla kompatybilności
+  function updateDescriptionSuggestions(category) {
+    const topDescriptions = getTopDescriptionsForCategory(category, 5);
+    showDescriptionSuggestions(topDescriptions.map(d => d.name));
+  }
+
+  function showDescriptionSuggestions(suggestions) {
+    if (!descriptionSuggestions) return;
+    
+    if (suggestions.length === 0) {
+      descriptionSuggestions.innerHTML = '';
+      return;
+    }
+
+    const html = suggestions.map(desc => `
+      <div class="suggestion-item" onclick="selectDescription('${desc.replace(/'/g, "\\'")}')">
+        ${desc}
+      </div>
+    `).join('');
+
+    descriptionSuggestions.innerHTML = html;
+  }
 }
 
-/**
- * Renderuj wydatki
- */
+window.selectCategory = (categoryName) => {
+  const categoryInput = document.getElementById('expenseCategory');
+  if (categoryInput) {
+    categoryInput.value = categoryName;
+    document.getElementById('categorySuggestions').innerHTML = '';
+    
+    const descriptionInput = document.getElementById('expenseDescription');
+    if (descriptionInput) {
+      descriptionInput.focus();
+    }
+    
+    const topDescriptions = getTopDescriptionsForCategory(categoryName, 5);
+    const descriptionSuggestions = document.getElementById('descriptionSuggestions');
+    if (descriptionSuggestions && topDescriptions.length > 0) {
+      const html = topDescriptions.map(desc => `
+        <div class="suggestion-item" onclick="selectDescription('${desc.name.replace(/'/g, "\\'")}')">
+          ${desc.name}
+        </div>
+      `).join('');
+      descriptionSuggestions.innerHTML = html;
+    }
+  }
+};
+
+window.selectDescription = (description) => {
+  const descriptionInput = document.getElementById('expenseDescription');
+  if (descriptionInput) {
+    descriptionInput.value = description;
+    document.getElementById('descriptionSuggestions').innerHTML = '';
+  }
+};
+
 function renderExpenses() {
   const expenses = getExpenses();
   const totalExpenses = expenses.length;
@@ -540,7 +579,7 @@ function renderExpenses() {
   const tbody = document.getElementById('expensesTableBody');
   
   if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
     return;
   }
@@ -553,7 +592,6 @@ function renderExpenses() {
       <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
       <td>${exp.category || 'Brak'}</td>
       <td>${exp.description || '-'}</td>
-      <td>${exp.source || 'Brak'}</td>
       <td>
         <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
@@ -571,9 +609,6 @@ function renderExpenses() {
   updatePaginationVisibility('expensesTableBody', totalExpenses);
 }
 
-/**
- * Renderuj paginację wydatków
- */
 function renderExpensesPagination(total) {
   const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
   const container = document.getElementById('expensesPagination');
@@ -613,9 +648,6 @@ window.changeExpensePage = (page) => {
   }
 };
 
-/**
- * Renderuj przychody
- */
 function renderSources() {
   const incomes = getIncomes();
   const totalIncomes = incomes.length;
@@ -664,9 +696,6 @@ function renderSources() {
   updatePaginationVisibility('sourcesTableBody', totalIncomes);
 }
 
-/**
- * Renderuj paginację przychodów
- */
 function renderIncomesPagination(total) {
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
   const container = document.getElementById('incomesPagination');
@@ -706,6 +735,27 @@ window.changeIncomePage = (page) => {
   }
 };
 
+function renderSourcesRemaining() {
+  const sources = computeSourcesRemaining();
+  const container = document.getElementById('sourcesRemainingList');
+  
+  if (sources.length === 0) {
+    container.innerHTML = '<p class="empty-state">Brak danych</p>';
+    return;
+  }
+
+  const html = sources.map(src => `
+    <div class="source-remaining-item">
+      <span>${src.name}</span>
+      <span class="amount ${src.amount >= 0 ? 'positive' : 'negative'}">
+        ${src.amount.toFixed(2)} zł
+      </span>
+    </div>
+  `).join('');
+
+  container.innerHTML = html;
+}
+
 // ==================== KATEGORIE ====================
 
 window.addCategory = async () => {
@@ -741,8 +791,23 @@ window.addCategory = async () => {
   }
 };
 
-window.deleteCategory = async (categoryId) => {
-  if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
+window.deleteCategory = async (categoryId, categoryName) => {
+  const expenses = getExpenses();
+  const count = expenses.filter(e => e.category === categoryName).length;
+  
+  if (count > 0) {
+    const confirmed = await showPasswordModal(
+      'Usuwanie kategorii',
+      `Kategoria "${categoryName}" zawiera ${count} wydatków. Wszystkie te wydatki zostaną TRWALE usunięte. Aby potwierdzić, podaj hasło głównego konta.`
+    );
+    
+    if (!confirmed) return;
+    
+    const updatedExpenses = expenses.filter(e => e.category !== categoryName);
+    await saveExpenses(updatedExpenses);
+  } else {
+    if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
+  }
 
   const categories = getCategories();
   const updated = categories.filter(c => c.id !== categoryId);
@@ -769,7 +834,6 @@ window.addExpense = async (e) => {
   const userId = form.expenseUser.value;
   const category = form.expenseCategory.value.trim();
   const description = form.expenseDescription.value.trim();
-  const source = form.expenseSource.value.trim();
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
@@ -780,23 +844,15 @@ window.addExpense = async (e) => {
     showErrorMessage('Wybierz użytkownika');
     return;
   }
-
+  
   if (!category) {
-    showErrorMessage('Wpisz nazwę kategorii');
+    showErrorMessage('Podaj kategorię');
     return;
   }
-
-  // Sprawdź czy kategoria istnieje, jeśli nie - dodaj ją
-  const categories = getCategories();
-  const categoryExists = categories.some(c => c.name.toLowerCase() === category.toLowerCase());
   
-  if (!categoryExists) {
-    const newCategory = {
-      id: `cat_${Date.now()}`,
-      name: category
-    };
-    await saveCategories([...categories, newCategory]);
-    showSuccessMessage(`Dodano nową kategorię: ${category}`);
+  if (!description) {
+    showErrorMessage('Podaj opis');
+    return;
   }
 
   const expense = {
@@ -808,7 +864,6 @@ window.addExpense = async (e) => {
     userId,
     category,
     description,
-    source,
     timestamp: editingExpenseId ? getExpenses().find(e => e.id === editingExpenseId)?.timestamp : getCurrentTimeString()
   };
 
@@ -829,12 +884,8 @@ window.addExpense = async (e) => {
     form.expenseType.value = 'normal';
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
-    
-    // Odznacz wszystkie przyciski kategorii
-    document.querySelectorAll('.category-quick-btn').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    
+    document.getElementById('categorySuggestions').innerHTML = '';
+    document.getElementById('descriptionSuggestions').innerHTML = '';
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -854,15 +905,6 @@ window.editExpense = (expenseId) => {
   form.expenseUser.value = expense.userId || '';
   form.expenseCategory.value = expense.category;
   form.expenseDescription.value = expense.description;
-  form.expenseSource.value = expense.source;
-
-  // Zaznacz przycisk kategorii jeśli istnieje
-  document.querySelectorAll('.category-quick-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.textContent === expense.category) {
-      btn.classList.add('active');
-    }
-  });
 
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
@@ -1013,30 +1055,6 @@ window.saveSettings = async (e) => {
     showErrorMessage('Nie udało się zapisać ustawień');
   }
 };
-
-/**
- * Załaduj ustawienia do formularza
- */
-async function loadSettingsToForm() {
-  const endDates = getEndDates();
-  const savingGoal = getSavingGoal();
-  
-  const endDate1Input = document.getElementById('settingsEndDate1');
-  const endDate2Input = document.getElementById('settingsEndDate2');
-  const savingGoalInput = document.getElementById('settingsSavingGoal');
-  
-  if (endDate1Input && endDates.primary) {
-    endDate1Input.value = endDates.primary;
-  }
-  
-  if (endDate2Input && endDates.secondary) {
-    endDate2Input.value = endDates.secondary;
-  }
-  
-  if (savingGoalInput) {
-    savingGoalInput.value = savingGoal;
-  }
-}
 
 // ==================== NAWIGACJA ====================
 
