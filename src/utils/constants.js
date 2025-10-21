@@ -1,5 +1,3 @@
-// src/utils/constants.js
-
 export const PAGINATION = {
   ITEMS_PER_PAGE: 8,
   EXPENSES_PER_PAGE: 10,

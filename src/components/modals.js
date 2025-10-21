@@ -1,4 +1,4 @@
-// src/components/modals.js - Modale aplikacji Krezus v1.3.0
+// src/components/modals.js - Modale aplikacji Krezus v1.5.0
 import { 
   getCurrentUser,
   getDisplayName,
@@ -7,7 +7,8 @@ import {
   addBudgetUser,
   updateBudgetUser,
   deleteBudgetUser,
-  subscribeToBudgetUsers
+  subscribeToBudgetUsers,
+  loginUser
 } from '../modules/auth.js';
 
 import { 
@@ -203,6 +204,94 @@ window.handleDeleteBudgetUser = async (userId) => {
     showErrorMessage(error.message || 'Nie udało się usunąć użytkownika');
   }
 };
+
+// ==================== MODAL HASŁA ====================
+
+export async function showPasswordModal(title, message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('passwordModal') || createPasswordModal();
+    
+    document.getElementById('passwordModalTitle').textContent = title;
+    document.getElementById('passwordModalMessage').textContent = message;
+    document.getElementById('passwordModalInput').value = '';
+    
+    const form = document.getElementById('passwordModalForm');
+    
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('passwordModalInput').value;
+      const user = getCurrentUser();
+      
+      if (!user) {
+        showErrorMessage('Musisz być zalogowany');
+        resolve(false);
+        closePasswordModal();
+        return;
+      }
+      
+      try {
+        // Weryfikacja hasła poprzez ponowne logowanie
+        await loginUser(user.email, password);
+        showSuccessMessage('Hasło poprawne');
+        resolve(true);
+        closePasswordModal();
+      } catch (error) {
+        showErrorMessage('Nieprawidłowe hasło');
+        document.getElementById('passwordModalInput').value = '';
+        document.getElementById('passwordModalInput').focus();
+      }
+    };
+    
+    const handleCancel = () => {
+      resolve(false);
+      closePasswordModal();
+    };
+    
+    form.onsubmit = handleSubmit;
+    document.getElementById('passwordModalCancel').onclick = handleCancel;
+    
+    modal.classList.add('active');
+    document.getElementById('passwordModalInput').focus();
+  });
+}
+
+function createPasswordModal() {
+  const modal = document.createElement('div');
+  modal.id = 'passwordModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="passwordModalTitle">Potwierdź hasło</h2>
+        <button class="modal-close" onclick="closePasswordModal()">✕</button>
+      </div>
+      
+      <p id="passwordModalMessage" style="margin-bottom: 20px;"></p>
+      
+      <form id="passwordModalForm">
+        <div class="form-group">
+          <label>Wprowadź swoje hasło</label>
+          <input type="password" id="passwordModalInput" required>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" id="passwordModalCancel" class="btn btn-secondary">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Potwierdź</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function closePasswordModal() {
+  const modal = document.getElementById('passwordModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
 
 // ==================== ZAMYKANIE MODALI ====================
 

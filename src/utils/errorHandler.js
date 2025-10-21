@@ -1,12 +1,4 @@
-// src/utils/errorHandler.js
-
-/**
- * Wyświetl komunikat błędu użytkownikowi
- * @param {string} message - Wiadomość błędu
- * @param {string} type - Typ błędu ('error', 'warning', 'info')
- */
 export function showErrorMessage(message, type = 'error') {
-  // Usuń poprzednie komunikaty błędów
   const existingError = document.querySelector('.error-toast');
   if (existingError) {
     existingError.remove();
@@ -49,17 +41,12 @@ export function showErrorMessage(message, type = 'error') {
   
   document.body.appendChild(toast);
   
-  // Automatycznie usuń po 5 sekundach
   setTimeout(() => {
     toast.style.animation = 'slideOut 0.3s ease-out';
     setTimeout(() => toast.remove(), 300);
   }, 5000);
 }
 
-/**
- * Wyświetl komunikat sukcesu
- * @param {string} message - Wiadomość sukcesu
- */
 export function showSuccessMessage(message) {
   const existingSuccess = document.querySelector('.success-toast');
   if (existingSuccess) {
@@ -97,28 +84,18 @@ export function showSuccessMessage(message) {
   }, 3000);
 }
 
-/**
- * Globalna obsługa błędów aplikacji
- */
 export function initGlobalErrorHandler() {
-  // Obsługa niezłapanych błędów
   window.addEventListener('error', (event) => {
     console.error('Globalny błąd:', event.error);
     showErrorMessage('Wystąpił nieoczekiwany błąd. Odśwież stronę i spróbuj ponownie.');
   });
   
-  // Obsługa niezłapanych Promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     console.error('Niezłapany Promise rejection:', event.reason);
     showErrorMessage('Wystąpił błąd podczas przetwarzania danych.');
   });
 }
 
-/**
- * Logger błędów (można rozszerzyć o wysyłanie do serwera)
- * @param {Error} error - Obiekt błędu
- * @param {string} context - Kontekst wystąpienia błędu
- */
 export function logError(error, context = '') {
   const errorInfo = {
     message: error.message,
@@ -129,15 +106,8 @@ export function logError(error, context = '') {
   };
   
   console.error('Logged error:', errorInfo);
-  
-  // TODO: Można dodać wysyłanie do Firebase Analytics lub innego serwisu
 }
 
-/**
- * Wrapper dla funkcji asynchronicznych z obsługą błędów
- * @param {Function} fn - Funkcja asynchroniczna
- * @param {string} errorMessage - Niestandardowa wiadomość błędu
- */
 export async function withErrorHandling(fn, errorMessage = 'Wystąpił błąd') {
   try {
     return await fn();
