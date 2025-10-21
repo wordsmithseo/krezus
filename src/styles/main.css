@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v1.3.0 */
+/* src/styles/main.css - Krezus v1.5.0 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -592,6 +592,10 @@ tr.planned {
   gap: 5px;
 }
 
+.stat-value-white {
+  color: white !important;
+}
+
 .stat-unit {
   font-size: 1.2rem;
   opacity: 0.8;
@@ -613,6 +617,12 @@ tr.planned {
   font-weight: 700;
   margin: 15px 0;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.envelope-median {
+  margin-top: 15px;
+  font-size: 0.95rem;
+  opacity: 0.9;
 }
 
 .spending-gauge {
@@ -677,12 +687,20 @@ tr.planned {
   color: var(--dark);
 }
 
-/* ==================== TOP KATEGORIE (PRZYCISKI) ==================== */
+.category-count {
+  color: var(--gray);
+  font-size: 0.9rem;
+  margin-left: 8px;
+}
 
-.top-categories-buttons {
+/* ==================== PRZYCISKI KATEGORII I ŹRÓDEŁ ==================== */
+
+.top-categories-buttons,
+.top-sources-buttons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 10px;
   margin-bottom: 10px;
 }
 
@@ -709,6 +727,38 @@ tr.planned {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
+}
+
+/* ==================== PODPOWIEDZI ==================== */
+
+.suggestions-container {
+  position: relative;
+  z-index: 100;
+}
+
+.suggestion-item {
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.suggestion-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.suggestion-item:only-child {
+  border-radius: 8px;
+}
+
+.suggestion-item:hover {
+  background: var(--primary);
+  color: white;
 }
 
 /* ==================== UŻYTKOWNICY BUDŻETU ==================== */
@@ -1071,6 +1121,16 @@ tr.planned {
 
   .period-buttons {
     justify-content: center;
+  }
+  
+  .top-categories-buttons,
+  .top-sources-buttons {
+    justify-content: flex-start;
+  }
+  
+  .category-quick-btn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
   }
 }
 

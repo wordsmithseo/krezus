@@ -193,12 +193,10 @@
                             </div>
                             <div class="form-group">
                                 <label>Źródło</label>
-                                <input type="text" name="incomeSource" placeholder="np. Wynagrodzenie">
+                                <input type="text" id="incomeSource" name="incomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
+                                <div id="sourceButtons" class="top-sources-buttons"></div>
+                                <div id="sourceSuggestions" class="suggestions-container"></div>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Opis (opcjonalnie)</label>
-                            <input type="text" name="incomeDescription" placeholder="Dodatkowe informacje">
                         </div>
                         <button type="submit" class="btn btn-success mt-20">Zapisz przychód</button>
                     </form>
@@ -209,11 +207,11 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Data</th><th>Godzina</th><th>Kwota</th><th>Użytkownik</th><th>Źródło</th><th>Opis</th><th>Typ</th><th>Akcje</th>
+                                    <th>Data</th><th>Godzina</th><th>Kwota</th><th>Użytkownik</th><th>Źródło</th><th>Typ</th><th>Akcje</th>
                                 </tr>
                             </thead>
                             <tbody id="sourcesTableBody">
-                                <tr><td colspan="8" class="empty-state">Brak przychodów</td></tr>
+                                <tr><td colspan="7" class="empty-state">Brak przychodów</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -258,6 +256,7 @@
                             <div class="form-group">
                                 <label>Kategoria</label>
                                 <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off">
+                                <div id="categoryButtons" class="top-categories-buttons"></div>
                                 <div id="categorySuggestions" class="suggestions-container"></div>
                             </div>
                         </div>

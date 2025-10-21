@@ -419,6 +419,41 @@ export function getTopDescriptionsForCategory(categoryName, limit = 3) {
 }
 
 /**
+ * Pobierz top źródła przychodów
+ */
+export function getTopSources(limit = 5) {
+  const incomes = getIncomes();
+  const today = getWarsawDateString();
+  
+  // Ostatnie 30 dni
+  const d30 = new Date();
+  d30.setDate(d30.getDate() - 30);
+  const date30str = getWarsawDateString(d30);
+  
+  const last30 = incomes.filter(i => 
+    i.type === 'normal' && 
+    i.date >= date30str && 
+    i.date < today
+  );
+  
+  const srcMap = new Map();
+  
+  last30.forEach(inc => {
+    const src = inc.source || 'Bez źródła';
+    srcMap.set(src, (srcMap.get(src) || 0) + (inc.amount || 0));
+  });
+  
+  return Array.from(srcMap.entries())
+    .map(([name, amount]) => name)
+    .sort((a, b) => {
+      const aAmount = srcMap.get(a);
+      const bAmount = srcMap.get(b);
+      return bAmount - aAmount;
+    })
+    .slice(0, limit);
+}
+
+/**
  * Oblicz porównania tygodniowe
  */
 export function computeComparisons() {

@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.4.0
+// src/app.js - Główna aplikacja Krezus v1.5.0
 import { 
   loginUser, 
   registerUser, 
@@ -43,6 +43,7 @@ import {
   calculateSpendingGauge,
   getTopCategories,
   getTopDescriptionsForCategory,
+  getTopSources,
   computeComparisons
 } from './modules/budgetCalculator.js';
 
@@ -90,7 +91,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -219,6 +220,7 @@ async function renderAll() {
   renderDailyEnvelope();
   renderAnalytics();
   setupCategorySuggestions();
+  setupSourceSuggestions();
 }
 
 function renderSummary() {
@@ -412,21 +414,27 @@ function renderCategories() {
 
 function updateCategorySelect() {
   setupCategorySuggestions();
+  setupSourceSuggestions();
 }
 
 function setupCategorySuggestions() {
   const categoryInput = document.getElementById('expenseCategory');
   const categorySuggestions = document.getElementById('categorySuggestions');
+  const categoryButtons = document.getElementById('categoryButtons');
   const descriptionInput = document.getElementById('expenseDescription');
   const descriptionSuggestions = document.getElementById('descriptionSuggestions');
   
-  if (!categoryInput || !categorySuggestions) return;
+  if (!categoryInput || !categorySuggestions || !categoryButtons) return;
 
   const topCategories = getTopCategories(5);
+  
+  // Renderuj przyciski kategorii
+  renderCategoryButtons(topCategories);
   
   categoryInput.addEventListener('focus', () => {
     if (categoryInput.value.trim() === '') {
       showCategorySuggestions(topCategories);
+      renderCategoryButtons(topCategories);
     }
   });
 
@@ -435,6 +443,7 @@ function setupCategorySuggestions() {
     
     if (value === '') {
       showCategorySuggestions(topCategories);
+      renderCategoryButtons(topCategories);
     } else {
       const allCategories = getCategories();
       const filtered = allCategories.filter(c => 
@@ -442,17 +451,33 @@ function setupCategorySuggestions() {
       ).slice(0, 5);
       
       showCategorySuggestions(filtered.map(c => ({ name: c.name, amount: 0 })));
+      categoryButtons.innerHTML = '';
     }
   });
 
   document.addEventListener('click', (e) => {
-    if (!categoryInput.contains(e.target) && !categorySuggestions.contains(e.target)) {
+    if (!categoryInput.contains(e.target) && !categorySuggestions.contains(e.target) && !categoryButtons.contains(e.target)) {
       categorySuggestions.innerHTML = '';
     }
     if (descriptionInput && !descriptionInput.contains(e.target) && !descriptionSuggestions.contains(e.target)) {
       descriptionSuggestions.innerHTML = '';
     }
   });
+
+  function renderCategoryButtons(categories) {
+    if (categories.length === 0) {
+      categoryButtons.innerHTML = '';
+      return;
+    }
+
+    const html = categories.map(cat => `
+      <button type="button" class="category-quick-btn" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
+        ${cat.name}
+      </button>
+    `).join('');
+
+    categoryButtons.innerHTML = html;
+  }
 
   function showCategorySuggestions(suggestions) {
     if (suggestions.length === 0) {
@@ -461,7 +486,7 @@ function setupCategorySuggestions() {
     }
 
     const html = suggestions.map(cat => `
-      <div class="suggestion-item" onclick="selectCategory('${cat.name}')">
+      <div class="suggestion-item" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
         ${cat.name}
       </div>
     `).join('');
@@ -529,11 +554,86 @@ function setupCategorySuggestions() {
   }
 }
 
+function setupSourceSuggestions() {
+  const sourceInput = document.getElementById('incomeSource');
+  const sourceSuggestions = document.getElementById('sourceSuggestions');
+  const sourceButtons = document.getElementById('sourceButtons');
+  
+  if (!sourceInput || !sourceSuggestions || !sourceButtons) return;
+
+  const topSources = getTopSources(5);
+  
+  // Renderuj przyciski źródeł
+  renderSourceButtons(topSources);
+  
+  sourceInput.addEventListener('focus', () => {
+    if (sourceInput.value.trim() === '') {
+      showSourceSuggestions(topSources);
+      renderSourceButtons(topSources);
+    }
+  });
+
+  sourceInput.addEventListener('input', () => {
+    const value = sourceInput.value.trim().toLowerCase();
+    
+    if (value === '') {
+      showSourceSuggestions(topSources);
+      renderSourceButtons(topSources);
+    } else {
+      const incomes = getIncomes();
+      const sources = [...new Set(incomes.map(i => i.source).filter(s => s))];
+      const filtered = sources.filter(s => 
+        s.toLowerCase().includes(value)
+      ).slice(0, 5);
+      
+      showSourceSuggestions(filtered);
+      sourceButtons.innerHTML = '';
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!sourceInput.contains(e.target) && !sourceSuggestions.contains(e.target) && !sourceButtons.contains(e.target)) {
+      sourceSuggestions.innerHTML = '';
+    }
+  });
+
+  function renderSourceButtons(sources) {
+    if (sources.length === 0) {
+      sourceButtons.innerHTML = '';
+      return;
+    }
+
+    const html = sources.map(src => `
+      <button type="button" class="category-quick-btn" onclick="selectSource('${src.replace(/'/g, "\\'")}')">
+        ${src}
+      </button>
+    `).join('');
+
+    sourceButtons.innerHTML = html;
+  }
+
+  function showSourceSuggestions(suggestions) {
+    if (suggestions.length === 0) {
+      sourceSuggestions.innerHTML = '';
+      return;
+    }
+
+    const html = suggestions.map(src => `
+      <div class="suggestion-item" onclick="selectSource('${src.replace(/'/g, "\\'")}')">
+        ${src}
+      </div>
+    `).join('');
+
+    sourceSuggestions.innerHTML = html;
+  }
+}
+
 window.selectCategory = (categoryName) => {
   const categoryInput = document.getElementById('expenseCategory');
   if (categoryInput) {
     categoryInput.value = categoryName;
     document.getElementById('categorySuggestions').innerHTML = '';
+    document.getElementById('categoryButtons').innerHTML = '';
     
     const descriptionInput = document.getElementById('expenseDescription');
     if (descriptionInput) {
@@ -558,6 +658,15 @@ window.selectDescription = (description) => {
   if (descriptionInput) {
     descriptionInput.value = description;
     document.getElementById('descriptionSuggestions').innerHTML = '';
+  }
+};
+
+window.selectSource = (source) => {
+  const sourceInput = document.getElementById('incomeSource');
+  if (sourceInput) {
+    sourceInput.value = source;
+    document.getElementById('sourceSuggestions').innerHTML = '';
+    document.getElementById('sourceButtons').innerHTML = '';
   }
 };
 
@@ -666,7 +775,7 @@ function renderSources() {
   const tbody = document.getElementById('sourcesTableBody');
   
   if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
     return;
   }
@@ -678,7 +787,6 @@ function renderSources() {
       <td>${inc.amount.toFixed(2)} zł</td>
       <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
       <td>${inc.source || 'Brak'}</td>
-      <td>${inc.description || '-'}</td>
       <td>
         <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
@@ -885,7 +993,11 @@ window.addExpense = async (e) => {
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     document.getElementById('categorySuggestions').innerHTML = '';
+    document.getElementById('categoryButtons').innerHTML = '';
     document.getElementById('descriptionSuggestions').innerHTML = '';
+    
+    setupCategorySuggestions();
+    
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -945,7 +1057,6 @@ window.addIncome = async (e) => {
   const time = form.incomeTime.value || '';
   const userId = form.incomeUser.value;
   const source = form.incomeSource.value.trim();
-  const description = form.incomeDescription.value.trim();
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
@@ -965,7 +1076,6 @@ window.addIncome = async (e) => {
     time,
     userId,
     source,
-    description,
     timestamp: editingIncomeId ? getIncomes().find(i => i.id === editingIncomeId)?.timestamp : getCurrentTimeString()
   };
 
@@ -986,6 +1096,11 @@ window.addIncome = async (e) => {
     form.incomeType.value = 'normal';
     editingIncomeId = null;
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
+    document.getElementById('sourceSuggestions').innerHTML = '';
+    document.getElementById('sourceButtons').innerHTML = '';
+    
+    setupSourceSuggestions();
+    
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -1004,7 +1119,6 @@ window.editIncome = (incomeId) => {
   form.incomeTime.value = income.time || '';
   form.incomeUser.value = income.userId || '';
   form.incomeSource.value = income.source;
-  form.incomeDescription.value = income.description;
 
   editingIncomeId = incomeId;
   document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
