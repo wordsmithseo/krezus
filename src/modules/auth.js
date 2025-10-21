@@ -1,4 +1,4 @@
-// src/modules/auth.js - Moduł autoryzacji - NAPRAWIONY v1.2.0
+// src/modules/auth.js - Moduł autoryzacji z zarządzaniem użytkownikami v1.3.0
 import { 
   getAuth, 
   createUserWithEmailAndPassword, 
@@ -8,13 +8,12 @@ import {
   updateProfile
 } from 'firebase/auth';
 
-import { ref, get, set, update, onValue, off } from 'firebase/database';
+import { ref, get, set, update, onValue, push } from 'firebase/database';
 import { db } from '../config/firebase.js';
 
 const auth = getAuth();
 
 let currentUser = null;
-let messagesUnsubscribe = null;
 
 /**
  * Rejestracja nowego użytkownika
@@ -26,15 +25,24 @@ export async function registerUser(email, password, displayName) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Ustaw nazwę użytkownika
     await updateProfile(user, { displayName });
     
-    // Zapisz nazwę użytkownika w bazie danych
+    // Zapisz profil użytkownika w bazie danych
     await set(ref(db, `users/${user.uid}/profile`), {
       displayName,
       email,
       createdAt: new Date().toISOString()
     });
+    
+    // Utwórz pierwszego użytkownika budżetu (właściciel konta)
+    const firstBudgetUser = {
+      id: `user_${Date.now()}`,
+      name: displayName,
+      isOwner: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    await set(ref(db, `users/${user.uid}/budget/budgetUsers/${firstBudgetUser.id}`), firstBudgetUser);
     
     console.log('✅ Użytkownik zarejestrowany:', displayName);
     return user;
@@ -67,16 +75,8 @@ export async function loginUser(email, password) {
 export async function logoutUser() {
   try {
     console.log('👋 Wylogowywanie użytkownika');
-    
-    // Wyczyść listener wiadomości
-    if (messagesUnsubscribe) {
-      messagesUnsubscribe();
-      messagesUnsubscribe = null;
-    }
-    
     await signOut(auth);
     currentUser = null;
-    
     console.log('✅ Użytkownik wylogowany');
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
@@ -90,18 +90,6 @@ export async function logoutUser() {
 export function onAuthChange(callback) {
   return onAuthStateChanged(auth, async (user) => {
     currentUser = user;
-    
-    if (user) {
-      // Subskrybuj wiadomości użytkownika
-      subscribeToMessages(user.uid);
-    } else {
-      // Wyczyść listener wiadomości
-      if (messagesUnsubscribe) {
-        messagesUnsubscribe();
-        messagesUnsubscribe = null;
-      }
-    }
-    
     callback(user);
   });
 }
@@ -128,12 +116,10 @@ export async function getDisplayName(uid) {
   try {
     const user = getCurrentUser();
     
-    // Jeśli to ten sam użytkownik co zalogowany, użyj danych z auth
     if (user && user.uid === uid && user.displayName) {
       return user.displayName;
     }
     
-    // W przeciwnym razie pobierz z bazy danych
     const profileRef = ref(db, `users/${uid}/profile`);
     const snapshot = await get(profileRef);
     
@@ -162,10 +148,8 @@ export async function updateDisplayName(uid, newDisplayName) {
       throw new Error('Nie masz uprawnień do tej operacji');
     }
     
-    // Aktualizuj w Firebase Auth
     await updateProfile(user, { displayName: newDisplayName });
     
-    // Aktualizuj w bazie danych
     await update(ref(db, `users/${uid}/profile`), {
       displayName: newDisplayName,
       updatedAt: new Date().toISOString()
@@ -173,7 +157,6 @@ export async function updateDisplayName(uid, newDisplayName) {
     
     console.log('✅ Nazwa użytkownika zaktualizowana');
     
-    // Wywołaj callback jeśli istnieje
     if (window.onDisplayNameUpdate) {
       window.onDisplayNameUpdate(newDisplayName);
     }
@@ -185,258 +168,139 @@ export async function updateDisplayName(uid, newDisplayName) {
   }
 }
 
-// ==================== ZAPROSZENIA DO BUDŻETU ====================
+// ==================== UŻYTKOWNICY BUDŻETU ====================
 
 /**
- * Wyślij zaproszenie do współdzielenia budżetu
+ * Pobierz wszystkich użytkowników budżetu
  */
-export async function sendBudgetInvitation(recipientEmail) {
+export async function getBudgetUsers(uid) {
   try {
-    const sender = getCurrentUser();
-    if (!sender) {
-      throw new Error('Musisz być zalogowany');
-    }
-
-    console.log('📧 Wysyłanie zaproszenia do:', recipientEmail);
-
-    // Znajdź użytkownika po emailu - pobierz tylko profile
-    const usersRef = ref(db, 'users');
+    const usersRef = ref(db, `users/${uid}/budget/budgetUsers`);
     const snapshot = await get(usersRef);
     
     if (!snapshot.exists()) {
-      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
-    }
-
-    let recipientUid = null;
-    let recipientName = null;
-
-    // Przeszukaj tylko profile użytkowników
-    snapshot.forEach((childSnapshot) => {
-      const userData = childSnapshot.val();
-      if (userData && userData.profile && userData.profile.email === recipientEmail) {
-        recipientUid = childSnapshot.key;
-        recipientName = userData.profile.displayName || userData.profile.email;
-      }
-    });
-
-    if (!recipientUid) {
-      throw new Error('Nie znaleziono użytkownika o podanym adresie email');
-    }
-
-    if (recipientUid === sender.uid) {
-      throw new Error('Nie możesz wysłać zaproszenia do siebie');
-    }
-
-    // Pobierz dane nadawcy
-    const senderName = await getDisplayName(sender.uid);
-
-    // Utwórz zaproszenie
-    const invitationId = `inv_${Date.now()}`;
-    const invitation = {
-      id: invitationId,
-      from: {
-        uid: sender.uid,
-        email: sender.email,
-        displayName: senderName
-      },
-      to: {
-        uid: recipientUid,
-        email: recipientEmail,
-        displayName: recipientName
-      },
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      type: 'budget_invitation',
-      read: false
-    };
-
-    // Zapisz zaproszenie w wiadomościach odbiorcy
-    const messageRef = ref(db, `users/${recipientUid}/messages/${invitationId}`);
-    await set(messageRef, invitation);
-
-    console.log('✅ Zaproszenie wysłane pomyślnie');
-    return invitation;
-
-  } catch (error) {
-    console.error('❌ Błąd wysyłania zaproszenia:', error);
-    throw error;
-  }
-}
-
-/**
- * Odpowiedz na zaproszenie do budżetu
- */
-export async function respondToInvitation(invitationId, accept) {
-  try {
-    const user = getCurrentUser();
-    if (!user) {
-      throw new Error('Musisz być zalogowany');
-    }
-
-    console.log(`${accept ? '✅' : '❌'} Odpowiadanie na zaproszenie:`, invitationId);
-
-    // Pobierz zaproszenie
-    const invitationRef = ref(db, `users/${user.uid}/messages/${invitationId}`);
-    const snapshot = await get(invitationRef);
-
-    if (!snapshot.exists()) {
-      throw new Error('Zaproszenie nie istnieje');
-    }
-
-    const invitation = snapshot.val();
-
-    if (invitation.status !== 'pending') {
-      throw new Error('To zaproszenie zostało już przetworzone');
-    }
-
-    // Aktualizuj status zaproszenia
-    await update(invitationRef, {
-      status: accept ? 'accepted' : 'rejected',
-      respondedAt: new Date().toISOString(),
-      read: true
-    });
-
-    if (accept) {
-      // Jeśli zaproszenie zaakceptowane, skopiuj dane budżetu nadawcy
-      const senderUid = invitation.from.uid;
-      const recipientUid = user.uid;
-
-      console.log('📋 Kopiowanie budżetu z:', senderUid, 'do:', recipientUid);
-
-      // Pobierz dane budżetu nadawcy
-      const senderBudgetRef = ref(db, `users/${senderUid}/budget`);
-      const senderBudgetSnapshot = await get(senderBudgetRef);
-
-      if (senderBudgetSnapshot.exists()) {
-        const senderBudget = senderBudgetSnapshot.val();
-        
-        // Zapisz dane budżetu nadawcy do budżetu odbiorcy
-        const recipientBudgetRef = ref(db, `users/${recipientUid}/budget`);
-        await set(recipientBudgetRef, senderBudget);
-        
-        console.log('✅ Budżet skopiowany pomyślnie');
-      }
-    }
-
-    // Wyślij powiadomienie do nadawcy
-    const notificationId = `notif_${Date.now()}`;
-    const notification = {
-      id: notificationId,
-      type: 'invitation_response',
-      from: {
-        uid: user.uid,
-        email: user.email,
-        displayName: await getDisplayName(user.uid)
-      },
-      invitationId: invitationId,
-      accepted: accept,
-      createdAt: new Date().toISOString(),
-      read: false,
-      message: accept 
-        ? 'Zaakceptował(a) Twoje zaproszenie do współdzielenia budżetu'
-        : 'Odrzucił(a) Twoje zaproszenie do współdzielenia budżetu'
-    };
-
-    const senderNotifRef = ref(db, `users/${invitation.from.uid}/messages/${notificationId}`);
-    await set(senderNotifRef, notification);
-
-    console.log('✅ Odpowiedź na zaproszenie wysłana');
-    return true;
-
-  } catch (error) {
-    console.error('❌ Błąd odpowiadania na zaproszenie:', error);
-    throw error;
-  }
-}
-
-/**
- * Pobierz wszystkie wiadomości użytkownika
- */
-export async function getUserMessages(uid) {
-  try {
-    const messagesRef = ref(db, `users/${uid}/messages`);
-    const snapshot = await get(messagesRef);
-
-    if (!snapshot.exists()) {
       return [];
     }
-
-    const messages = [];
+    
+    const users = [];
     snapshot.forEach((childSnapshot) => {
-      messages.push({
+      users.push({
         id: childSnapshot.key,
         ...childSnapshot.val()
       });
     });
-
-    // Sortuj od najnowszych
-    return messages.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
+    
+    return users.sort((a, b) => {
+      if (a.isOwner && !b.isOwner) return -1;
+      if (!a.isOwner && b.isOwner) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
   } catch (error) {
-    console.error('❌ Błąd pobierania wiadomości:', error);
+    console.error('❌ Błąd pobierania użytkowników budżetu:', error);
     return [];
   }
 }
 
 /**
- * Oznacz wiadomość jako przeczytaną
+ * Dodaj nowego użytkownika budżetu
  */
-export async function markMessageAsRead(uid, messageId) {
+export async function addBudgetUser(uid, userName) {
   try {
-    const messageRef = ref(db, `users/${uid}/messages/${messageId}`);
-    await update(messageRef, { read: true });
-    console.log('✅ Wiadomość oznaczona jako przeczytana');
-  } catch (error) {
-    console.error('❌ Błąd oznaczania wiadomości:', error);
-    throw error;
-  }
-}
-
-/**
- * Usuń wiadomość
- */
-export async function deleteMessage(uid, messageId) {
-  try {
-    const messageRef = ref(db, `users/${uid}/messages/${messageId}`);
-    await set(messageRef, null);
-    console.log('✅ Wiadomość usunięta');
-  } catch (error) {
-    console.error('❌ Błąd usuwania wiadomości:', error);
-    throw error;
-  }
-}
-
-/**
- * Pobierz liczbę nieprzeczytanych wiadomości
- */
-export async function getUnreadMessagesCount(uid) {
-  try {
-    const messages = await getUserMessages(uid);
-    return messages.filter(m => !m.read).length;
-  } catch (error) {
-    console.error('❌ Błąd liczenia nieprzeczytanych wiadomości:', error);
-    return 0;
-  }
-}
-
-/**
- * Subskrybuj real-time aktualizacje wiadomości
- */
-function subscribeToMessages(uid) {
-  if (messagesUnsubscribe) {
-    messagesUnsubscribe();
-  }
-
-  const messagesRef = ref(db, `users/${uid}/messages`);
-  
-  messagesUnsubscribe = onValue(messagesRef, async (snapshot) => {
-    const count = await getUnreadMessagesCount(uid);
+    console.log('➕ Dodawanie użytkownika budżetu:', userName);
     
-    if (window.onMessagesCountChange) {
-      window.onMessagesCountChange(count);
+    const newUser = {
+      id: `user_${Date.now()}`,
+      name: userName.trim(),
+      isOwner: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    await set(ref(db, `users/${uid}/budget/budgetUsers/${newUser.id}`), newUser);
+    
+    console.log('✅ Użytkownik budżetu dodany:', userName);
+    return newUser;
+    
+  } catch (error) {
+    console.error('❌ Błąd dodawania użytkownika budżetu:', error);
+    throw error;
+  }
+}
+
+/**
+ * Aktualizuj użytkownika budżetu
+ */
+export async function updateBudgetUser(uid, userId, updates) {
+  try {
+    console.log('📝 Aktualizacja użytkownika budżetu:', userId);
+    
+    await update(ref(db, `users/${uid}/budget/budgetUsers/${userId}`), {
+      ...updates,
+      updatedAt: new Date().toISOString()
+    });
+    
+    console.log('✅ Użytkownik budżetu zaktualizowany');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Błąd aktualizacji użytkownika budżetu:', error);
+    throw error;
+  }
+}
+
+/**
+ * Usuń użytkownika budżetu
+ */
+export async function deleteBudgetUser(uid, userId) {
+  try {
+    console.log('🗑️ Usuwanie użytkownika budżetu:', userId);
+    
+    // Sprawdź czy to nie właściciel
+    const userRef = ref(db, `users/${uid}/budget/budgetUsers/${userId}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists() && snapshot.val().isOwner) {
+      throw new Error('Nie można usunąć właściciela konta');
     }
+    
+    await set(userRef, null);
+    
+    console.log('✅ Użytkownik budżetu usunięty');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Błąd usuwania użytkownika budżetu:', error);
+    throw error;
+  }
+}
+
+/**
+ * Subskrybuj real-time aktualizacje użytkowników budżetu
+ */
+export function subscribeToBudgetUsers(uid, callback) {
+  const usersRef = ref(db, `users/${uid}/budget/budgetUsers`);
+  
+  return onValue(usersRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback([]);
+      return;
+    }
+    
+    const users = [];
+    snapshot.forEach((childSnapshot) => {
+      users.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val()
+      });
+    });
+    
+    const sorted = users.sort((a, b) => {
+      if (a.isOwner && !b.isOwner) return -1;
+      if (!a.isOwner && b.isOwner) return 1;
+      return a.name.localeCompare(b.name);
+    });
+    
+    callback(sorted);
   });
 }
 

@@ -1,19 +1,21 @@
-// src/components/modals.js - Modale aplikacji Krezus
+// src/components/modals.js - Modale aplikacji Krezus v1.3.0
 import { 
   getCurrentUser,
   getDisplayName,
   updateDisplayName,
-  getUserMessages,
-  markMessageAsRead,
-  deleteMessage,
-  sendBudgetInvitation,
-  respondToInvitation
+  getBudgetUsers,
+  addBudgetUser,
+  updateBudgetUser,
+  deleteBudgetUser,
+  subscribeToBudgetUsers
 } from '../modules/auth.js';
 
 import { 
   showErrorMessage, 
   showSuccessMessage 
 } from '../utils/errorHandler.js';
+
+let budgetUsersUnsubscribe = null;
 
 // ==================== MODAL PROFILU ====================
 
@@ -26,9 +28,10 @@ export async function showProfileModal() {
     return;
   }
 
-  // Wypełnij dane profilu
   document.getElementById('profileEmail').textContent = user.email;
   document.getElementById('profileDisplayName').value = await getDisplayName(user.uid);
+
+  await loadBudgetUsers(user.uid);
 
   modal.classList.add('active');
 }
@@ -60,13 +63,17 @@ function createProfileModal() {
 
       <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border);">
 
-      <h3>📧 Zaproś użytkownika do współdzielenia budżetu</h3>
-      <form id="inviteForm" onsubmit="handleSendInvitation(event)">
+      <h3>👥 Użytkownicy budżetu</h3>
+      <div id="budgetUsersList"></div>
+
+      <form id="addBudgetUserForm" onsubmit="handleAddBudgetUser(event)" style="margin-top: 20px;">
         <div class="form-group">
-          <label>Adres email użytkownika</label>
-          <input type="email" id="inviteEmail" required placeholder="nazwa@email.com">
+          <label>Dodaj nowego użytkownika</label>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="newBudgetUserName" placeholder="Imię użytkownika" required minlength="2" style="flex: 1;">
+            <button type="submit" class="btn btn-success">Dodaj</button>
+          </div>
         </div>
-        <button type="submit" class="btn btn-success">Wyślij zaproszenie</button>
       </form>
     </div>
   `;
@@ -91,233 +98,109 @@ window.handleProfileUpdate = async (e) => {
   try {
     await updateDisplayName(user.uid, newDisplayName);
     showSuccessMessage('Nazwa użytkownika zaktualizowana');
-    closeModal('profileModal');
   } catch (error) {
     console.error('❌ Błąd aktualizacji profilu:', error);
     showErrorMessage('Nie udało się zaktualizować profilu');
   }
 };
 
-window.handleSendInvitation = async (e) => {
-  e.preventDefault();
+// ==================== ZARZĄDZANIE UŻYTKOWNIKAMI BUDŻETU ====================
+
+async function loadBudgetUsers(uid) {
+  const container = document.getElementById('budgetUsersList');
   
-  const email = document.getElementById('inviteEmail').value.trim();
-  
-  if (!email) {
-    showErrorMessage('Podaj adres email');
-    return;
+  if (budgetUsersUnsubscribe) {
+    budgetUsersUnsubscribe();
   }
-
-  try {
-    await sendBudgetInvitation(email);
-    showSuccessMessage('Zaproszenie wysłane pomyślnie');
-    document.getElementById('inviteEmail').value = '';
-  } catch (error) {
-    console.error('❌ Błąd wysyłania zaproszenia:', error);
-    showErrorMessage(error.message || 'Nie udało się wysłać zaproszenia');
-  }
-};
-
-// ==================== MODAL WIADOMOŚCI ====================
-
-export async function showMessagesModal() {
-  const modal = document.getElementById('messagesModal') || createMessagesModal();
-  const user = getCurrentUser();
   
-  if (!user) {
-    showErrorMessage('Musisz być zalogowany');
-    return;
-  }
-
-  // Załaduj wiadomości
-  await loadMessages(user.uid);
-
-  modal.classList.add('active');
-}
-
-function createMessagesModal() {
-  const modal = document.createElement('div');
-  modal.id = 'messagesModal';
-  modal.className = 'modal';
-  modal.innerHTML = `
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>✉️ Wiadomości</h2>
-        <button class="modal-close" onclick="closeModal('messagesModal')">✕</button>
-      </div>
-      
-      <div id="messagesList"></div>
-    </div>
-  `;
-  
-  document.body.appendChild(modal);
-  return modal;
-}
-
-async function loadMessages(uid) {
-  const container = document.getElementById('messagesList');
-  
-  try {
-    const messages = await getUserMessages(uid);
-    
-    if (messages.length === 0) {
-      container.innerHTML = '<p class="empty-state">Brak wiadomości</p>';
+  budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
+    if (users.length === 0) {
+      container.innerHTML = '<p class="empty-state">Brak użytkowników</p>';
       return;
     }
 
-    const html = messages.map(msg => {
-      if (msg.type === 'budget_invitation') {
-        return renderInvitationMessage(msg);
-      } else if (msg.type === 'invitation_response') {
-        return renderResponseMessage(msg);
-      } else {
-        return renderGenericMessage(msg);
-      }
+    const html = users.map(user => {
+      const isOwner = user.isOwner;
+      return `
+        <div class="budget-user-item">
+          <div class="budget-user-info">
+            <strong>${user.name}</strong>
+            ${isOwner ? '<span class="owner-badge">Właściciel</span>' : ''}
+          </div>
+          <div class="budget-user-actions">
+            ${!isOwner ? `
+              <button class="btn-icon" onclick="handleEditBudgetUser('${user.id}', '${user.name}')" title="Edytuj">✏️</button>
+              <button class="btn-icon" onclick="handleDeleteBudgetUser('${user.id}')" title="Usuń">🗑️</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
     }).join('');
 
     container.innerHTML = html;
-
-  } catch (error) {
-    console.error('❌ Błąd ładowania wiadomości:', error);
-    container.innerHTML = '<p class="empty-state">Błąd ładowania wiadomości</p>';
-  }
+  });
 }
 
-function renderInvitationMessage(msg) {
-  const isPending = msg.status === 'pending';
-  const date = new Date(msg.createdAt).toLocaleString('pl-PL');
+window.handleAddBudgetUser = async (e) => {
+  e.preventDefault();
   
-  return `
-    <div class="message-item ${msg.read ? '' : 'unread'}">
-      <div class="message-header">
-        <div>
-          <strong class="message-from">📧 Zaproszenie do współdzielenia budżetu</strong>
-          <div class="message-date">${date}</div>
-        </div>
-        <button class="btn-icon" onclick="handleDeleteMessage('${msg.id}')" title="Usuń">🗑️</button>
-      </div>
-      
-      <div class="message-content">
-        <p><strong>${msg.from.displayName}</strong> (${msg.from.email}) zaprasza Cię do współdzielenia budżetu.</p>
-        ${isPending ? '<p><em>Po zaakceptowaniu Twój obecny budżet zostanie zastąpiony budżetem nadawcy.</em></p>' : ''}
-      </div>
-      
-      ${isPending ? `
-        <div class="message-actions">
-          <button class="btn btn-success" onclick="handleRespondToInvitation('${msg.id}', true)">
-            ✓ Zaakceptuj
-          </button>
-          <button class="btn btn-danger" onclick="handleRespondToInvitation('${msg.id}', false)">
-            ✕ Odrzuć
-          </button>
-        </div>
-      ` : `
-        <div class="message-content">
-          <p><strong>Status:</strong> ${msg.status === 'accepted' ? '✓ Zaakceptowane' : '✕ Odrzucone'}</p>
-        </div>
-      `}
-    </div>
-  `;
-}
-
-function renderResponseMessage(msg) {
-  const date = new Date(msg.createdAt).toLocaleString('pl-PL');
-  const icon = msg.accepted ? '✅' : '❌';
-  
-  return `
-    <div class="message-item ${msg.read ? '' : 'unread'}">
-      <div class="message-header">
-        <div>
-          <strong class="message-from">${icon} Odpowiedź na zaproszenie</strong>
-          <div class="message-date">${date}</div>
-        </div>
-        <button class="btn-icon" onclick="handleDeleteMessage('${msg.id}')" title="Usuń">🗑️</button>
-      </div>
-      
-      <div class="message-content">
-        <p><strong>${msg.from.displayName}</strong> ${msg.message}</p>
-      </div>
-      
-      ${!msg.read ? `
-        <button class="btn btn-secondary" onclick="handleMarkAsRead('${msg.id}')">
-          Oznacz jako przeczytane
-        </button>
-      ` : ''}
-    </div>
-  `;
-}
-
-function renderGenericMessage(msg) {
-  const date = new Date(msg.createdAt).toLocaleString('pl-PL');
-  
-  return `
-    <div class="message-item ${msg.read ? '' : 'unread'}">
-      <div class="message-header">
-        <div>
-          <strong class="message-from">📨 Wiadomość</strong>
-          <div class="message-date">${date}</div>
-        </div>
-        <button class="btn-icon" onclick="handleDeleteMessage('${msg.id}')" title="Usuń">🗑️</button>
-      </div>
-      
-      <div class="message-content">
-        <p>${msg.message || 'Brak treści'}</p>
-      </div>
-    </div>
-  `;
-}
-
-// ==================== AKCJE WIADOMOŚCI ====================
-
-window.handleRespondToInvitation = async (invitationId, accept) => {
   const user = getCurrentUser();
   if (!user) return;
-
+  
+  const input = document.getElementById('newBudgetUserName');
+  const userName = input.value.trim();
+  
+  if (!userName || userName.length < 2) {
+    showErrorMessage('Nazwa użytkownika musi mieć minimum 2 znaki');
+    return;
+  }
+  
   try {
-    await respondToInvitation(invitationId, accept);
-    showSuccessMessage(accept ? 'Zaproszenie zaakceptowane' : 'Zaproszenie odrzucone');
-    
-    // Odśwież listę wiadomości
-    await loadMessages(user.uid);
-    
-    // Jeśli zaakceptowano, przeładuj aplikację aby załadować nowy budżet
-    if (accept) {
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-    }
+    await addBudgetUser(user.uid, userName);
+    showSuccessMessage('Użytkownik dodany');
+    input.value = '';
   } catch (error) {
-    console.error('❌ Błąd odpowiadania na zaproszenie:', error);
-    showErrorMessage(error.message || 'Nie udało się odpowiedzieć na zaproszenie');
+    console.error('❌ Błąd dodawania użytkownika:', error);
+    showErrorMessage('Nie udało się dodać użytkownika');
   }
 };
 
-window.handleMarkAsRead = async (messageId) => {
+window.handleEditBudgetUser = async (userId, currentName) => {
+  const newName = prompt('Podaj nową nazwę użytkownika:', currentName);
+  
+  if (!newName || newName.trim() === '') return;
+  
+  const trimmed = newName.trim();
+  
+  if (trimmed.length < 2) {
+    showErrorMessage('Nazwa musi mieć minimum 2 znaki');
+    return;
+  }
+  
   const user = getCurrentUser();
   if (!user) return;
-
+  
   try {
-    await markMessageAsRead(user.uid, messageId);
-    await loadMessages(user.uid);
+    await updateBudgetUser(user.uid, userId, { name: trimmed });
+    showSuccessMessage('Użytkownik zaktualizowany');
   } catch (error) {
-    console.error('❌ Błąd oznaczania wiadomości:', error);
-    showErrorMessage('Nie udało się oznaczyć wiadomości');
+    console.error('❌ Błąd aktualizacji użytkownika:', error);
+    showErrorMessage('Nie udało się zaktualizować użytkownika');
   }
 };
 
-window.handleDeleteMessage = async (messageId) => {
-  if (!confirm('Czy na pewno chcesz usunąć tę wiadomość?')) return;
-
+window.handleDeleteBudgetUser = async (userId) => {
+  if (!confirm('Czy na pewno chcesz usunąć tego użytkownika?')) return;
+  
   const user = getCurrentUser();
   if (!user) return;
-
+  
   try {
-    await deleteMessage(user.uid, messageId);
-    showSuccessMessage('Wiadomość usunięta');
-    await loadMessages(user.uid);
+    await deleteBudgetUser(user.uid, userId);
+    showSuccessMessage('Użytkownik usunięty');
   } catch (error) {
-    console.error('❌ Błąd usuwania wiadomości:', error);
-    showErrorMessage('Nie udało się usunąć wiadomości');
+    console.error('❌ Błąd usuwania użytkownika:', error);
+    showErrorMessage(error.message || 'Nie udało się usunąć użytkownika');
   }
 };
 
@@ -327,21 +210,34 @@ window.closeModal = (modalId) => {
   const modal = document.getElementById(modalId);
   if (modal) {
     modal.classList.remove('active');
+    
+    if (modalId === 'profileModal' && budgetUsersUnsubscribe) {
+      budgetUsersUnsubscribe();
+      budgetUsersUnsubscribe = null;
+    }
   }
 };
 
-// Zamknij modal klikając poza nim
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal')) {
     e.target.classList.remove('active');
+    
+    if (e.target.id === 'profileModal' && budgetUsersUnsubscribe) {
+      budgetUsersUnsubscribe();
+      budgetUsersUnsubscribe = null;
+    }
   }
 });
 
-// Zamknij modal klawiszem ESC
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal.active').forEach(modal => {
       modal.classList.remove('active');
+      
+      if (modal.id === 'profileModal' && budgetUsersUnsubscribe) {
+        budgetUsersUnsubscribe();
+        budgetUsersUnsubscribe = null;
+      }
     });
   }
 });

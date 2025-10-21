@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v1.2.0 */
+/* src/styles/main.css - Krezus v1.3.0 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -31,13 +31,11 @@ body {
   line-height: 1.6;
 }
 
-/* Usuń focus outline - niebieskie obramowanie */
 *:focus {
   outline: none;
   box-shadow: none;
 }
 
-/* Usuń niebieskie obramowanie z inputów i buttonów */
 input:focus,
 textarea:focus,
 select:focus,
@@ -161,41 +159,6 @@ button:focus {
 .user-info span {
   font-size: 0.9rem;
   opacity: 0.9;
-}
-
-.notification-btn {
-  position: relative;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1.2rem;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.notification-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-}
-
-.notification-badge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  background: var(--danger);
-  color: white;
-  border-radius: 10px;
-  padding: 2px 6px;
-  font-size: 0.7rem;
-  font-weight: bold;
-  min-width: 18px;
-  text-align: center;
 }
 
 .btn-profile,
@@ -714,6 +677,45 @@ tr.planned {
   color: var(--dark);
 }
 
+/* ==================== UŻYTKOWNICY BUDŻETU ==================== */
+
+.budget-user-item {
+  background: white;
+  border: 2px solid var(--border);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+}
+
+.budget-user-item:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+}
+
+.budget-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.owner-badge {
+  background: var(--primary);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.budget-user-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* ==================== ANALITYKA ==================== */
 
 .analytics-controls {
@@ -980,55 +982,6 @@ tr.planned {
 .modal-close:hover {
   color: var(--danger);
   transform: scale(1.2);
-}
-
-/* ==================== WIADOMOŚCI ==================== */
-
-.message-item {
-  background: white;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-  transition: all 0.3s;
-}
-
-.message-item.unread {
-  border-color: var(--primary);
-  background: #eff6ff;
-}
-
-.message-item:hover {
-  box-shadow: var(--shadow);
-  transform: translateY(-2px);
-}
-
-.message-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 10px;
-}
-
-.message-from {
-  font-weight: 600;
-  color: var(--dark);
-}
-
-.message-date {
-  font-size: 0.85rem;
-  color: var(--gray);
-}
-
-.message-content {
-  color: var(--dark);
-  margin: 10px 0;
-}
-
-.message-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
 }
 
 /* ==================== RESPONSYWNOŚĆ ==================== */

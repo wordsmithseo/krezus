@@ -70,10 +70,6 @@
                     <div class="user-info">
                         <span id="username"></span>
                     </div>
-                    <button class="notification-btn" onclick="openMessages()" title="Wiadomości">
-                        ✉️
-                        <span id="messagesBadge" class="notification-badge" style="display: none;">0</span>
-                    </button>
                     <button id="profileBtn" class="btn-profile" onclick="openProfile()">
                         👤 Profil
                     </button>
@@ -235,9 +231,17 @@
                                 <input type="time" id="incomeTime" name="incomeTime">
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Źródło</label>
-                            <input type="text" name="incomeSource" placeholder="np. Wynagrodzenie, Premia">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Użytkownik</label>
+                                <select id="incomeUser" name="incomeUser" required>
+                                    <option value="">Wybierz użytkownika</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Źródło</label>
+                                <input type="text" name="incomeSource" placeholder="np. Wynagrodzenie, Premia">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Opis (opcjonalnie)</label>
@@ -256,6 +260,7 @@
                                     <th>Data</th>
                                     <th>Godzina</th>
                                     <th>Kwota</th>
+                                    <th>Użytkownik</th>
                                     <th>Źródło</th>
                                     <th>Opis</th>
                                     <th>Typ</th>
@@ -263,7 +268,7 @@
                                 </tr>
                             </thead>
                             <tbody id="sourcesTableBody">
-                                <tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>
+                                <tr><td colspan="8" class="empty-state">Brak przychodów do wyświetlenia</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -303,19 +308,27 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
+                                <label>Użytkownik</label>
+                                <select id="expenseUser" name="expenseUser" required>
+                                    <option value="">Wybierz użytkownika</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
                                 <label>Kategoria</label>
                                 <select id="expenseCategory" name="expenseCategory" required>
                                     <option value="">Wybierz kategorię</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Źródło</label>
                                 <input type="text" name="expenseSource" placeholder="Skąd wzięto środki">
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Opis</label>
-                            <input type="text" name="expenseDescription" placeholder="Na co wydano">
+                            <div class="form-group">
+                                <label>Opis</label>
+                                <input type="text" name="expenseDescription" placeholder="Na co wydano">
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
                     </form>
@@ -330,6 +343,7 @@
                                     <th>Data</th>
                                     <th>Godzina</th>
                                     <th>Kwota</th>
+                                    <th>Użytkownik</th>
                                     <th>Kategoria</th>
                                     <th>Opis</th>
                                     <th>Źródło</th>
@@ -338,7 +352,7 @@
                                 </tr>
                             </thead>
                             <tbody id="expensesTableBody">
-                                <tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
+                                <tr><td colspan="9" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
                             </tbody>
                         </table>
                     </div>

@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.2.0 - KOMPLETNIE ZAKTUALIZOWANA
+// src/app.js - Główna aplikacja Krezus v1.3.0
 import { 
   loginUser, 
   registerUser, 
@@ -7,7 +7,8 @@ import {
   getDisplayName,
   updateDisplayName,
   getCurrentUser,
-  getUnreadMessagesCount
+  getBudgetUsers,
+  subscribeToBudgetUsers
 } from './modules/auth.js';
 
 import {
@@ -56,8 +57,7 @@ import {
 } from './modules/analytics.js';
 
 import { 
-  showProfileModal, 
-  showMessagesModal
+  showProfileModal
 } from './components/modals.js';
 
 import {
@@ -85,18 +85,15 @@ let currentExpensePage = 1;
 let currentIncomePage = 1;
 let editingExpenseId = null;
 let editingIncomeId = null;
+let budgetUsersCache = [];
+let budgetUsersUnsubscribe = null;
 
 // Wersja aplikacji
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 // Inicjalizacja
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
-
-// Callbacks dla powiadomień
-window.onMessagesCountChange = (count) => {
-  updateNotificationBadge('messagesBadge', count);
-};
 
 // Callback dla aktualizacji nazwy użytkownika
 window.onDisplayNameUpdate = (newName) => {
@@ -137,21 +134,6 @@ function updateDisplayNameInUI(displayName) {
 }
 
 /**
- * Aktualizuj badge powiadomień
- */
-function updateNotificationBadge(badgeId, count) {
-  const badge = document.getElementById(badgeId);
-  if (badge) {
-    if (count > 0) {
-      badge.textContent = count > 99 ? '99+' : count;
-      badge.style.display = 'inline-block';
-    } else {
-      badge.style.display = 'none';
-    }
-  }
-}
-
-/**
  * Sprawdź i ukryj paginację jeśli nie jest potrzebna
  */
 function updatePaginationVisibility(tableId, totalItems) {
@@ -182,6 +164,7 @@ async function loadAllData() {
     
     await clearCache();
     await fetchAllData(userId);
+    await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     await renderAll();
@@ -205,6 +188,57 @@ async function loadAllData() {
 }
 
 /**
+ * Załaduj użytkowników budżetu
+ */
+async function loadBudgetUsers(uid) {
+  if (budgetUsersUnsubscribe) {
+    budgetUsersUnsubscribe();
+  }
+  
+  budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
+    budgetUsersCache = users;
+    updateBudgetUsersSelects();
+  });
+}
+
+/**
+ * Aktualizuj selecty użytkowników w formularzach
+ */
+function updateBudgetUsersSelects() {
+  const expenseUserSelect = document.getElementById('expenseUser');
+  const incomeUserSelect = document.getElementById('incomeUser');
+  
+  if (!expenseUserSelect || !incomeUserSelect) return;
+  
+  const currentExpenseValue = expenseUserSelect.value;
+  const currentIncomeValue = incomeUserSelect.value;
+  
+  const optionsHTML = '<option value="">Wybierz użytkownika</option>' +
+    budgetUsersCache.map(user => 
+      `<option value="${user.id}">${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
+    ).join('');
+  
+  expenseUserSelect.innerHTML = optionsHTML;
+  incomeUserSelect.innerHTML = optionsHTML;
+  
+  if (currentExpenseValue && budgetUsersCache.some(u => u.id === currentExpenseValue)) {
+    expenseUserSelect.value = currentExpenseValue;
+  }
+  
+  if (currentIncomeValue && budgetUsersCache.some(u => u.id === currentIncomeValue)) {
+    incomeUserSelect.value = currentIncomeValue;
+  }
+}
+
+/**
+ * Pobierz nazwę użytkownika budżetu po ID
+ */
+function getBudgetUserName(userId) {
+  const user = budgetUsersCache.find(u => u.id === userId);
+  return user ? user.name : 'Nieznany';
+}
+
+/**
  * Renderuj wszystko
  */
 async function renderAll() {
@@ -217,19 +251,17 @@ async function renderAll() {
 }
 
 /**
- * Renderuj podsumowanie - ZAKTUALIZOWANE: usunięte limity dzienne
+ * Renderuj podsumowanie
  */
 function renderSummary() {
   const { available, savingGoal, toSpend } = calculateAvailableFunds();
   const { daysLeft1, daysLeft2, date2 } = calculateSpendingPeriods();
   const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
 
-  // Stan środków
   document.getElementById('availableFunds').textContent = available.toFixed(2);
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   document.getElementById('toSpend').textContent = toSpend.toFixed(2);
 
-  // Prognozy
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
@@ -243,7 +275,6 @@ function renderSummary() {
     projectedLimit2Section.style.display = 'none';
   }
 
-  // Planowane
   document.getElementById('futureIncome').textContent = futureIncome.toFixed(2);
   document.getElementById('futureExpense').textContent = futureExpense.toFixed(2);
 }
@@ -282,7 +313,7 @@ function renderDailyEnvelope() {
 }
 
 /**
- * Renderuj analitykę - KOMPLETNIE NOWA
+ * Renderuj analitykę
  */
 function renderAnalytics() {
   const stats = calculatePeriodStats();
@@ -291,12 +322,10 @@ function renderAnalytics() {
   const breakdown = getCategoriesBreakdown();
   const anomalies = detectAnomalies();
 
-  // Statystyki okresu
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
   document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
   document.getElementById('periodTransactions').textContent = stats.totalTransactions;
 
-  // Porównanie
   const expChange = document.getElementById('expenseChange');
   expChange.textContent = `${comparison.expenseChange > 0 ? '+' : ''}${comparison.expenseChange.toFixed(1)}%`;
   expChange.className = comparison.expenseChange > 0 ? 'change-up' : comparison.expenseChange < 0 ? 'change-down' : 'change-neutral';
@@ -309,7 +338,6 @@ function renderAnalytics() {
   transChange.textContent = `${comparison.transactionChange > 0 ? '+' : ''}${comparison.transactionChange.toFixed(1)}%`;
   transChange.className = comparison.transactionChange > 0 ? 'change-up' : comparison.transactionChange < 0 ? 'change-down' : 'change-neutral';
 
-  // Najkosztowniejsza kategoria
   const mostExpCat = document.getElementById('mostExpensiveCategory');
   if (mostExpensive) {
     mostExpCat.innerHTML = `
@@ -325,7 +353,6 @@ function renderAnalytics() {
     mostExpCat.innerHTML = '<p class="empty-state">Brak danych</p>';
   }
 
-  // Udział kategorii
   const breakdownDiv = document.getElementById('categoriesBreakdown');
   if (breakdown.length > 0) {
     breakdownDiv.innerHTML = breakdown.map(cat => `
@@ -343,7 +370,6 @@ function renderAnalytics() {
     breakdownDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
   }
 
-  // Anomalie
   const anomaliesDiv = document.getElementById('anomaliesList');
   if (anomalies.length > 0) {
     anomaliesDiv.innerHTML = anomalies.map(a => `
@@ -420,7 +446,6 @@ function renderCategories() {
 
   container.innerHTML = html;
   
-  // Aktualizuj select w formularzu wydatków
   updateCategorySelect();
 }
 
@@ -463,7 +488,7 @@ function renderExpenses() {
   const tbody = document.getElementById('expensesTableBody');
   
   if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
     return;
   }
@@ -473,6 +498,7 @@ function renderExpenses() {
       <td>${formatDateLabel(exp.date)}</td>
       <td>${exp.time || '-'}</td>
       <td>${exp.amount.toFixed(2)} zł</td>
+      <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
       <td>${exp.category || 'Brak'}</td>
       <td>${exp.description || '-'}</td>
       <td>${exp.source || 'Brak'}</td>
@@ -556,7 +582,7 @@ function renderSources() {
   const tbody = document.getElementById('sourcesTableBody');
   
   if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
     return;
   }
@@ -566,6 +592,7 @@ function renderSources() {
       <td>${formatDateLabel(inc.date)}</td>
       <td>${inc.time || '-'}</td>
       <td>${inc.amount.toFixed(2)} zł</td>
+      <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
       <td>${inc.source || 'Brak'}</td>
       <td>${inc.description || '-'}</td>
       <td>
@@ -711,6 +738,7 @@ window.addExpense = async (e) => {
   const date = form.expenseDate.value;
   const type = form.expenseType.value;
   const time = form.expenseTime.value || '';
+  const userId = form.expenseUser.value;
   const category = form.expenseCategory.value;
   const description = form.expenseDescription.value.trim();
   const source = form.expenseSource.value.trim();
@@ -720,12 +748,18 @@ window.addExpense = async (e) => {
     return;
   }
 
+  if (!userId) {
+    showErrorMessage('Wybierz użytkownika');
+    return;
+  }
+
   const expense = {
     id: editingExpenseId || `exp_${Date.now()}`,
     amount,
     date,
     type,
     time,
+    userId,
     category,
     description,
     source,
@@ -765,6 +799,7 @@ window.editExpense = (expenseId) => {
   form.expenseDate.value = expense.date;
   form.expenseType.value = expense.type || 'normal';
   form.expenseTime.value = expense.time || '';
+  form.expenseUser.value = expense.userId || '';
   form.expenseCategory.value = expense.category;
   form.expenseDescription.value = expense.description;
   form.expenseSource.value = expense.source;
@@ -806,11 +841,17 @@ window.addIncome = async (e) => {
   const date = form.incomeDate.value;
   const type = form.incomeType.value;
   const time = form.incomeTime.value || '';
+  const userId = form.incomeUser.value;
   const source = form.incomeSource.value.trim();
   const description = form.incomeDescription.value.trim();
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
+    return;
+  }
+
+  if (!userId) {
+    showErrorMessage('Wybierz użytkownika');
     return;
   }
 
@@ -820,6 +861,7 @@ window.addIncome = async (e) => {
     date,
     type,
     time,
+    userId,
     source,
     description,
     timestamp: editingIncomeId ? getIncomes().find(i => i.id === editingIncomeId)?.timestamp : getCurrentTimeString()
@@ -858,6 +900,7 @@ window.editIncome = (incomeId) => {
   form.incomeDate.value = income.date;
   form.incomeType.value = income.type || 'normal';
   form.incomeTime.value = income.time || '';
+  form.incomeUser.value = income.userId || '';
   form.incomeSource.value = income.source;
   form.incomeDescription.value = income.description;
 
@@ -933,14 +976,10 @@ window.showSection = (sectionId) => {
   }
 };
 
-// ==================== PROFIL I WIADOMOŚCI ====================
+// ==================== PROFIL ====================
 
 window.openProfile = () => {
   showProfileModal();
-};
-
-window.openMessages = () => {
-  showMessagesModal();
 };
 
 // ==================== LOGOWANIE I REJESTRACJA ====================
@@ -993,6 +1032,10 @@ window.handleLogout = async () => {
   
   try {
     await clearAllListeners();
+    if (budgetUsersUnsubscribe) {
+      budgetUsersUnsubscribe();
+      budgetUsersUnsubscribe = null;
+    }
     await logoutUser();
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
@@ -1029,9 +1072,6 @@ onAuthChange(async (user) => {
     });
 
     await loadAllData();
-
-    const unreadCount = await getUnreadMessagesCount(user.uid);
-    updateNotificationBadge('messagesBadge', unreadCount);
     
     hideLoader();
 
@@ -1039,6 +1079,10 @@ onAuthChange(async (user) => {
     console.log('❌ Użytkownik wylogowany');
     
     await clearAllListeners();
+    if (budgetUsersUnsubscribe) {
+      budgetUsersUnsubscribe();
+      budgetUsersUnsubscribe = null;
+    }
     
     authSection.classList.remove('hidden');
     appSection.classList.add('hidden');
