@@ -677,6 +677,40 @@ tr.planned {
   color: var(--dark);
 }
 
+/* ==================== TOP KATEGORIE (PRZYCISKI) ==================== */
+
+.top-categories-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.category-quick-btn {
+  padding: 8px 16px;
+  background: var(--light-gray);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dark);
+  transition: all 0.3s;
+}
+
+.category-quick-btn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.category-quick-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
 /* ==================== UŻYTKOWNICY BUDŻETU ==================== */
 
 .budget-user-item {
@@ -857,6 +891,12 @@ tr.planned {
 .change-neutral {
   color: var(--gray);
   font-weight: 700;
+}
+
+.comparison-value {
+  color: white !important;
+  font-size: 2rem !important;
+  font-weight: 700 !important;
 }
 
 /* ==================== PUSTE STANY ==================== */

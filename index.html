@@ -196,11 +196,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="section-card">
-                    <h3>💼 Pozostałe środki ze źródeł</h3>
-                    <div id="sourcesRemainingList"></div>
-                </div>
             </section>
 
             <!-- SEKCJA: Źródła finansów (Przychody) -->
@@ -314,21 +309,18 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Kategoria</label>
-                                <select id="expenseCategory" name="expenseCategory" required>
-                                    <option value="">Wybierz kategorię</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
                                 <label>Źródło</label>
                                 <input type="text" name="expenseSource" placeholder="Skąd wzięto środki">
                             </div>
-                            <div class="form-group">
-                                <label>Opis</label>
-                                <input type="text" name="expenseDescription" placeholder="Na co wydano">
-                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Kategoria</label>
+                            <div id="topCategoriesButtons" class="top-categories-buttons"></div>
+                            <input type="text" id="expenseCategory" name="expenseCategory" placeholder="Wpisz lub wybierz kategorię" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Opis</label>
+                            <input type="text" name="expenseDescription" placeholder="Na co wydano">
                         </div>
                         <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
                     </form>
@@ -447,19 +439,19 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Zmiana wydatków</div>
-                            <div class="stat-value">
+                            <div class="stat-value comparison-value">
                                 <span id="expenseChange">0.0%</span>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Zmiana przychodów</div>
-                            <div class="stat-value">
+                            <div class="stat-value comparison-value">
                                 <span id="incomeChange">0.0%</span>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Zmiana liczby transakcji</div>
-                            <div class="stat-value">
+                            <div class="stat-value comparison-value">
                                 <span id="transactionChange">0.0%</span>
                             </div>
                         </div>
@@ -485,17 +477,17 @@
                     
                     <form onsubmit="saveSettings(event)">
                         <div class="form-group">
-                            <label>Data końcowa okresu 1 (główny okres)</label>
-                            <input type="date" name="endDate1" required>
+                            <label>Data najbliższego wpływu 1 (główny okres)</label>
+                            <input type="date" id="settingsEndDate1" name="endDate1" required>
                         </div>
                         <div class="form-group">
-                            <label>Data końcowa okresu 2 (opcjonalnie)</label>
-                            <input type="date" name="endDate2">
+                            <label>Data najbliższego wpływu 2 (opcjonalnie)</label>
+                            <input type="date" id="settingsEndDate2" name="endDate2">
                             <small class="text-muted">Pozostaw puste jeśli chcesz używać tylko jednego okresu</small>
                         </div>
                         <div class="form-group">
                             <label>Cel oszczędności / Rezerwa (zł)</label>
-                            <input type="number" name="savingGoal" step="0.01" min="0" value="0">
+                            <input type="number" id="settingsSavingGoal" name="savingGoal" step="0.01" min="0" value="0">
                             <small class="text-muted">Kwota która zostanie odjęta od dostępnych środków</small>
                         </div>
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>

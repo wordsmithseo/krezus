@@ -248,6 +248,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
+  loadSettingsToForm();
 }
 
 /**
@@ -308,8 +309,6 @@ function renderDailyEnvelope() {
   } else {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
-  
-  renderSourcesRemaining();
 }
 
 /**
@@ -446,25 +445,78 @@ function renderCategories() {
 
   container.innerHTML = html;
   
-  updateCategorySelect();
+  updateTopCategoriesButtons();
 }
 
 /**
- * Aktualizuj select kategorii
+ * Aktualizuj przyciski top 5 kategorii
+ */
+function updateTopCategoriesButtons() {
+  const expenses = getExpenses();
+  const today = getWarsawDateString();
+  
+  // Ostatnie 30 dni
+  const d30 = new Date();
+  d30.setDate(d30.getDate() - 30);
+  const date30str = getWarsawDateString(d30);
+  
+  const last30 = expenses.filter(e => 
+    e.type === 'normal' && 
+    e.date >= date30str && 
+    e.date < today
+  );
+  
+  // Zlicz kategorie
+  const categoryCount = new Map();
+  last30.forEach(exp => {
+    const cat = exp.category || '';
+    if (cat) {
+      categoryCount.set(cat, (categoryCount.get(cat) || 0) + 1);
+    }
+  });
+  
+  // Sortuj i weź top 5
+  const top5 = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name]) => name);
+  
+  const container = document.getElementById('topCategoriesButtons');
+  if (!container) return;
+  
+  if (top5.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  container.innerHTML = top5.map(cat => `
+    <button type="button" class="category-quick-btn" onclick="selectQuickCategory('${cat}')">${cat}</button>
+  `).join('');
+}
+
+/**
+ * Wybierz kategorię z szybkiego przycisku
+ */
+window.selectQuickCategory = (categoryName) => {
+  const input = document.getElementById('expenseCategory');
+  if (input) {
+    input.value = categoryName;
+    
+    // Zaznacz przycisk
+    document.querySelectorAll('.category-quick-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.textContent === categoryName) {
+        btn.classList.add('active');
+      }
+    });
+  }
+};
+
+/**
+ * Aktualizuj select kategorii (stara funkcja - już nieużywana, ale zostawiam dla kompatybilności)
  */
 function updateCategorySelect() {
-  const select = document.getElementById('expenseCategory');
-  if (!select) return;
-  
-  const categories = getCategories();
-  const currentValue = select.value;
-  
-  select.innerHTML = '<option value="">Wybierz kategorię</option>' +
-    categories.map(cat => `<option value="${cat.name}">${cat.name}</option>`).join('');
-  
-  if (currentValue && categories.some(c => c.name === currentValue)) {
-    select.value = currentValue;
-  }
+  // Ta funkcja nie jest już potrzebna, ale zostawiam ją dla kompatybilności
 }
 
 /**
@@ -654,30 +706,6 @@ window.changeIncomePage = (page) => {
   }
 };
 
-/**
- * Renderuj pozostałe środki ze źródeł
- */
-function renderSourcesRemaining() {
-  const sources = computeSourcesRemaining();
-  const container = document.getElementById('sourcesRemainingList');
-  
-  if (sources.length === 0) {
-    container.innerHTML = '<p class="empty-state">Brak danych</p>';
-    return;
-  }
-
-  const html = sources.map(src => `
-    <div class="source-remaining-item">
-      <span>${src.name}</span>
-      <span class="amount ${src.amount >= 0 ? 'positive' : 'negative'}">
-        ${src.amount.toFixed(2)} zł
-      </span>
-    </div>
-  `).join('');
-
-  container.innerHTML = html;
-}
-
 // ==================== KATEGORIE ====================
 
 window.addCategory = async () => {
@@ -739,7 +767,7 @@ window.addExpense = async (e) => {
   const type = form.expenseType.value;
   const time = form.expenseTime.value || '';
   const userId = form.expenseUser.value;
-  const category = form.expenseCategory.value;
+  const category = form.expenseCategory.value.trim();
   const description = form.expenseDescription.value.trim();
   const source = form.expenseSource.value.trim();
 
@@ -751,6 +779,24 @@ window.addExpense = async (e) => {
   if (!userId) {
     showErrorMessage('Wybierz użytkownika');
     return;
+  }
+
+  if (!category) {
+    showErrorMessage('Wpisz nazwę kategorii');
+    return;
+  }
+
+  // Sprawdź czy kategoria istnieje, jeśli nie - dodaj ją
+  const categories = getCategories();
+  const categoryExists = categories.some(c => c.name.toLowerCase() === category.toLowerCase());
+  
+  if (!categoryExists) {
+    const newCategory = {
+      id: `cat_${Date.now()}`,
+      name: category
+    };
+    await saveCategories([...categories, newCategory]);
+    showSuccessMessage(`Dodano nową kategorię: ${category}`);
   }
 
   const expense = {
@@ -783,6 +829,12 @@ window.addExpense = async (e) => {
     form.expenseType.value = 'normal';
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
+    
+    // Odznacz wszystkie przyciski kategorii
+    document.querySelectorAll('.category-quick-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -803,6 +855,14 @@ window.editExpense = (expenseId) => {
   form.expenseCategory.value = expense.category;
   form.expenseDescription.value = expense.description;
   form.expenseSource.value = expense.source;
+
+  // Zaznacz przycisk kategorii jeśli istnieje
+  document.querySelectorAll('.category-quick-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent === expense.category) {
+      btn.classList.add('active');
+    }
+  });
 
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
@@ -953,6 +1013,30 @@ window.saveSettings = async (e) => {
     showErrorMessage('Nie udało się zapisać ustawień');
   }
 };
+
+/**
+ * Załaduj ustawienia do formularza
+ */
+async function loadSettingsToForm() {
+  const endDates = getEndDates();
+  const savingGoal = getSavingGoal();
+  
+  const endDate1Input = document.getElementById('settingsEndDate1');
+  const endDate2Input = document.getElementById('settingsEndDate2');
+  const savingGoalInput = document.getElementById('settingsSavingGoal');
+  
+  if (endDate1Input && endDates.primary) {
+    endDate1Input.value = endDates.primary;
+  }
+  
+  if (endDate2Input && endDates.secondary) {
+    endDate2Input.value = endDates.secondary;
+  }
+  
+  if (savingGoalInput) {
+    savingGoalInput.value = savingGoal;
+  }
+}
 
 // ==================== NAWIGACJA ====================
 
