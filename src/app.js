@@ -1,8 +1,8 @@
-// src/app.js - Główna aplikacja Krezus v1.5.1
-import {
-  loginUser,
-  registerUser,
-  logoutUser,
+// src/app.js - Główna aplikacja Krezus v1.5.2
+import { 
+  loginUser, 
+  registerUser, 
+  logoutUser, 
   onAuthChange,
   getDisplayName,
   updateDisplayName,
@@ -44,7 +44,8 @@ import {
   getTopCategories,
   getTopDescriptionsForCategory,
   getTopSources,
-  computeComparisons
+  computeComparisons,
+  getEnvelopeCalculationInfo
 } from './modules/budgetCalculator.js';
 
 import {
@@ -58,7 +59,7 @@ import {
   getCurrentPeriod
 } from './modules/analytics.js';
 
-import {
+import { 
   showProfileModal,
   showPasswordModal
 } from './components/modals.js';
@@ -75,8 +76,8 @@ import {
   attachValidator
 } from './utils/validators.js';
 
-import {
-  getWarsawDateString,
+import { 
+  getWarsawDateString, 
   getCurrentTimeString,
   formatDateLabel
 } from './utils/dateHelpers.js';
@@ -91,7 +92,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.5.2';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -113,10 +114,10 @@ function hideLoader() {
 function updateDisplayNameInUI(displayName) {
   const usernameSpan = document.getElementById('username');
   if (usernameSpan) usernameSpan.textContent = displayName;
-
+  
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) profileBtn.textContent = `👤 ${displayName}`;
-
+  
   document.querySelectorAll('[data-username]').forEach(el => {
     el.textContent = displayName;
   });
@@ -125,9 +126,9 @@ function updateDisplayNameInUI(displayName) {
 function updatePaginationVisibility(tableId, totalItems) {
   const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
   if (!paginationContainer) return;
-
+  
   const itemsPerPage = tableId.includes('expense') ? PAGINATION.EXPENSES_PER_PAGE : PAGINATION.INCOMES_PER_PAGE;
-
+  
   if (totalItems <= itemsPerPage) {
     paginationContainer.style.display = 'none';
   } else {
@@ -144,26 +145,46 @@ async function loadAllData() {
     }
 
     console.log('📥 Ładowanie danych dla użytkownika:', userId);
-
+    
     await clearCache();
     await fetchAllData(userId);
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     await renderAll();
-
+    
     await subscribeToRealtimeUpdates(userId, {
-      onCategoriesChange: renderCategories,
-      onExpensesChange: renderExpenses,
-      onIncomesChange: renderSources,
-      onEndDatesChange: renderSummary,
-      onSavingGoalChange: renderSummary,
+      onCategoriesChange: () => {
+        renderCategories();
+        setupCategorySuggestions();
+      },
+      onExpensesChange: () => {
+        renderExpenses();
+        renderCategories();
+        renderSummary();
+        renderDailyEnvelope();
+        renderAnalytics();
+      },
+      onIncomesChange: () => {
+        renderSources();
+        renderSummary();
+        renderDailyEnvelope();
+        renderAnalytics();
+      },
+      onEndDatesChange: () => {
+        renderSummary();
+        updateDailyEnvelope().then(() => renderDailyEnvelope());
+      },
+      onSavingGoalChange: () => {
+        renderSummary();
+        updateDailyEnvelope().then(() => renderDailyEnvelope());
+      },
       onDailyEnvelopeChange: () => {
         renderSummary();
         renderDailyEnvelope();
       }
     });
-
+    
   } catch (error) {
     console.error('❌ Błąd ładowania danych:', error);
     showErrorMessage('Nie udało się załadować danych. Spróbuj odświeżyć stronę.');
@@ -174,7 +195,7 @@ async function loadBudgetUsers(uid) {
   if (budgetUsersUnsubscribe) {
     budgetUsersUnsubscribe();
   }
-
+  
   budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
     budgetUsersCache = users;
     updateBudgetUsersSelects();
@@ -184,24 +205,24 @@ async function loadBudgetUsers(uid) {
 function updateBudgetUsersSelects() {
   const expenseUserSelect = document.getElementById('expenseUser');
   const incomeUserSelect = document.getElementById('incomeUser');
-
+  
   if (!expenseUserSelect || !incomeUserSelect) return;
-
+  
   const currentExpenseValue = expenseUserSelect.value;
   const currentIncomeValue = incomeUserSelect.value;
-
+  
   const optionsHTML = '<option value="">Wybierz użytkownika</option>' +
-    budgetUsersCache.map(user =>
+    budgetUsersCache.map(user => 
       `<option value="${user.id}">${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
     ).join('');
-
+  
   expenseUserSelect.innerHTML = optionsHTML;
   incomeUserSelect.innerHTML = optionsHTML;
-
+  
   if (currentExpenseValue && budgetUsersCache.some(u => u.id === currentExpenseValue)) {
     expenseUserSelect.value = currentExpenseValue;
   }
-
+  
   if (currentIncomeValue && budgetUsersCache.some(u => u.id === currentIncomeValue)) {
     incomeUserSelect.value = currentIncomeValue;
   }
@@ -235,7 +256,7 @@ function renderSummary() {
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
-
+  
   const projectedLimit2Section = document.getElementById('projectedLimit2Section');
   if (date2 && date2.trim() !== '') {
     projectedLimit2Section.style.display = 'block';
@@ -253,6 +274,7 @@ function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
   const { spent, total, percentage, remaining } = calculateSpendingGauge();
   const median = getGlobalMedian30d();
+  const calcInfo = getEnvelopeCalculationInfo();
 
   if (!envelope) {
     document.getElementById('envelopeAmount').textContent = '0.00';
@@ -260,6 +282,11 @@ function renderDailyEnvelope() {
     document.getElementById('envelopeRemaining').textContent = '0.00';
     document.getElementById('envelopeMedian').textContent = '0.00';
     document.getElementById('spendingGauge').style.width = '0%';
+    
+    const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
+    if (calcInfoDiv) {
+      calcInfoDiv.innerHTML = '<small style="color: #6b7280;">Brak danych do wyliczenia koperty</small>';
+    }
     return;
   }
 
@@ -267,10 +294,10 @@ function renderDailyEnvelope() {
   document.getElementById('envelopeSpent').textContent = spent.toFixed(2);
   document.getElementById('envelopeRemaining').textContent = remaining.toFixed(2);
   document.getElementById('envelopeMedian').textContent = median.toFixed(2);
-
+  
   const gauge = document.getElementById('spendingGauge');
   gauge.style.width = `${percentage}%`;
-
+  
   if (percentage < 50) {
     gauge.style.background = 'linear-gradient(90deg, #10b981, #059669)';
   } else if (percentage < 80) {
@@ -278,7 +305,18 @@ function renderDailyEnvelope() {
   } else {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
-
+  
+  // Renderuj info o wyliczeniu koperty
+  const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
+  if (calcInfoDiv && calcInfo) {
+    calcInfoDiv.innerHTML = `
+      <small style="color: #6b7280; font-size: 0.85rem; line-height: 1.4;">
+        ${calcInfo.description}<br>
+        <strong>Składowe:</strong> ${calcInfo.formula}
+      </small>
+    `;
+  }
+  
   renderSourcesRemaining();
 }
 
@@ -352,7 +390,7 @@ function renderAnalytics() {
 
 window.selectPeriod = (days) => {
   document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-
+  
   if (days === 'custom') {
     document.querySelector('.period-btn:last-child').classList.add('active');
     document.getElementById('customPeriodInputs').style.display = 'block';
@@ -367,17 +405,17 @@ window.selectPeriod = (days) => {
 window.applyCustomPeriod = () => {
   const from = document.getElementById('analyticsDateFrom').value;
   const to = document.getElementById('analyticsDateTo').value;
-
+  
   if (!from || !to) {
     showErrorMessage('Wybierz obie daty');
     return;
   }
-
+  
   if (from > to) {
     showErrorMessage('Data "od" nie może być późniejsza niż data "do"');
     return;
   }
-
+  
   setCustomDateRange(from, to);
   renderAnalytics();
   showSuccessMessage('Zastosowano własny przedział dat');
@@ -387,7 +425,7 @@ function renderCategories() {
   const categories = getCategories();
   const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
-
+  
   if (categories.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak kategorii. Dodaj pierwszą kategorię!</p>';
     return;
@@ -412,12 +450,6 @@ function renderCategories() {
   `).join('');
 
   container.innerHTML = html;
-  updateCategorySelect();
-}
-
-function updateCategorySelect() {
-  setupCategorySuggestions();
-  setupSourceSuggestions();
 }
 
 function setupCategorySuggestions() {
@@ -425,28 +457,30 @@ function setupCategorySuggestions() {
   const categoryButtons = document.getElementById('categoryButtons');
   const descriptionInput = document.getElementById('expenseDescription');
   const descriptionSuggestions = document.getElementById('descriptionSuggestions');
-
+  
   if (!categoryInput || !categoryButtons) return;
 
-  const topCategories = getTopCategories(5);
+  // Usuń poprzednie listenery
+  const newCategoryInput = categoryInput.cloneNode(true);
+  categoryInput.parentNode.replaceChild(newCategoryInput, categoryInput);
 
+  const topCategories = getTopCategories(5);
+  
   // Renderuj przyciski kategorii - ZAWSZE WIDOCZNE
   renderCategoryButtons(topCategories);
-
+  
   // Filtruj kategorie podczas wpisywania
-  categoryInput.addEventListener('input', () => {
-    const value = categoryInput.value.trim().toLowerCase();
-
+  newCategoryInput.addEventListener('input', () => {
+    const value = newCategoryInput.value.trim().toLowerCase();
+    
     if (value === '') {
-      // Pokaż top 5 kategorii
       renderCategoryButtons(topCategories);
     } else {
-      // Filtruj kategorie
       const allCategories = getCategories();
-      const filtered = allCategories.filter(c =>
+      const filtered = allCategories.filter(c => 
         c.name.toLowerCase().includes(value)
       ).slice(0, 5);
-
+      
       if (filtered.length > 0) {
         renderCategoryButtons(filtered.map(c => ({ name: c.name, amount: 0 })));
       } else {
@@ -457,24 +491,24 @@ function setupCategorySuggestions() {
 
   // Obsługa pola opisu
   if (descriptionInput && descriptionSuggestions) {
-    categoryInput.addEventListener('change', () => {
-      const category = categoryInput.value.trim();
+    newCategoryInput.addEventListener('change', () => {
+      const category = newCategoryInput.value.trim();
       if (category) {
         updateDescriptionSuggestions(category);
       }
     });
 
     descriptionInput.addEventListener('focus', () => {
-      const category = categoryInput.value.trim();
+      const category = newCategoryInput.value.trim();
       if (category && descriptionInput.value.trim() === '') {
         updateDescriptionSuggestions(category);
       }
     });
 
     descriptionInput.addEventListener('input', () => {
-      const category = categoryInput.value.trim();
+      const category = newCategoryInput.value.trim();
       const value = descriptionInput.value.trim().toLowerCase();
-
+      
       if (!category) {
         descriptionSuggestions.innerHTML = '';
         return;
@@ -487,7 +521,7 @@ function setupCategorySuggestions() {
         const categoryExpenses = expenses.filter(e => e.category === category);
         const descriptions = [...new Set(categoryExpenses.map(e => e.description).filter(d => d))];
         const filtered = descriptions.filter(d => d.toLowerCase().includes(value)).slice(0, 5);
-
+        
         showDescriptionSuggestions(filtered);
       }
     });
@@ -500,7 +534,7 @@ function setupCategorySuggestions() {
 
   function showDescriptionSuggestions(suggestions) {
     if (!descriptionSuggestions) return;
-
+    
     if (suggestions.length === 0) {
       descriptionSuggestions.innerHTML = '';
       return;
@@ -535,26 +569,30 @@ function setupSourceSuggestions() {
   const sourceInput = document.getElementById('incomeSource');
   const sourceSuggestions = document.getElementById('sourceSuggestions');
   const sourceButtons = document.getElementById('sourceButtons');
-
+  
   if (!sourceInput || !sourceSuggestions || !sourceButtons) return;
 
-  const topSources = getTopSources(5);
+  // Usuń poprzednie listenery
+  const newSourceInput = sourceInput.cloneNode(true);
+  sourceInput.parentNode.replaceChild(newSourceInput, sourceInput);
 
+  const topSources = getTopSources(5);
+  
   // Renderuj przyciski źródeł - ZAWSZE WIDOCZNE
   renderSourceButtons(topSources);
-
-  sourceInput.addEventListener('input', () => {
-    const value = sourceInput.value.trim().toLowerCase();
-
+  
+  newSourceInput.addEventListener('input', () => {
+    const value = newSourceInput.value.trim().toLowerCase();
+    
     if (value === '') {
       renderSourceButtons(topSources);
     } else {
       const incomes = getIncomes();
       const sources = [...new Set(incomes.map(i => i.source).filter(s => s))];
-      const filtered = sources.filter(s =>
+      const filtered = sources.filter(s => 
         s.toLowerCase().includes(value)
       ).slice(0, 5);
-
+      
       if (filtered.length > 0) {
         renderSourceButtons(filtered);
       } else {
@@ -570,7 +608,7 @@ function setupSourceSuggestions() {
     }
 
     const html = sources.map(src => `
-      <button type="button" class="category-quick-btn" onclick="selectSource('${src.replace ? src.replace(/'/g, "\\'") : src}')">
+      <button type="button" class="category-quick-btn" onclick="selectSource('${typeof src === 'string' ? src.replace(/'/g, "\\'") : src}')">
         ${src}
       </button>
     `).join('');
@@ -583,12 +621,12 @@ window.selectCategory = (categoryName) => {
   const categoryInput = document.getElementById('expenseCategory');
   if (categoryInput) {
     categoryInput.value = categoryName;
-
+    
     const descriptionInput = document.getElementById('expenseDescription');
     if (descriptionInput) {
       descriptionInput.focus();
     }
-
+    
     const topDescriptions = getTopDescriptionsForCategory(categoryName, 5);
     const descriptionSuggestions = document.getElementById('descriptionSuggestions');
     if (descriptionSuggestions && topDescriptions.length > 0) {
@@ -622,7 +660,7 @@ window.selectSource = (source) => {
 function renderExpenses() {
   const expenses = getExpenses();
   const totalExpenses = expenses.length;
-
+  
   const sorted = [...expenses].sort((a, b) => {
     if (a.type !== b.type) {
       return a.type === 'planned' ? -1 : 1;
@@ -635,7 +673,7 @@ function renderExpenses() {
   const paginatedExpenses = sorted.slice(startIdx, endIdx);
 
   const tbody = document.getElementById('expensesTableBody');
-
+  
   if (totalExpenses === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
@@ -678,7 +716,7 @@ function renderExpensesPagination(total) {
 
   let html = '';
   html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage - 1})">◀</button>`;
-
+  
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentExpensePage - 1 && i <= currentExpensePage + 1)) {
       html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
@@ -686,7 +724,7 @@ function renderExpensesPagination(total) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
   }
-
+  
   html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage + 1})">▶</button>`;
   container.innerHTML = html;
 }
@@ -694,12 +732,12 @@ function renderExpensesPagination(total) {
 window.changeExpensePage = (page) => {
   const total = getExpenses().length;
   const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
-
+  
   if (page < 1 || page > totalPages) return;
-
+  
   currentExpensePage = page;
   renderExpenses();
-
+  
   const tableBody = document.getElementById('expensesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -709,7 +747,7 @@ window.changeExpensePage = (page) => {
 function renderSources() {
   const incomes = getIncomes();
   const totalIncomes = incomes.length;
-
+  
   const sorted = [...incomes].sort((a, b) => {
     if (a.type !== b.type) {
       return a.type === 'planned' ? -1 : 1;
@@ -722,7 +760,7 @@ function renderSources() {
   const paginatedIncomes = sorted.slice(startIdx, endIdx);
 
   const tbody = document.getElementById('sourcesTableBody');
-
+  
   if (totalIncomes === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
@@ -764,7 +802,7 @@ function renderIncomesPagination(total) {
 
   let html = '';
   html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage - 1})">◀</button>`;
-
+  
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentIncomePage - 1 && i <= currentIncomePage + 1)) {
       html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
@@ -772,7 +810,7 @@ function renderIncomesPagination(total) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
   }
-
+  
   html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage + 1})">▶</button>`;
   container.innerHTML = html;
 }
@@ -780,12 +818,12 @@ function renderIncomesPagination(total) {
 window.changeIncomePage = (page) => {
   const total = getIncomes().length;
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
-
+  
   if (page < 1 || page > totalPages) return;
-
+  
   currentIncomePage = page;
   renderSources();
-
+  
   const tableBody = document.getElementById('sourcesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -795,7 +833,7 @@ window.changeIncomePage = (page) => {
 function renderSourcesRemaining() {
   const sources = computeSourcesRemaining();
   const container = document.getElementById('sourcesRemainingList');
-
+  
   if (sources.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak danych</p>';
     return;
@@ -825,7 +863,7 @@ window.addCategory = async () => {
   }
 
   const categories = getCategories();
-
+  
   if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
     showErrorMessage('Kategoria o tej nazwie już istnieje');
     return;
@@ -837,12 +875,10 @@ window.addCategory = async () => {
   };
 
   const updated = [...categories, newCategory];
-
+  
   try {
     await saveCategories(updated);
     input.value = '';
-    renderCategories();
-    setupCategorySuggestions();
     showSuccessMessage('Kategoria dodana');
   } catch (error) {
     console.error('❌ Błąd dodawania kategorii:', error);
@@ -853,15 +889,15 @@ window.addCategory = async () => {
 window.deleteCategory = async (categoryId, categoryName) => {
   const expenses = getExpenses();
   const count = expenses.filter(e => e.category === categoryName).length;
-
+  
   if (count > 0) {
     const confirmed = await showPasswordModal(
       'Usuwanie kategorii',
       `Kategoria "${categoryName}" zawiera ${count} wydatków. Wszystkie te wydatki zostaną TRWALE usunięte. Aby potwierdzić, podaj hasło głównego konta.`
     );
-
+    
     if (!confirmed) return;
-
+    
     const updatedExpenses = expenses.filter(e => e.category !== categoryName);
     await saveExpenses(updatedExpenses);
   } else {
@@ -870,11 +906,9 @@ window.deleteCategory = async (categoryId, categoryName) => {
 
   const categories = getCategories();
   const updated = categories.filter(c => c.id !== categoryId);
-
+  
   try {
     await saveCategories(updated);
-    renderCategories();
-    setupCategorySuggestions();
     showSuccessMessage('Kategoria usunięta');
   } catch (error) {
     console.error('❌ Błąd usuwania kategorii:', error);
@@ -886,7 +920,7 @@ window.deleteCategory = async (categoryId, categoryName) => {
 
 window.addExpense = async (e) => {
   e.preventDefault();
-
+  
   const form = e.target;
   const amount = parseFloat(form.expenseAmount.value);
   const date = form.expenseDate.value;
@@ -905,12 +939,12 @@ window.addExpense = async (e) => {
     showErrorMessage('Wybierz użytkownika');
     return;
   }
-
+  
   if (!category) {
     showErrorMessage('Podaj kategorię');
     return;
   }
-
+  
   if (!description) {
     showErrorMessage('Podaj opis');
     return;
@@ -925,8 +959,6 @@ window.addExpense = async (e) => {
     };
     const updatedCategories = [...categories, newCategory];
     await saveCategories(updatedCategories);
-    renderCategories();
-    setupCategorySuggestions();
   }
 
   const expense = {
@@ -948,20 +980,18 @@ window.addExpense = async (e) => {
 
   try {
     await saveExpenses(updated);
-
+    
     if (type === 'normal' && date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-
+    
     form.reset();
     form.expenseDate.value = getWarsawDateString();
     form.expenseType.value = 'normal';
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     document.getElementById('descriptionSuggestions').innerHTML = '';
-
-    setupCategorySuggestions();
-
+    
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -984,7 +1014,7 @@ window.editExpense = (expenseId) => {
 
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
-
+  
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -994,14 +1024,14 @@ window.deleteExpense = async (expenseId) => {
   const expenses = getExpenses();
   const expense = expenses.find(e => e.id === expenseId);
   const updated = expenses.filter(e => e.id !== expenseId);
-
+  
   try {
     await saveExpenses(updated);
-
+    
     if (expense && expense.type === 'normal' && expense.date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-
+    
     showSuccessMessage('Wydatek usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania wydatku:', error);
@@ -1013,7 +1043,7 @@ window.deleteExpense = async (expenseId) => {
 
 window.addIncome = async (e) => {
   e.preventDefault();
-
+  
   const form = e.target;
   const amount = parseFloat(form.incomeAmount.value);
   const date = form.incomeDate.value;
@@ -1050,20 +1080,18 @@ window.addIncome = async (e) => {
 
   try {
     await saveIncomes(updated);
-
-    if (date === getWarsawDateString()) {
+    
+    if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-
+    
     form.reset();
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
     editingIncomeId = null;
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
-
-    setupSourceSuggestions();
-
+    
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -1085,7 +1113,7 @@ window.editIncome = (incomeId) => {
 
   editingIncomeId = incomeId;
   document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
-
+  
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -1095,14 +1123,14 @@ window.deleteIncome = async (incomeId) => {
   const incomes = getIncomes();
   const income = incomes.find(i => i.id === incomeId);
   const updated = incomes.filter(i => i.id !== incomeId);
-
+  
   try {
     await saveIncomes(updated);
-
-    if (income && income.date === getWarsawDateString()) {
+    
+    if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-
+    
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -1114,7 +1142,7 @@ window.deleteIncome = async (incomeId) => {
 
 window.saveSettings = async (e) => {
   e.preventDefault();
-
+  
   const form = e.target;
   const endDate1 = form.endDate1.value;
   const endDate2 = form.endDate2.value || '';
@@ -1124,9 +1152,8 @@ window.saveSettings = async (e) => {
     await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
-
+    
     showSuccessMessage('Ustawienia zapisane');
-    renderSummary();
   } catch (error) {
     console.error('❌ Błąd zapisywania ustawień:', error);
     showErrorMessage('Nie udało się zapisać ustawień');
@@ -1148,7 +1175,7 @@ window.showSection = (sectionId) => {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-
+  
   const activeBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
   if (activeBtn) {
     activeBtn.classList.add('active');
@@ -1165,7 +1192,7 @@ window.openProfile = () => {
 
 window.handleLogin = async (e) => {
   e.preventDefault();
-
+  
   const form = e.target;
   const email = form.loginEmail.value.trim();
   const password = form.loginPassword.value;
@@ -1181,7 +1208,7 @@ window.handleLogin = async (e) => {
 
 window.handleRegister = async (e) => {
   e.preventDefault();
-
+  
   const form = e.target;
   const email = form.registerEmail.value.trim();
   const password = form.registerPassword.value;
@@ -1208,7 +1235,7 @@ window.handleRegister = async (e) => {
 
 window.handleLogout = async () => {
   if (!confirm('Czy na pewno chcesz się wylogować?')) return;
-
+  
   try {
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
@@ -1251,21 +1278,21 @@ onAuthChange(async (user) => {
     });
 
     await loadAllData();
-
+    
     hideLoader();
 
   } else {
     console.log('❌ Użytkownik wylogowany');
-
+    
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
-
+    
     authSection.classList.remove('hidden');
     appSection.classList.add('hidden');
-
+    
     hideLoader();
   }
 });
@@ -1275,7 +1302,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
-
+  
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
 

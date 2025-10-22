@@ -1,4 +1,4 @@
-// src/components/modals.js - Modale aplikacji Krezus v1.5.0
+// src/components/modals.js - Modale aplikacji Krezus v1.5.2
 import { 
   getCurrentUser,
   getDisplayName,
@@ -10,6 +10,13 @@ import {
   subscribeToBudgetUsers,
   loginUser
 } from '../modules/auth.js';
+
+import {
+  getExpenses,
+  getIncomes,
+  saveExpenses,
+  saveIncomes
+} from '../modules/dataManager.js';
 
 import { 
   showErrorMessage, 
@@ -131,7 +138,7 @@ async function loadBudgetUsers(uid) {
           <div class="budget-user-actions">
             ${!isOwner ? `
               <button class="btn-icon" onclick="handleEditBudgetUser('${user.id}', '${user.name}')" title="Edytuj">✏️</button>
-              <button class="btn-icon" onclick="handleDeleteBudgetUser('${user.id}')" title="Usuń">🗑️</button>
+              <button class="btn-icon" onclick="handleDeleteBudgetUser('${user.id}', '${user.name}')" title="Usuń">🗑️</button>
             ` : ''}
           </div>
         </div>
@@ -190,18 +197,49 @@ window.handleEditBudgetUser = async (userId, currentName) => {
   }
 };
 
-window.handleDeleteBudgetUser = async (userId) => {
-  if (!confirm('Czy na pewno chcesz usunąć tego użytkownika?')) return;
-  
+window.handleDeleteBudgetUser = async (userId, userName) => {
   const user = getCurrentUser();
   if (!user) return;
   
-  try {
-    await deleteBudgetUser(user.uid, userId);
-    showSuccessMessage('Użytkownik usunięty');
-  } catch (error) {
-    console.error('❌ Błąd usuwania użytkownika:', error);
-    showErrorMessage(error.message || 'Nie udało się usunąć użytkownika');
+  // Sprawdź ile transakcji ma użytkownik
+  const expenses = getExpenses();
+  const incomes = getIncomes();
+  
+  const userExpenses = expenses.filter(e => e.userId === userId);
+  const userIncomes = incomes.filter(i => i.userId === userId);
+  const totalTransactions = userExpenses.length + userIncomes.length;
+  
+  if (totalTransactions > 0) {
+    const confirmed = await showPasswordModal(
+      'Usuwanie użytkownika',
+      `Użytkownik "${userName}" posiada ${totalTransactions} transakcji (${userExpenses.length} wydatków, ${userIncomes.length} przychodów). Wszystkie te transakcje zostaną TRWALE usunięte. Aby potwierdzić, podaj hasło głównego konta.`
+    );
+    
+    if (!confirmed) return;
+    
+    // Usuń wszystkie transakcje użytkownika
+    const updatedExpenses = expenses.filter(e => e.userId !== userId);
+    const updatedIncomes = incomes.filter(i => i.userId !== userId);
+    
+    try {
+      await saveExpenses(updatedExpenses);
+      await saveIncomes(updatedIncomes);
+      await deleteBudgetUser(user.uid, userId);
+      showSuccessMessage('Użytkownik i wszystkie jego transakcje zostały usunięte');
+    } catch (error) {
+      console.error('❌ Błąd usuwania użytkownika:', error);
+      showErrorMessage('Nie udało się usunąć użytkownika');
+    }
+  } else {
+    if (!confirm(`Czy na pewno chcesz usunąć użytkownika "${userName}"?`)) return;
+    
+    try {
+      await deleteBudgetUser(user.uid, userId);
+      showSuccessMessage('Użytkownik usunięty');
+    } catch (error) {
+      console.error('❌ Błąd usuwania użytkownika:', error);
+      showErrorMessage(error.message || 'Nie udało się usunąć użytkownika');
+    }
   }
 };
 
@@ -306,6 +344,8 @@ window.closeModal = (modalId) => {
     }
   }
 };
+
+window.closePasswordModal = closePasswordModal;
 
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal')) {
