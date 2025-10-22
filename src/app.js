@@ -240,6 +240,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
+  loadSettings();
   setupCategorySuggestions();
   setupSourceSuggestions();
   setupExpenseTypeToggle();
@@ -318,8 +319,6 @@ function renderDailyEnvelope() {
       </small>
     `;
   }
-  
-  renderSourcesRemaining();
 }
 
 function renderAnalytics() {
@@ -331,7 +330,8 @@ function renderAnalytics() {
 
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
   document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
-  document.getElementById('periodTransactions').textContent = stats.totalTransactions;
+  document.getElementById('periodExpensesCount').textContent = stats.expensesCount;
+  document.getElementById('periodIncomesCount').textContent = stats.incomesCount;
 
   const expChange = document.getElementById('expenseChange');
   expChange.textContent = `${comparison.expenseChange > 0 ? '+' : ''}${comparison.expenseChange.toFixed(1)}%`;
@@ -339,8 +339,11 @@ function renderAnalytics() {
   const incChange = document.getElementById('incomeChange');
   incChange.textContent = `${comparison.incomeChange > 0 ? '+' : ''}${comparison.incomeChange.toFixed(1)}%`;
 
-  const transChange = document.getElementById('transactionChange');
-  transChange.textContent = `${comparison.transactionChange > 0 ? '+' : ''}${comparison.transactionChange.toFixed(1)}%`;
+  const expCountChange = document.getElementById('expenseCountChange');
+  expCountChange.textContent = `${comparison.expenseCountChange > 0 ? '+' : ''}${comparison.expenseCountChange.toFixed(1)}%`;
+
+  const incCountChange = document.getElementById('incomeCountChange');
+  incCountChange.textContent = `${comparison.incomeCountChange > 0 ? '+' : ''}${comparison.incomeCountChange.toFixed(1)}%`;
 
   const mostExpCat = document.getElementById('mostExpensiveCategory');
   if (mostExpensive) {
@@ -381,6 +384,9 @@ function renderAnalytics() {
         <div>
           <strong>${a.description || 'Brak opisu'}</strong>
           <small>${a.category || 'Brak kategorii'} • ${formatDateLabel(a.date)}</small>
+          <div style="margin-top: 5px; color: #ef4444; font-size: 0.9rem;">
+            <strong>⚠️ ${a.anomalyReason || 'Anomalia wykryta'}</strong>
+          </div>
         </div>
         <span class="amount">${a.amount.toFixed(2)} zł</span>
       </div>
@@ -511,6 +517,7 @@ function setupCategorySuggestions() {
   const categoryButtons = document.getElementById('categoryButtons');
   const descriptionInput = document.getElementById('expenseDescription');
   const descriptionSuggestions = document.getElementById('descriptionSuggestions');
+  const descriptionButtons = document.getElementById('descriptionButtons');
   
   if (!categoryInput || !categoryButtons) return;
 
@@ -544,63 +551,67 @@ function setupCategorySuggestions() {
   });
 
   // Obsługa pola opisu
-  if (descriptionInput && descriptionSuggestions) {
+  if (descriptionInput && descriptionSuggestions && descriptionButtons) {
+    // Usuń poprzednie listenery
+    const newDescriptionInput = descriptionInput.cloneNode(true);
+    descriptionInput.parentNode.replaceChild(newDescriptionInput, descriptionInput);
+    
     newCategoryInput.addEventListener('change', () => {
       const category = newCategoryInput.value.trim();
       if (category) {
-        updateDescriptionSuggestions(category);
+        updateDescriptionButtons(category);
       }
     });
 
-    descriptionInput.addEventListener('focus', () => {
+    newDescriptionInput.addEventListener('focus', () => {
       const category = newCategoryInput.value.trim();
-      if (category && descriptionInput.value.trim() === '') {
-        updateDescriptionSuggestions(category);
+      if (category) {
+        updateDescriptionButtons(category);
       }
     });
 
-    descriptionInput.addEventListener('input', () => {
+    newDescriptionInput.addEventListener('input', () => {
       const category = newCategoryInput.value.trim();
-      const value = descriptionInput.value.trim().toLowerCase();
+      const value = newDescriptionInput.value.trim().toLowerCase();
       
       if (!category) {
-        descriptionSuggestions.innerHTML = '';
+        descriptionButtons.innerHTML = '';
         return;
       }
 
       if (value === '') {
-        updateDescriptionSuggestions(category);
+        updateDescriptionButtons(category);
       } else {
         const expenses = getExpenses();
         const categoryExpenses = expenses.filter(e => e.category === category);
         const descriptions = [...new Set(categoryExpenses.map(e => e.description).filter(d => d))];
         const filtered = descriptions.filter(d => d.toLowerCase().includes(value)).slice(0, 5);
         
-        showDescriptionSuggestions(filtered);
+        renderDescriptionButtons(filtered);
       }
     });
   }
 
-  function updateDescriptionSuggestions(category) {
+  function updateDescriptionButtons(category) {
     const topDescriptions = getTopDescriptionsForCategory(category, 5);
-    showDescriptionSuggestions(topDescriptions.map(d => d.name));
+    renderDescriptionButtons(topDescriptions.map(d => d.name));
   }
 
-  function showDescriptionSuggestions(suggestions) {
-    if (!descriptionSuggestions) return;
+  function renderDescriptionButtons(descriptions) {
+    if (!descriptionButtons) return;
     
-    if (suggestions.length === 0) {
-      descriptionSuggestions.innerHTML = '';
+    if (descriptions.length === 0) {
+      descriptionButtons.innerHTML = '';
       return;
     }
 
-    const html = suggestions.map(desc => `
-      <div class="suggestion-item" onclick="selectDescription('${desc.replace(/'/g, "\\'")}')">
+    const html = descriptions.map(desc => `
+      <button type="button" class="category-quick-btn" onclick="selectDescription('${desc.replace(/'/g, "\\'")}')">
         ${desc}
-      </div>
+      </button>
     `).join('');
 
-    descriptionSuggestions.innerHTML = html;
+    descriptionButtons.innerHTML = html;
   }
 
   function renderCategoryButtons(categories) {
@@ -883,27 +894,6 @@ window.changeIncomePage = (page) => {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 };
-
-function renderSourcesRemaining() {
-  const sources = computeSourcesRemaining();
-  const container = document.getElementById('sourcesRemainingList');
-  
-  if (sources.length === 0) {
-    container.innerHTML = '<p class="empty-state">Brak danych</p>';
-    return;
-  }
-
-  const html = sources.map(src => `
-    <div class="source-remaining-item">
-      <span>${src.name}</span>
-      <span class="amount ${src.amount >= 0 ? 'positive' : 'negative'}">
-        ${src.amount.toFixed(2)} zł
-      </span>
-    </div>
-  `).join('');
-
-  container.innerHTML = html;
-}
 
 // ==================== KATEGORIE ====================
 
@@ -1225,6 +1215,19 @@ window.deleteIncome = async (incomeId) => {
 };
 
 // ==================== USTAWIENIA ====================
+
+function loadSettings() {
+  const endDates = getEndDates();
+  const savingGoal = getSavingGoal();
+  
+  const endDate1Input = document.getElementById('settingsEndDate1');
+  const endDate2Input = document.getElementById('settingsEndDate2');
+  const savingGoalInput = document.getElementById('settingsSavingGoal');
+  
+  if (endDate1Input) endDate1Input.value = endDates.primary || '';
+  if (endDate2Input) endDate2Input.value = endDates.secondary || '';
+  if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
+}
 
 window.saveSettings = async (e) => {
   e.preventDefault();

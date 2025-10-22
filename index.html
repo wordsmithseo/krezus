@@ -152,10 +152,6 @@
                         <div class="envelope-median"><strong>Mediana wydatków (30 dni):</strong> <span id="envelopeMedian">0.00</span> zł</div>
                     </div>
                 </div>
-                <div class="section-card">
-                    <h3>💼 Pozostałe środki ze źródeł</h3>
-                    <div id="sourcesRemainingList"></div>
-                </div>
             </section>
 
             <section id="sourcesSection" class="section">
@@ -264,6 +260,7 @@
                         <div class="form-group">
                             <label>Opis</label>
                             <input type="text" id="expenseDescription" name="expenseDescription" required autocomplete="off">
+                            <div id="descriptionButtons" class="top-categories-buttons"></div>
                             <div id="descriptionSuggestions" class="suggestions-container"></div>
                         </div>
                         <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
@@ -345,8 +342,12 @@
                             <div class="stat-value"><span id="periodIncomes">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Liczba transakcji</div>
-                            <div class="stat-value"><span id="periodTransactions">0</span></div>
+                            <div class="stat-label">Liczba wydatków</div>
+                            <div class="stat-value"><span id="periodExpensesCount">0</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Liczba przychodów</div>
+                            <div class="stat-value"><span id="periodIncomesCount">0</span></div>
                         </div>
                     </div>
                     <h3>🔄 Porównanie z poprzednim okresem</h3>
@@ -360,8 +361,12 @@
                             <div class="stat-value stat-value-white"><span id="incomeChange">0.0%</span></div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Zmiana liczby transakcji</div>
-                            <div class="stat-value stat-value-white"><span id="transactionChange">0.0%</span></div>
+                            <div class="stat-label">Zmiana liczby wydatków</div>
+                            <div class="stat-value stat-value-white"><span id="expenseCountChange">0.0%</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Zmiana liczby przychodów</div>
+                            <div class="stat-value stat-value-white"><span id="incomeCountChange">0.0%</span></div>
                         </div>
                     </div>
                     <h3>🏆 Najkosztowniejsza kategoria</h3>
@@ -376,19 +381,19 @@
             <section id="settingsSection" class="section">
                 <div class="section-card">
                     <h2>⚙️ Ustawienia budżetu</h2>
-                    <form onsubmit="saveSettings(event)">
+                    <form id="settingsForm" onsubmit="saveSettings(event)">
                         <div class="form-group">
                             <label>Data końcowa okresu 1 (główny okres)</label>
-                            <input type="date" name="endDate1" required>
+                            <input type="date" id="settingsEndDate1" name="endDate1" required>
                         </div>
                         <div class="form-group">
                             <label>Data końcowa okresu 2 (opcjonalnie)</label>
-                            <input type="date" name="endDate2">
+                            <input type="date" id="settingsEndDate2" name="endDate2">
                             <small class="text-muted">Pozostaw puste jeśli chcesz używać tylko jednego okresu</small>
                         </div>
                         <div class="form-group">
                             <label>Cel oszczędności / Rezerwa (zł)</label>
-                            <input type="number" name="savingGoal" step="0.01" min="0" value="0">
+                            <input type="number" id="settingsSavingGoal" name="savingGoal" step="0.01" min="0" value="0">
                             <small class="text-muted">Kwota która zostanie odjęta od dostępnych środków</small>
                         </div>
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
