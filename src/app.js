@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.5.2
+// src/app.js - Główna aplikacja Krezus v1.5.3
 import { 
   loginUser, 
   registerUser, 
@@ -92,7 +92,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.5.2';
+const APP_VERSION = '1.5.3';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -242,6 +242,8 @@ async function renderAll() {
   renderAnalytics();
   setupCategorySuggestions();
   setupSourceSuggestions();
+  setupExpenseTypeToggle();
+  setupIncomeTypeToggle();
 }
 
 function renderSummary() {
@@ -285,7 +287,7 @@ function renderDailyEnvelope() {
     
     const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
     if (calcInfoDiv) {
-      calcInfoDiv.innerHTML = '<small style="color: #6b7280;">Brak danych do wyliczenia koperty</small>';
+      calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
     }
     return;
   }
@@ -306,11 +308,11 @@ function renderDailyEnvelope() {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
   
-  // Renderuj info o wyliczeniu koperty
+  // Renderuj info o wyliczeniu koperty - BIAŁY KOLOR
   const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
   if (calcInfoDiv && calcInfo) {
     calcInfoDiv.innerHTML = `
-      <small style="color: #6b7280; font-size: 0.85rem; line-height: 1.4;">
+      <small style="color: white; font-size: 0.85rem; line-height: 1.4; opacity: 0.95;">
         ${calcInfo.description}<br>
         <strong>Składowe:</strong> ${calcInfo.formula}
       </small>
@@ -450,6 +452,58 @@ function renderCategories() {
   `).join('');
 
   container.innerHTML = html;
+}
+
+// ==================== TOGGLE TYPU TRANSAKCJI DLA WYDATKÓW ====================
+
+function setupExpenseTypeToggle() {
+  const expenseTypeSelect = document.getElementById('expenseType');
+  const expenseDateGroup = document.querySelector('#expenseDate').closest('.form-group');
+  const expenseTimeGroup = document.querySelector('#expenseTime').closest('.form-group');
+  
+  if (!expenseTypeSelect || !expenseDateGroup || !expenseTimeGroup) return;
+  
+  const toggleDateTimeFields = () => {
+    const type = expenseTypeSelect.value;
+    
+    if (type === 'normal') {
+      // Ukryj pola daty i godziny dla zwykłych wydatków
+      expenseDateGroup.style.display = 'none';
+      expenseTimeGroup.style.display = 'none';
+    } else {
+      // Pokaż pola dla planowanych wydatków
+      expenseDateGroup.style.display = 'block';
+      expenseTimeGroup.style.display = 'block';
+    }
+  };
+  
+  expenseTypeSelect.addEventListener('change', toggleDateTimeFields);
+  toggleDateTimeFields(); // Wywołaj na starcie
+}
+
+function setupIncomeTypeToggle() {
+  const incomeTypeSelect = document.getElementById('incomeType');
+  const incomeDateGroup = document.querySelector('#incomeDate').closest('.form-group');
+  const incomeTimeGroup = document.querySelector('#incomeTime').closest('.form-group');
+  
+  if (!incomeTypeSelect || !incomeDateGroup || !incomeTimeGroup) return;
+  
+  const toggleDateTimeFields = () => {
+    const type = incomeTypeSelect.value;
+    
+    if (type === 'normal') {
+      // Ukryj pola daty i godziny dla zwykłych przychodów
+      incomeDateGroup.style.display = 'none';
+      incomeTimeGroup.style.display = 'none';
+    } else {
+      // Pokaż pola dla planowanych przychodów
+      incomeDateGroup.style.display = 'block';
+      incomeTimeGroup.style.display = 'block';
+    }
+  };
+  
+  incomeTypeSelect.addEventListener('change', toggleDateTimeFields);
+  toggleDateTimeFields(); // Wywołaj na starcie
 }
 
 function setupCategorySuggestions() {
@@ -923,9 +977,7 @@ window.addExpense = async (e) => {
   
   const form = e.target;
   const amount = parseFloat(form.expenseAmount.value);
-  const date = form.expenseDate.value;
   const type = form.expenseType.value;
-  const time = form.expenseTime.value || '';
   const userId = form.expenseUser.value;
   const category = form.expenseCategory.value.trim();
   const description = form.expenseDescription.value.trim();
@@ -961,6 +1013,18 @@ window.addExpense = async (e) => {
     await saveCategories(updatedCategories);
   }
 
+  let date, time;
+  
+  if (type === 'normal') {
+    // Zwykły wydatek - dzisiejsza data i aktualny czas
+    date = getWarsawDateString();
+    time = getCurrentTimeString();
+  } else {
+    // Planowany wydatek - użyj wybranych dat
+    date = form.expenseDate.value;
+    time = form.expenseTime.value || '';
+  }
+
   const expense = {
     id: editingExpenseId || `exp_${Date.now()}`,
     amount,
@@ -992,6 +1056,9 @@ window.addExpense = async (e) => {
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     document.getElementById('descriptionSuggestions').innerHTML = '';
     
+    // Odśwież widoczność pól po resecie
+    setupExpenseTypeToggle();
+    
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -1014,6 +1081,9 @@ window.editExpense = (expenseId) => {
 
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
+  
+  // Odśwież widoczność pól
+  setupExpenseTypeToggle();
   
   form.scrollIntoView({ behavior: 'smooth' });
 };
@@ -1046,9 +1116,7 @@ window.addIncome = async (e) => {
   
   const form = e.target;
   const amount = parseFloat(form.incomeAmount.value);
-  const date = form.incomeDate.value;
   const type = form.incomeType.value;
-  const time = form.incomeTime.value || '';
   const userId = form.incomeUser.value;
   const source = form.incomeSource.value.trim();
 
@@ -1060,6 +1128,18 @@ window.addIncome = async (e) => {
   if (!userId) {
     showErrorMessage('Wybierz użytkownika');
     return;
+  }
+
+  let date, time;
+  
+  if (type === 'normal') {
+    // Zwykły przychód - dzisiejsza data i aktualny czas
+    date = getWarsawDateString();
+    time = getCurrentTimeString();
+  } else {
+    // Planowany przychód - użyj wybranych dat
+    date = form.incomeDate.value;
+    time = form.incomeTime.value || '';
   }
 
   const income = {
@@ -1092,6 +1172,9 @@ window.addIncome = async (e) => {
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
     
+    // Odśwież widoczność pól po resecie
+    setupIncomeTypeToggle();
+    
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -1113,6 +1196,9 @@ window.editIncome = (incomeId) => {
 
   editingIncomeId = incomeId;
   document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
+  
+  // Odśwież widoczność pól
+  setupIncomeTypeToggle();
   
   form.scrollIntoView({ behavior: 'smooth' });
 };
