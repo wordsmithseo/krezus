@@ -1,8 +1,8 @@
-// src/app.js - Główna aplikacja Krezus v1.5.0
-import { 
-  loginUser, 
-  registerUser, 
-  logoutUser, 
+// src/app.js - Główna aplikacja Krezus v1.5.1
+import {
+  loginUser,
+  registerUser,
+  logoutUser,
   onAuthChange,
   getDisplayName,
   updateDisplayName,
@@ -58,7 +58,7 @@ import {
   getCurrentPeriod
 } from './modules/analytics.js';
 
-import { 
+import {
   showProfileModal,
   showPasswordModal
 } from './components/modals.js';
@@ -75,8 +75,8 @@ import {
   attachValidator
 } from './utils/validators.js';
 
-import { 
-  getWarsawDateString, 
+import {
+  getWarsawDateString,
   getCurrentTimeString,
   formatDateLabel
 } from './utils/dateHelpers.js';
@@ -91,7 +91,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -113,10 +113,10 @@ function hideLoader() {
 function updateDisplayNameInUI(displayName) {
   const usernameSpan = document.getElementById('username');
   if (usernameSpan) usernameSpan.textContent = displayName;
-  
+
   const profileBtn = document.getElementById('profileBtn');
   if (profileBtn) profileBtn.textContent = `👤 ${displayName}`;
-  
+
   document.querySelectorAll('[data-username]').forEach(el => {
     el.textContent = displayName;
   });
@@ -125,9 +125,9 @@ function updateDisplayNameInUI(displayName) {
 function updatePaginationVisibility(tableId, totalItems) {
   const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
   if (!paginationContainer) return;
-  
+
   const itemsPerPage = tableId.includes('expense') ? PAGINATION.EXPENSES_PER_PAGE : PAGINATION.INCOMES_PER_PAGE;
-  
+
   if (totalItems <= itemsPerPage) {
     paginationContainer.style.display = 'none';
   } else {
@@ -144,14 +144,14 @@ async function loadAllData() {
     }
 
     console.log('📥 Ładowanie danych dla użytkownika:', userId);
-    
+
     await clearCache();
     await fetchAllData(userId);
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     await renderAll();
-    
+
     await subscribeToRealtimeUpdates(userId, {
       onCategoriesChange: renderCategories,
       onExpensesChange: renderExpenses,
@@ -163,7 +163,7 @@ async function loadAllData() {
         renderDailyEnvelope();
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Błąd ładowania danych:', error);
     showErrorMessage('Nie udało się załadować danych. Spróbuj odświeżyć stronę.');
@@ -174,7 +174,7 @@ async function loadBudgetUsers(uid) {
   if (budgetUsersUnsubscribe) {
     budgetUsersUnsubscribe();
   }
-  
+
   budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
     budgetUsersCache = users;
     updateBudgetUsersSelects();
@@ -184,24 +184,24 @@ async function loadBudgetUsers(uid) {
 function updateBudgetUsersSelects() {
   const expenseUserSelect = document.getElementById('expenseUser');
   const incomeUserSelect = document.getElementById('incomeUser');
-  
+
   if (!expenseUserSelect || !incomeUserSelect) return;
-  
+
   const currentExpenseValue = expenseUserSelect.value;
   const currentIncomeValue = incomeUserSelect.value;
-  
+
   const optionsHTML = '<option value="">Wybierz użytkownika</option>' +
-    budgetUsersCache.map(user => 
+    budgetUsersCache.map(user =>
       `<option value="${user.id}">${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
     ).join('');
-  
+
   expenseUserSelect.innerHTML = optionsHTML;
   incomeUserSelect.innerHTML = optionsHTML;
-  
+
   if (currentExpenseValue && budgetUsersCache.some(u => u.id === currentExpenseValue)) {
     expenseUserSelect.value = currentExpenseValue;
   }
-  
+
   if (currentIncomeValue && budgetUsersCache.some(u => u.id === currentIncomeValue)) {
     incomeUserSelect.value = currentIncomeValue;
   }
@@ -235,7 +235,7 @@ function renderSummary() {
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
-  
+
   const projectedLimit2Section = document.getElementById('projectedLimit2Section');
   if (date2 && date2.trim() !== '') {
     projectedLimit2Section.style.display = 'block';
@@ -267,10 +267,10 @@ function renderDailyEnvelope() {
   document.getElementById('envelopeSpent').textContent = spent.toFixed(2);
   document.getElementById('envelopeRemaining').textContent = remaining.toFixed(2);
   document.getElementById('envelopeMedian').textContent = median.toFixed(2);
-  
+
   const gauge = document.getElementById('spendingGauge');
   gauge.style.width = `${percentage}%`;
-  
+
   if (percentage < 50) {
     gauge.style.background = 'linear-gradient(90deg, #10b981, #059669)';
   } else if (percentage < 80) {
@@ -278,7 +278,7 @@ function renderDailyEnvelope() {
   } else {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
-  
+
   renderSourcesRemaining();
 }
 
@@ -352,7 +352,7 @@ function renderAnalytics() {
 
 window.selectPeriod = (days) => {
   document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-  
+
   if (days === 'custom') {
     document.querySelector('.period-btn:last-child').classList.add('active');
     document.getElementById('customPeriodInputs').style.display = 'block';
@@ -367,17 +367,17 @@ window.selectPeriod = (days) => {
 window.applyCustomPeriod = () => {
   const from = document.getElementById('analyticsDateFrom').value;
   const to = document.getElementById('analyticsDateTo').value;
-  
+
   if (!from || !to) {
     showErrorMessage('Wybierz obie daty');
     return;
   }
-  
+
   if (from > to) {
     showErrorMessage('Data "od" nie może być późniejsza niż data "do"');
     return;
   }
-  
+
   setCustomDateRange(from, to);
   renderAnalytics();
   showSuccessMessage('Zastosowano własny przedział dat');
@@ -387,7 +387,7 @@ function renderCategories() {
   const categories = getCategories();
   const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
-  
+
   if (categories.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak kategorii. Dodaj pierwszą kategorię!</p>';
     return;
@@ -395,14 +395,17 @@ function renderCategories() {
 
   const categoryStats = categories.map(cat => {
     const count = expenses.filter(e => e.category === cat.name).length;
-    return { ...cat, count };
+    const totalAmount = expenses
+      .filter(e => e.category === cat.name && e.type === 'normal')
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    return { ...cat, count, totalAmount };
   });
 
   const html = categoryStats.map(cat => `
     <div class="category-item">
       <div>
         <span class="category-name">${cat.name}</span>
-        <span class="category-count">(${cat.count} wydatków)</span>
+        <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
       </div>
       <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name}')">🗑️</button>
     </div>
@@ -419,70 +422,40 @@ function updateCategorySelect() {
 
 function setupCategorySuggestions() {
   const categoryInput = document.getElementById('expenseCategory');
-  const categorySuggestions = document.getElementById('categorySuggestions');
   const categoryButtons = document.getElementById('categoryButtons');
   const descriptionInput = document.getElementById('expenseDescription');
   const descriptionSuggestions = document.getElementById('descriptionSuggestions');
-  
-  if (!categoryInput || !categorySuggestions || !categoryButtons) return;
+
+  if (!categoryInput || !categoryButtons) return;
 
   const topCategories = getTopCategories(5);
-  
-  // Renderuj przyciski kategorii
+
+  // Renderuj przyciski kategorii - ZAWSZE WIDOCZNE
   renderCategoryButtons(topCategories);
 
-categoryInput.addEventListener('input', () => {
-  const value = categoryInput.value.trim().toLowerCase();
-  
-  if (value === '') {
-    // Pokaż top 5 kategorii
-    renderCategoryButtons(topCategories);
-  } else {
-    // Filtruj kategorie
-    const allCategories = getCategories();
-    const filtered = allCategories.filter(c => 
-      c.name.toLowerCase().includes(value)
-    ).slice(0, 5);
-    
-    if (filtered.length > 0) {
-      renderCategoryButtons(filtered.map(c => ({ name: c.name, amount: 0 })));
+  // Filtruj kategorie podczas wpisywania
+  categoryInput.addEventListener('input', () => {
+    const value = categoryInput.value.trim().toLowerCase();
+
+    if (value === '') {
+      // Pokaż top 5 kategorii
+      renderCategoryButtons(topCategories);
     } else {
-      categoryButtons.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem; padding: 10px;">Brak pasujących kategorii</p>';
+      // Filtruj kategorie
+      const allCategories = getCategories();
+      const filtered = allCategories.filter(c =>
+        c.name.toLowerCase().includes(value)
+      ).slice(0, 5);
+
+      if (filtered.length > 0) {
+        renderCategoryButtons(filtered.map(c => ({ name: c.name, amount: 0 })));
+      } else {
+        categoryButtons.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem; padding: 10px;">Brak pasujących kategorii</p>';
+      }
     }
-  }
-});
+  });
 
-
-  function renderCategoryButtons(categories) {
-    if (categories.length === 0) {
-      categoryButtons.innerHTML = '';
-      return;
-    }
-
-    const html = categories.map(cat => `
-      <button type="button" class="category-quick-btn" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
-        ${cat.name}
-      </button>
-    `).join('');
-
-    categoryButtons.innerHTML = html;
-  }
-
-  function showCategorySuggestions(suggestions) {
-    if (suggestions.length === 0) {
-      categorySuggestions.innerHTML = '';
-      return;
-    }
-
-    const html = suggestions.map(cat => `
-      <div class="suggestion-item" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
-        ${cat.name}
-      </div>
-    `).join('');
-
-    categorySuggestions.innerHTML = html;
-  }
-
+  // Obsługa pola opisu
   if (descriptionInput && descriptionSuggestions) {
     categoryInput.addEventListener('change', () => {
       const category = categoryInput.value.trim();
@@ -501,7 +474,7 @@ categoryInput.addEventListener('input', () => {
     descriptionInput.addEventListener('input', () => {
       const category = categoryInput.value.trim();
       const value = descriptionInput.value.trim().toLowerCase();
-      
+
       if (!category) {
         descriptionSuggestions.innerHTML = '';
         return;
@@ -514,7 +487,7 @@ categoryInput.addEventListener('input', () => {
         const categoryExpenses = expenses.filter(e => e.category === category);
         const descriptions = [...new Set(categoryExpenses.map(e => e.description).filter(d => d))];
         const filtered = descriptions.filter(d => d.toLowerCase().includes(value)).slice(0, 5);
-        
+
         showDescriptionSuggestions(filtered);
       }
     });
@@ -527,7 +500,7 @@ categoryInput.addEventListener('input', () => {
 
   function showDescriptionSuggestions(suggestions) {
     if (!descriptionSuggestions) return;
-    
+
     if (suggestions.length === 0) {
       descriptionSuggestions.innerHTML = '';
       return;
@@ -541,48 +514,52 @@ categoryInput.addEventListener('input', () => {
 
     descriptionSuggestions.innerHTML = html;
   }
+
+  function renderCategoryButtons(categories) {
+    if (categories.length === 0) {
+      categoryButtons.innerHTML = '';
+      return;
+    }
+
+    const html = categories.map(cat => `
+      <button type="button" class="category-quick-btn" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
+        ${cat.name}
+      </button>
+    `).join('');
+
+    categoryButtons.innerHTML = html;
+  }
 }
 
 function setupSourceSuggestions() {
   const sourceInput = document.getElementById('incomeSource');
   const sourceSuggestions = document.getElementById('sourceSuggestions');
   const sourceButtons = document.getElementById('sourceButtons');
-  
+
   if (!sourceInput || !sourceSuggestions || !sourceButtons) return;
 
   const topSources = getTopSources(5);
-  
-  // Renderuj przyciski źródeł
+
+  // Renderuj przyciski źródeł - ZAWSZE WIDOCZNE
   renderSourceButtons(topSources);
-  
-  sourceInput.addEventListener('focus', () => {
-    if (sourceInput.value.trim() === '') {
-      showSourceSuggestions(topSources);
-      renderSourceButtons(topSources);
-    }
-  });
 
   sourceInput.addEventListener('input', () => {
     const value = sourceInput.value.trim().toLowerCase();
-    
+
     if (value === '') {
-      showSourceSuggestions(topSources);
       renderSourceButtons(topSources);
     } else {
       const incomes = getIncomes();
       const sources = [...new Set(incomes.map(i => i.source).filter(s => s))];
-      const filtered = sources.filter(s => 
+      const filtered = sources.filter(s =>
         s.toLowerCase().includes(value)
       ).slice(0, 5);
-      
-      showSourceSuggestions(filtered);
-      sourceButtons.innerHTML = '';
-    }
-  });
 
-  document.addEventListener('click', (e) => {
-    if (!sourceInput.contains(e.target) && !sourceSuggestions.contains(e.target) && !sourceButtons.contains(e.target)) {
-      sourceSuggestions.innerHTML = '';
+      if (filtered.length > 0) {
+        renderSourceButtons(filtered);
+      } else {
+        sourceButtons.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem; padding: 10px;">Brak pasujących źródeł</p>';
+      }
     }
   });
 
@@ -593,27 +570,12 @@ function setupSourceSuggestions() {
     }
 
     const html = sources.map(src => `
-      <button type="button" class="category-quick-btn" onclick="selectSource('${src.replace(/'/g, "\\'")}')">
+      <button type="button" class="category-quick-btn" onclick="selectSource('${src.replace ? src.replace(/'/g, "\\'") : src}')">
         ${src}
       </button>
     `).join('');
 
     sourceButtons.innerHTML = html;
-  }
-
-  function showSourceSuggestions(suggestions) {
-    if (suggestions.length === 0) {
-      sourceSuggestions.innerHTML = '';
-      return;
-    }
-
-    const html = suggestions.map(src => `
-      <div class="suggestion-item" onclick="selectSource('${src.replace(/'/g, "\\'")}')">
-        ${src}
-      </div>
-    `).join('');
-
-    sourceSuggestions.innerHTML = html;
   }
 }
 
@@ -621,14 +583,12 @@ window.selectCategory = (categoryName) => {
   const categoryInput = document.getElementById('expenseCategory');
   if (categoryInput) {
     categoryInput.value = categoryName;
-    document.getElementById('categorySuggestions').innerHTML = '';
-    document.getElementById('categoryButtons').innerHTML = '';
-    
+
     const descriptionInput = document.getElementById('expenseDescription');
     if (descriptionInput) {
       descriptionInput.focus();
     }
-    
+
     const topDescriptions = getTopDescriptionsForCategory(categoryName, 5);
     const descriptionSuggestions = document.getElementById('descriptionSuggestions');
     if (descriptionSuggestions && topDescriptions.length > 0) {
@@ -662,7 +622,7 @@ window.selectSource = (source) => {
 function renderExpenses() {
   const expenses = getExpenses();
   const totalExpenses = expenses.length;
-  
+
   const sorted = [...expenses].sort((a, b) => {
     if (a.type !== b.type) {
       return a.type === 'planned' ? -1 : 1;
@@ -675,7 +635,7 @@ function renderExpenses() {
   const paginatedExpenses = sorted.slice(startIdx, endIdx);
 
   const tbody = document.getElementById('expensesTableBody');
-  
+
   if (totalExpenses === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
@@ -718,7 +678,7 @@ function renderExpensesPagination(total) {
 
   let html = '';
   html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage - 1})">◀</button>`;
-  
+
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentExpensePage - 1 && i <= currentExpensePage + 1)) {
       html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
@@ -726,7 +686,7 @@ function renderExpensesPagination(total) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
   }
-  
+
   html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage + 1})">▶</button>`;
   container.innerHTML = html;
 }
@@ -734,12 +694,12 @@ function renderExpensesPagination(total) {
 window.changeExpensePage = (page) => {
   const total = getExpenses().length;
   const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
-  
+
   if (page < 1 || page > totalPages) return;
-  
+
   currentExpensePage = page;
   renderExpenses();
-  
+
   const tableBody = document.getElementById('expensesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -749,7 +709,7 @@ window.changeExpensePage = (page) => {
 function renderSources() {
   const incomes = getIncomes();
   const totalIncomes = incomes.length;
-  
+
   const sorted = [...incomes].sort((a, b) => {
     if (a.type !== b.type) {
       return a.type === 'planned' ? -1 : 1;
@@ -762,7 +722,7 @@ function renderSources() {
   const paginatedIncomes = sorted.slice(startIdx, endIdx);
 
   const tbody = document.getElementById('sourcesTableBody');
-  
+
   if (totalIncomes === 0) {
     tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
@@ -804,7 +764,7 @@ function renderIncomesPagination(total) {
 
   let html = '';
   html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage - 1})">◀</button>`;
-  
+
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= currentIncomePage - 1 && i <= currentIncomePage + 1)) {
       html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
@@ -812,7 +772,7 @@ function renderIncomesPagination(total) {
       html += `<span class="pagination-ellipsis">...</span>`;
     }
   }
-  
+
   html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage + 1})">▶</button>`;
   container.innerHTML = html;
 }
@@ -820,12 +780,12 @@ function renderIncomesPagination(total) {
 window.changeIncomePage = (page) => {
   const total = getIncomes().length;
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
-  
+
   if (page < 1 || page > totalPages) return;
-  
+
   currentIncomePage = page;
   renderSources();
-  
+
   const tableBody = document.getElementById('sourcesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -835,7 +795,7 @@ window.changeIncomePage = (page) => {
 function renderSourcesRemaining() {
   const sources = computeSourcesRemaining();
   const container = document.getElementById('sourcesRemainingList');
-  
+
   if (sources.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak danych</p>';
     return;
@@ -865,7 +825,7 @@ window.addCategory = async () => {
   }
 
   const categories = getCategories();
-  
+
   if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
     showErrorMessage('Kategoria o tej nazwie już istnieje');
     return;
@@ -877,15 +837,12 @@ window.addCategory = async () => {
   };
 
   const updated = [...categories, newCategory];
-  
+
   try {
     await saveCategories(updated);
     input.value = '';
-    
-    // ✅ DODAJ TE DWA WYWOŁANIA:
     renderCategories();
     setupCategorySuggestions();
-    
     showSuccessMessage('Kategoria dodana');
   } catch (error) {
     console.error('❌ Błąd dodawania kategorii:', error);
@@ -896,15 +853,15 @@ window.addCategory = async () => {
 window.deleteCategory = async (categoryId, categoryName) => {
   const expenses = getExpenses();
   const count = expenses.filter(e => e.category === categoryName).length;
-  
+
   if (count > 0) {
     const confirmed = await showPasswordModal(
       'Usuwanie kategorii',
       `Kategoria "${categoryName}" zawiera ${count} wydatków. Wszystkie te wydatki zostaną TRWALE usunięte. Aby potwierdzić, podaj hasło głównego konta.`
     );
-    
+
     if (!confirmed) return;
-    
+
     const updatedExpenses = expenses.filter(e => e.category !== categoryName);
     await saveExpenses(updatedExpenses);
   } else {
@@ -913,9 +870,11 @@ window.deleteCategory = async (categoryId, categoryName) => {
 
   const categories = getCategories();
   const updated = categories.filter(c => c.id !== categoryId);
-  
+
   try {
     await saveCategories(updated);
+    renderCategories();
+    setupCategorySuggestions();
     showSuccessMessage('Kategoria usunięta');
   } catch (error) {
     console.error('❌ Błąd usuwania kategorii:', error);
@@ -927,7 +886,7 @@ window.deleteCategory = async (categoryId, categoryName) => {
 
 window.addExpense = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const amount = parseFloat(form.expenseAmount.value);
   const date = form.expenseDate.value;
@@ -946,15 +905,28 @@ window.addExpense = async (e) => {
     showErrorMessage('Wybierz użytkownika');
     return;
   }
-  
+
   if (!category) {
     showErrorMessage('Podaj kategorię');
     return;
   }
-  
+
   if (!description) {
     showErrorMessage('Podaj opis');
     return;
+  }
+
+  // Dodaj kategorię jeśli nie istnieje
+  const categories = getCategories();
+  if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
+    const newCategory = {
+      id: `cat_${Date.now()}`,
+      name: category
+    };
+    const updatedCategories = [...categories, newCategory];
+    await saveCategories(updatedCategories);
+    renderCategories();
+    setupCategorySuggestions();
   }
 
   const expense = {
@@ -976,22 +948,20 @@ window.addExpense = async (e) => {
 
   try {
     await saveExpenses(updated);
-    
+
     if (type === 'normal' && date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     form.reset();
     form.expenseDate.value = getWarsawDateString();
     form.expenseType.value = 'normal';
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
-    document.getElementById('categorySuggestions').innerHTML = '';
-    document.getElementById('categoryButtons').innerHTML = '';
     document.getElementById('descriptionSuggestions').innerHTML = '';
-    
+
     setupCategorySuggestions();
-    
+
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
@@ -1014,7 +984,7 @@ window.editExpense = (expenseId) => {
 
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
-  
+
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -1024,14 +994,14 @@ window.deleteExpense = async (expenseId) => {
   const expenses = getExpenses();
   const expense = expenses.find(e => e.id === expenseId);
   const updated = expenses.filter(e => e.id !== expenseId);
-  
+
   try {
     await saveExpenses(updated);
-    
+
     if (expense && expense.type === 'normal' && expense.date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     showSuccessMessage('Wydatek usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania wydatku:', error);
@@ -1043,7 +1013,7 @@ window.deleteExpense = async (expenseId) => {
 
 window.addIncome = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const amount = parseFloat(form.incomeAmount.value);
   const date = form.incomeDate.value;
@@ -1080,21 +1050,20 @@ window.addIncome = async (e) => {
 
   try {
     await saveIncomes(updated);
-    
+
     if (date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     form.reset();
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
     editingIncomeId = null;
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
-    document.getElementById('sourceButtons').innerHTML = '';
-    
+
     setupSourceSuggestions();
-    
+
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -1116,7 +1085,7 @@ window.editIncome = (incomeId) => {
 
   editingIncomeId = incomeId;
   document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
-  
+
   form.scrollIntoView({ behavior: 'smooth' });
 };
 
@@ -1126,14 +1095,14 @@ window.deleteIncome = async (incomeId) => {
   const incomes = getIncomes();
   const income = incomes.find(i => i.id === incomeId);
   const updated = incomes.filter(i => i.id !== incomeId);
-  
+
   try {
     await saveIncomes(updated);
-    
+
     if (income && income.date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -1145,7 +1114,7 @@ window.deleteIncome = async (incomeId) => {
 
 window.saveSettings = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const endDate1 = form.endDate1.value;
   const endDate2 = form.endDate2.value || '';
@@ -1155,7 +1124,7 @@ window.saveSettings = async (e) => {
     await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
-    
+
     showSuccessMessage('Ustawienia zapisane');
     renderSummary();
   } catch (error) {
@@ -1179,7 +1148,7 @@ window.showSection = (sectionId) => {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  
+
   const activeBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
   if (activeBtn) {
     activeBtn.classList.add('active');
@@ -1196,7 +1165,7 @@ window.openProfile = () => {
 
 window.handleLogin = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const email = form.loginEmail.value.trim();
   const password = form.loginPassword.value;
@@ -1212,7 +1181,7 @@ window.handleLogin = async (e) => {
 
 window.handleRegister = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const email = form.registerEmail.value.trim();
   const password = form.registerPassword.value;
@@ -1239,7 +1208,7 @@ window.handleRegister = async (e) => {
 
 window.handleLogout = async () => {
   if (!confirm('Czy na pewno chcesz się wylogować?')) return;
-  
+
   try {
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
@@ -1282,21 +1251,21 @@ onAuthChange(async (user) => {
     });
 
     await loadAllData();
-    
+
     hideLoader();
 
   } else {
     console.log('❌ Użytkownik wylogowany');
-    
+
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
-    
+
     authSection.classList.remove('hidden');
     appSection.classList.add('hidden');
-    
+
     hideLoader();
   }
 });
@@ -1306,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
-  
+
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
 
