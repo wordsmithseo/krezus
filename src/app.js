@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.5.3
+// src/app.js - Główna aplikacja Krezus v1.6.0
 import { 
   loginUser, 
   registerUser, 
@@ -35,6 +35,7 @@ import {
   calculateRealisedTotals,
   calculateSpendingPeriods,
   calculateAvailableFunds,
+  calculateCurrentLimits,
   calculateForecastLimits,
   computeSourcesRemaining,
   checkAnomalies,
@@ -45,7 +46,8 @@ import {
   getTopDescriptionsForCategory,
   getTopSources,
   computeComparisons,
-  getEnvelopeCalculationInfo
+  getEnvelopeCalculationInfo,
+  calculateSpendingDynamics
 } from './modules/budgetCalculator.js';
 
 import {
@@ -56,6 +58,7 @@ import {
   getMostExpensiveCategory,
   getCategoriesBreakdown,
   detectAnomalies,
+  getUserExpensesBreakdown,
   getCurrentPeriod
 } from './modules/analytics.js';
 
@@ -84,6 +87,14 @@ import {
 
 import { PAGINATION } from './utils/constants.js';
 
+import {
+  log,
+  getLogs,
+  clearAllLogs,
+  calculateLogsSize,
+  formatLogEntry
+} from './modules/logger.js';
+
 // Stan aplikacji
 let currentExpensePage = 1;
 let currentIncomePage = 1;
@@ -92,7 +103,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.5.3';
+const APP_VERSION = '1.6.0';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -240,6 +251,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
+  renderLogs();
   loadSettings();
   setupCategorySuggestions();
   setupSourceSuggestions();
@@ -249,28 +261,79 @@ async function renderAll() {
 
 function renderSummary() {
   const { available, savingGoal, toSpend } = calculateAvailableFunds();
-  const { daysLeft1, daysLeft2, date2 } = calculateSpendingPeriods();
+  const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
+  const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
   const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
 
   document.getElementById('availableFunds').textContent = available.toFixed(2);
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   document.getElementById('toSpend').textContent = toSpend.toFixed(2);
 
+  // Limity bieżące
+  document.getElementById('currentLimit1').textContent = currentLimit1.toFixed(2);
+  document.getElementById('currentDaysLeft1').textContent = daysLeft1;
+  document.getElementById('currentLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
+  
+  const currentLimit2Section = document.getElementById('currentLimit2Section');
+  if (date2 && date2.trim() !== '') {
+    currentLimit2Section.style.display = 'block';
+    document.getElementById('currentLimit2').textContent = currentLimit2.toFixed(2);
+    document.getElementById('currentDaysLeft2').textContent = daysLeft2;
+    document.getElementById('currentLimitDate2').textContent = formatDateLabel(date2);
+  } else {
+    currentLimit2Section.style.display = 'none';
+  }
+
+  // Prognozy
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
+  document.getElementById('projectedLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
   
   const projectedLimit2Section = document.getElementById('projectedLimit2Section');
   if (date2 && date2.trim() !== '') {
     projectedLimit2Section.style.display = 'block';
     document.getElementById('projectedLimit2').textContent = projectedLimit2.toFixed(2);
     document.getElementById('daysLeft2').textContent = daysLeft2;
+    document.getElementById('projectedLimitDate2').textContent = formatDateLabel(date2);
   } else {
     projectedLimit2Section.style.display = 'none';
   }
 
   document.getElementById('futureIncome').textContent = futureIncome.toFixed(2);
   document.getElementById('futureExpense').textContent = futureExpense.toFixed(2);
+  
+  renderSpendingDynamics();
+}
+
+function renderSpendingDynamics() {
+  const dynamics = calculateSpendingDynamics();
+  const gauge = document.getElementById('dynamicsGauge');
+  const indicator = document.getElementById('dynamicsIndicator');
+  const info = document.getElementById('dynamicsInfo');
+  
+  if (!gauge || !indicator || !info) return;
+  
+  const position = dynamics.score;
+  
+  indicator.style.left = `${position}%`;
+  
+  const colors = {
+    safe: '#10b981',
+    good: '#34d399',
+    moderate: '#3b82f6',
+    warning: '#f59e0b',
+    critical: '#ef4444'
+  };
+  
+  indicator.style.background = colors[dynamics.status] || colors.moderate;
+  
+  let infoHTML = `<strong>${dynamics.message}</strong>`;
+  if (dynamics.dailyAvg !== undefined && dynamics.targetDaily !== undefined) {
+    infoHTML += `<br><small>Średnia dzienna (7 dni): ${dynamics.dailyAvg.toFixed(2)} zł | Docelowy limit: ${dynamics.targetDaily.toFixed(2)} zł</small>`;
+  }
+  
+  info.innerHTML = infoHTML;
 }
 
 function renderDailyEnvelope() {
@@ -309,7 +372,6 @@ function renderDailyEnvelope() {
     gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
   }
   
-  // Renderuj info o wyliczeniu koperty - BIAŁY KOLOR
   const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
   if (calcInfoDiv && calcInfo) {
     calcInfoDiv.innerHTML = `
@@ -327,6 +389,7 @@ function renderAnalytics() {
   const mostExpensive = getMostExpensiveCategory();
   const breakdown = getCategoriesBreakdown();
   const anomalies = detectAnomalies();
+  const userExpenses = getUserExpensesBreakdown();
 
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
   document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
@@ -344,6 +407,23 @@ function renderAnalytics() {
 
   const incCountChange = document.getElementById('incomeCountChange');
   incCountChange.textContent = `${comparison.incomeCountChange > 0 ? '+' : ''}${comparison.incomeCountChange.toFixed(1)}%`;
+
+  const userExpDiv = document.getElementById('userExpensesBreakdown');
+  if (userExpenses.length > 0) {
+    userExpDiv.innerHTML = userExpenses.map(user => `
+      <div class="category-breakdown-item">
+        <div class="category-breakdown-header">
+          <strong>${user.userName}</strong>
+          <span>${user.amount.toFixed(2)} zł (${user.percentage.toFixed(1)}%)</span>
+        </div>
+        <div class="category-breakdown-bar">
+          <div class="category-breakdown-fill" style="width: ${user.percentage}%"></div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    userExpDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
+  }
 
   const mostExpCat = document.getElementById('mostExpensiveCategory');
   if (mostExpensive) {
@@ -460,8 +540,6 @@ function renderCategories() {
   container.innerHTML = html;
 }
 
-// ==================== TOGGLE TYPU TRANSAKCJI DLA WYDATKÓW ====================
-
 function setupExpenseTypeToggle() {
   const expenseTypeSelect = document.getElementById('expenseType');
   const expenseDateGroup = document.querySelector('#expenseDate').closest('.form-group');
@@ -473,18 +551,16 @@ function setupExpenseTypeToggle() {
     const type = expenseTypeSelect.value;
     
     if (type === 'normal') {
-      // Ukryj pola daty i godziny dla zwykłych wydatków
       expenseDateGroup.style.display = 'none';
       expenseTimeGroup.style.display = 'none';
     } else {
-      // Pokaż pola dla planowanych wydatków
       expenseDateGroup.style.display = 'block';
       expenseTimeGroup.style.display = 'block';
     }
   };
   
   expenseTypeSelect.addEventListener('change', toggleDateTimeFields);
-  toggleDateTimeFields(); // Wywołaj na starcie
+  toggleDateTimeFields();
 }
 
 function setupIncomeTypeToggle() {
@@ -498,18 +574,16 @@ function setupIncomeTypeToggle() {
     const type = incomeTypeSelect.value;
     
     if (type === 'normal') {
-      // Ukryj pola daty i godziny dla zwykłych przychodów
       incomeDateGroup.style.display = 'none';
       incomeTimeGroup.style.display = 'none';
     } else {
-      // Pokaż pola dla planowanych przychodów
       incomeDateGroup.style.display = 'block';
       incomeTimeGroup.style.display = 'block';
     }
   };
   
   incomeTypeSelect.addEventListener('change', toggleDateTimeFields);
-  toggleDateTimeFields(); // Wywołaj na starcie
+  toggleDateTimeFields();
 }
 
 function setupCategorySuggestions() {
@@ -521,16 +595,13 @@ function setupCategorySuggestions() {
   
   if (!categoryInput || !categoryButtons) return;
 
-  // Usuń poprzednie listenery
   const newCategoryInput = categoryInput.cloneNode(true);
   categoryInput.parentNode.replaceChild(newCategoryInput, categoryInput);
 
   const topCategories = getTopCategories(5);
   
-  // Renderuj przyciski kategorii - ZAWSZE WIDOCZNE
   renderCategoryButtons(topCategories);
   
-  // Filtruj kategorie podczas wpisywania
   newCategoryInput.addEventListener('input', () => {
     const value = newCategoryInput.value.trim().toLowerCase();
     
@@ -550,9 +621,7 @@ function setupCategorySuggestions() {
     }
   });
 
-  // Obsługa pola opisu
   if (descriptionInput && descriptionSuggestions && descriptionButtons) {
-    // Usuń poprzednie listenery
     const newDescriptionInput = descriptionInput.cloneNode(true);
     descriptionInput.parentNode.replaceChild(newDescriptionInput, descriptionInput);
     
@@ -637,13 +706,11 @@ function setupSourceSuggestions() {
   
   if (!sourceInput || !sourceSuggestions || !sourceButtons) return;
 
-  // Usuń poprzednie listenery
   const newSourceInput = sourceInput.cloneNode(true);
   sourceInput.parentNode.replaceChild(newSourceInput, sourceInput);
 
   const topSources = getTopSources(5);
   
-  // Renderuj przyciski źródeł - ZAWSZE WIDOCZNE
   renderSourceButtons(topSources);
   
   newSourceInput.addEventListener('input', () => {
@@ -832,24 +899,30 @@ function renderSources() {
     return;
   }
 
-  const html = paginatedIncomes.map(inc => `
-    <tr class="${inc.type === 'planned' ? 'planned' : 'realised'}">
+  const html = paginatedIncomes.map(inc => {
+    const isCorrection = inc.source === 'KOREKTA';
+    const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
+    
+    return `
+    <tr class="${rowClass}">
       <td>${formatDateLabel(inc.date)}</td>
       <td>${inc.time || '-'}</td>
-      <td>${inc.amount.toFixed(2)} zł</td>
+      <td>${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)} zł</td>
       <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
-      <td>${inc.source || 'Brak'}</td>
+      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (inc.source || 'Brak')}</td>
       <td>
         <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
         </span>
       </td>
       <td class="actions">
-        <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
-        <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
+        ${!isCorrection ? `
+          <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
+          <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
+        ` : '<span style="color: #6b7280;">Korekta</span>'}
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 
   tbody.innerHTML = html;
   renderIncomesPagination(totalIncomes);
@@ -895,8 +968,6 @@ window.changeIncomePage = (page) => {
   }
 };
 
-// ==================== KATEGORIE ====================
-
 window.addCategory = async () => {
   const input = document.getElementById('newCategoryName');
   const name = input.value.trim();
@@ -923,6 +994,7 @@ window.addCategory = async () => {
   try {
     await saveCategories(updated);
     input.value = '';
+    await log('CATEGORY_ADD', { categoryName: name });
     showSuccessMessage('Kategoria dodana');
   } catch (error) {
     console.error('❌ Błąd dodawania kategorii:', error);
@@ -953,14 +1025,13 @@ window.deleteCategory = async (categoryId, categoryName) => {
   
   try {
     await saveCategories(updated);
+    await log('CATEGORY_DELETE', { categoryName, affectedExpenses: count });
     showSuccessMessage('Kategoria usunięta');
   } catch (error) {
     console.error('❌ Błąd usuwania kategorii:', error);
     showErrorMessage('Nie udało się usunąć kategorii');
   }
 };
-
-// ==================== WYDATKI ====================
 
 window.addExpense = async (e) => {
   e.preventDefault();
@@ -992,7 +1063,6 @@ window.addExpense = async (e) => {
     return;
   }
 
-  // Dodaj kategorię jeśli nie istnieje
   const categories = getCategories();
   if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
     const newCategory = {
@@ -1006,11 +1076,9 @@ window.addExpense = async (e) => {
   let date, time;
   
   if (type === 'normal') {
-    // Zwykły wydatek - dzisiejsza data i aktualny czas
     date = getWarsawDateString();
     time = getCurrentTimeString();
   } else {
-    // Planowany wydatek - użyj wybranych dat
     date = form.expenseDate.value;
     time = form.expenseTime.value || '';
   }
@@ -1039,6 +1107,13 @@ window.addExpense = async (e) => {
       await updateDailyEnvelope();
     }
     
+    await log(editingExpenseId ? 'EXPENSE_EDIT' : 'EXPENSE_ADD', {
+      amount,
+      category,
+      description,
+      type
+    });
+    
     form.reset();
     form.expenseDate.value = getWarsawDateString();
     form.expenseType.value = 'normal';
@@ -1046,7 +1121,6 @@ window.addExpense = async (e) => {
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     document.getElementById('descriptionSuggestions').innerHTML = '';
     
-    // Odśwież widoczność pól po resecie
     setupExpenseTypeToggle();
     
     showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
@@ -1072,7 +1146,6 @@ window.editExpense = (expenseId) => {
   editingExpenseId = expenseId;
   document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
   
-  // Odśwież widoczność pól
   setupExpenseTypeToggle();
   
   form.scrollIntoView({ behavior: 'smooth' });
@@ -1092,14 +1165,18 @@ window.deleteExpense = async (expenseId) => {
       await updateDailyEnvelope();
     }
     
+    await log('EXPENSE_DELETE', {
+      amount: expense?.amount,
+      category: expense?.category,
+      description: expense?.description
+    });
+    
     showSuccessMessage('Wydatek usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania wydatku:', error);
     showErrorMessage('Nie udało się usunąć wydatku');
   }
 };
-
-// ==================== PRZYCHODY ====================
 
 window.addIncome = async (e) => {
   e.preventDefault();
@@ -1123,11 +1200,9 @@ window.addIncome = async (e) => {
   let date, time;
   
   if (type === 'normal') {
-    // Zwykły przychód - dzisiejsza data i aktualny czas
     date = getWarsawDateString();
     time = getCurrentTimeString();
   } else {
-    // Planowany przychód - użyj wybranych dat
     date = form.incomeDate.value;
     time = form.incomeTime.value || '';
   }
@@ -1155,6 +1230,12 @@ window.addIncome = async (e) => {
       await updateDailyEnvelope();
     }
     
+    await log(editingIncomeId ? 'INCOME_EDIT' : 'INCOME_ADD', {
+      amount,
+      source,
+      type
+    });
+    
     form.reset();
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
@@ -1162,7 +1243,6 @@ window.addIncome = async (e) => {
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
     
-    // Odśwież widoczność pól po resecie
     setupIncomeTypeToggle();
     
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
@@ -1187,7 +1267,6 @@ window.editIncome = (incomeId) => {
   editingIncomeId = incomeId;
   document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
   
-  // Odśwież widoczność pól
   setupIncomeTypeToggle();
   
   form.scrollIntoView({ behavior: 'smooth' });
@@ -1207,6 +1286,11 @@ window.deleteIncome = async (incomeId) => {
       await updateDailyEnvelope();
     }
     
+    await log('INCOME_DELETE', {
+      amount: income?.amount,
+      source: income?.source
+    });
+    
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -1214,7 +1298,59 @@ window.deleteIncome = async (incomeId) => {
   }
 };
 
-// ==================== USTAWIENIA ====================
+window.addCorrection = async (e) => {
+  e.preventDefault();
+  
+  const form = e.target;
+  const amount = parseFloat(form.correctionAmount.value);
+  const reason = form.correctionReason.value.trim();
+  
+  if (isNaN(amount) || amount === 0) {
+    showErrorMessage('Podaj prawidłową kwotę korekty (dodatnią lub ujemną)');
+    return;
+  }
+  
+  if (!reason) {
+    showErrorMessage('Podaj powód korekty');
+    return;
+  }
+  
+  const user = getCurrentUser();
+  if (!user) {
+    showErrorMessage('Musisz być zalogowany');
+    return;
+  }
+  
+  const correction = {
+    id: `corr_${Date.now()}`,
+    amount: amount,
+    date: getWarsawDateString(),
+    time: getCurrentTimeString(),
+    type: 'normal',
+    userId: user.uid,
+    source: 'KOREKTA',
+    correctionReason: reason,
+    timestamp: getCurrentTimeString()
+  };
+  
+  const incomes = getIncomes();
+  const updated = [...incomes, correction];
+  
+  try {
+    await saveIncomes(updated);
+    await updateDailyEnvelope();
+    await log('CORRECTION_ADD', {
+      amount,
+      reason
+    });
+    
+    form.reset();
+    showSuccessMessage(`Korekta wprowadzona: ${amount >= 0 ? '+' : ''}${amount.toFixed(2)} zł`);
+  } catch (error) {
+    console.error('❌ Błąd wprowadzania korekty:', error);
+    showErrorMessage('Nie udało się wprowadzić korekty');
+  }
+};
 
 function loadSettings() {
   const endDates = getEndDates();
@@ -1241,6 +1377,11 @@ window.saveSettings = async (e) => {
     await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
+    await log('SETTINGS_UPDATE', {
+      endDate1,
+      endDate2,
+      savingGoal
+    });
     
     showSuccessMessage('Ustawienia zapisane');
   } catch (error) {
@@ -1249,7 +1390,63 @@ window.saveSettings = async (e) => {
   }
 };
 
-// ==================== NAWIGACJA ====================
+async function renderLogs() {
+  try {
+    const logs = await getLogs();
+    const logsSize = calculateLogsSize(logs);
+    
+    document.getElementById('logsSize').textContent = `${logsSize} KB`;
+    document.getElementById('logsCount').textContent = logs.length;
+    
+    const logsList = document.getElementById('logsList');
+    
+    if (logs.length === 0) {
+      logsList.innerHTML = '<p class="empty-state">Brak wpisów w logach</p>';
+      return;
+    }
+    
+    const recentLogs = logs.slice(0, 50);
+    
+    const html = recentLogs.map(logEntry => {
+      const formatted = formatLogEntry(logEntry);
+      return `
+        <div class="log-entry">
+          <div class="log-header">
+            <span class="log-action">${formatted.label}</span>
+            <span class="log-timestamp">${formatted.timestamp}</span>
+          </div>
+          ${formatted.details && Object.keys(formatted.details).length > 0 ? `
+            <div class="log-details">
+              ${Object.entries(formatted.details).map(([key, value]) => 
+                `<span class="log-detail-item"><strong>${key}:</strong> ${value}</span>`
+              ).join(' • ')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+    
+    logsList.innerHTML = html;
+  } catch (error) {
+    console.error('❌ Błąd renderowania logów:', error);
+    document.getElementById('logsList').innerHTML = '<p class="empty-state">Błąd ładowania logów</p>';
+  }
+}
+
+window.clearLogs = async () => {
+  if (!confirm('Czy na pewno chcesz wyczyścić wszystkie logi? Ta operacja jest nieodwracalna.')) {
+    return;
+  }
+  
+  try {
+    await clearAllLogs();
+    await renderLogs();
+    showSuccessMessage('Logi wyczyszczone');
+  } catch (error) {
+    console.error('❌ Błąd czyszczenia logów:', error);
+    showErrorMessage('Nie udało się wyczyścić logów');
+  }
+};
 
 window.showSection = (sectionId) => {
   document.querySelectorAll('.section').forEach(section => {
@@ -1269,15 +1466,15 @@ window.showSection = (sectionId) => {
   if (activeBtn) {
     activeBtn.classList.add('active');
   }
+  
+  if (sectionId === 'settingsSection') {
+    renderLogs();
+  }
 };
-
-// ==================== PROFIL ====================
 
 window.openProfile = () => {
   showProfileModal();
 };
-
-// ==================== LOGOWANIE I REJESTRACJA ====================
 
 window.handleLogin = async (e) => {
   e.preventDefault();
@@ -1288,6 +1485,7 @@ window.handleLogin = async (e) => {
 
   try {
     await loginUser(email, password);
+    await log('USER_LOGIN', { email });
     form.reset();
   } catch (error) {
     console.error('❌ Błąd logowania:', error);
@@ -1315,6 +1513,7 @@ window.handleRegister = async (e) => {
 
   try {
     await registerUser(email, password, displayName);
+    await log('USER_REGISTER', { email, displayName });
     form.reset();
   } catch (error) {
     console.error('❌ Błąd rejestracji:', error);
@@ -1331,14 +1530,13 @@ window.handleLogout = async () => {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
+    await log('USER_LOGOUT', {});
     await logoutUser();
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
     showErrorMessage('Nie udało się wylogować');
   }
 };
-
-// ==================== OBSŁUGA STANU UWIERZYTELNIENIA ====================
 
 onAuthChange(async (user) => {
   const authSection = document.getElementById('authSection');
@@ -1386,7 +1584,6 @@ onAuthChange(async (user) => {
   }
 });
 
-// Inicjalizacja formularzy
 document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');

@@ -104,6 +104,21 @@
                             <div class="stat-value"><span id="toSpend">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
                     </div>
+                    
+                    <h3>📊 Limity bieżące (bez planowanych)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Limit dzienny (do <span id="currentLimitDate1">-</span>)</div>
+                            <div class="stat-value"><span id="currentLimit1">0.00</span><span class="stat-unit">zł/dzień</span></div>
+                            <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft1">0</span> dni</div>
+                        </div>
+                        <div id="currentLimit2Section" class="stat-card" style="display: none;">
+                            <div class="stat-label">Limit dzienny (do <span id="currentLimitDate2">-</span>)</div>
+                            <div class="stat-value"><span id="currentLimit2">0.00</span><span class="stat-unit">zł/dzień</span></div>
+                            <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft2">0</span> dni</div>
+                        </div>
+                    </div>
+                    
                     <h3>🔮 Prognozy (z planowanymi)</h3>
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -111,12 +126,12 @@
                             <div class="stat-value"><span id="projectedAvailable">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-label">Prognozowany limit (data 1)</div>
+                            <div class="stat-label">Prognozowany limit (do <span id="projectedLimitDate1">-</span>)</div>
                             <div class="stat-value"><span id="projectedLimit1">0.00</span><span class="stat-unit">zł/dzień</span></div>
                             <div class="stat-label mt-10">Pozostało <span id="daysLeft1">0</span> dni</div>
                         </div>
                         <div id="projectedLimit2Section" class="stat-card" style="display: none;">
-                            <div class="stat-label">Prognozowany limit (data 2)</div>
+                            <div class="stat-label">Prognozowany limit (do <span id="projectedLimitDate2">-</span>)</div>
                             <div class="stat-value"><span id="projectedLimit2">0.00</span><span class="stat-unit">zł/dzień</span></div>
                             <div class="stat-label mt-10">Pozostało <span id="daysLeft2">0</span> dni</div>
                         </div>
@@ -131,6 +146,15 @@
                             <div class="stat-label">Planowane wydatki</div>
                             <div class="stat-value"><span id="futureExpense">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
+                    </div>
+                    
+                    <h3>🎯 Dynamika wydatków</h3>
+                    <div class="spending-dynamics">
+                        <div class="dynamics-gauge-container">
+                            <div id="dynamicsGauge" class="dynamics-gauge"></div>
+                            <div class="dynamics-indicator" id="dynamicsIndicator"></div>
+                        </div>
+                        <div class="dynamics-info" id="dynamicsInfo"></div>
                     </div>
                 </div>
             </section>
@@ -198,6 +222,24 @@
                         <button type="submit" class="btn btn-success mt-20">Zapisz przychód</button>
                     </form>
                 </div>
+                
+                <div class="section-card">
+                    <h2>🔧 Korekta posiadanych środków</h2>
+                    <form id="correctionForm" onsubmit="addCorrection(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Kwota korekty (zł)</label>
+                                <input type="number" name="correctionAmount" step="0.01" required placeholder="Dodatnia lub ujemna">
+                            </div>
+                            <div class="form-group">
+                                <label>Powód korekty</label>
+                                <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning mt-20">Wprowadź korektę</button>
+                    </form>
+                </div>
+                
                 <div class="section-card">
                     <h3>📋 Historia przychodów</h3>
                     <div class="table-container">
@@ -369,6 +411,8 @@
                             <div class="stat-value stat-value-white"><span id="incomeCountChange">0.0%</span></div>
                         </div>
                     </div>
+                    <h3>👥 Wydatki użytkowników</h3>
+                    <div id="userExpensesBreakdown"></div>
                     <h3>🏆 Najkosztowniejsza kategoria</h3>
                     <div id="mostExpensiveCategory"></div>
                     <h3>📊 Udział kategorii w wydatkach</h3>
@@ -398,6 +442,19 @@
                         </div>
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
                     </form>
+                </div>
+                
+                <div class="section-card">
+                    <h2>📜 Logi systemu</h2>
+                    <div class="logs-info">
+                        <p><strong>Rozmiar logów:</strong> <span id="logsSize">0 KB</span></p>
+                        <p><strong>Liczba wpisów:</strong> <span id="logsCount">0</span></p>
+                    </div>
+                    <button class="btn btn-danger mt-20" onclick="clearLogs()">🗑️ Wyczyść logi</button>
+                    <div class="mt-20">
+                        <h3>📋 Ostatnie wpisy (maksymalnie 50)</h3>
+                        <div id="logsList" class="logs-list"></div>
+                    </div>
                 </div>
             </section>
         </div>

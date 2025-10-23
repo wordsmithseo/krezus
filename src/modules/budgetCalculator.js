@@ -1,4 +1,4 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z getEnvelopeCalculationInfo
+// src/modules/budgetCalculator.js - Kalkulator budżetu z getEnvelopeCalculationInfo + dynamika + limity bieżące
 import { parseDateStr, getWarsawDateString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
@@ -83,6 +83,26 @@ export function calculateAvailableFunds() {
         available,
         savingGoal,
         toSpend
+    };
+}
+
+/**
+ * Oblicz bieżące limity (bez planowanych transakcji)
+ */
+export function calculateCurrentLimits() {
+    const { available, savingGoal, toSpend } = calculateAvailableFunds();
+    const { date1, date2, daysLeft1, daysLeft2 } = calculateSpendingPeriods();
+    
+    const currentLimit1 = daysLeft1 > 0 ? toSpend / daysLeft1 : 0;
+    const currentLimit2 = daysLeft2 > 0 ? toSpend / daysLeft2 : 0;
+    
+    return {
+        currentLimit1,
+        currentLimit2,
+        daysLeft1,
+        daysLeft2,
+        date1,
+        date2
     };
 }
 
@@ -545,5 +565,97 @@ export function computeComparisons() {
         avgLast7: avg7,
         avgPrev7: avg14,
         change: sum14 > 0 ? ((sum7 - sum14) / sum14) * 100 : 0
+    };
+}
+
+/**
+ * Oblicz dynamikę wydatków (wskaźnik od 0 do 100)
+ * 0 = bardzo stabilna sytuacja (zielony)
+ * 50 = umiarkowana (niebieski)
+ * 100 = niestabilna, szybkie wydawanie (czerwony)
+ */
+export function calculateSpendingDynamics() {
+    const expenses = getExpenses();
+    const today = getWarsawDateString();
+    const { daysLeft1 } = calculateSpendingPeriods();
+    
+    if (daysLeft1 <= 0) {
+        return {
+            score: 50,
+            status: 'neutral',
+            message: 'Brak ustawionej daty końcowej okresu'
+        };
+    }
+    
+    // Ostatnie 7 dni
+    const d7 = new Date();
+    d7.setDate(d7.getDate() - 7);
+    const date7str = getWarsawDateString(d7);
+    
+    const last7 = expenses.filter(e => 
+        e.type === 'normal' && 
+        e.date >= date7str && 
+        e.date <= today
+    );
+    
+    if (last7.length === 0) {
+        return {
+            score: 0,
+            status: 'safe',
+            message: 'Brak wydatków w ostatnich 7 dniach - świetnie!'
+        };
+    }
+    
+    const sum7 = last7.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const dailyAvg7 = sum7 / 7;
+    
+    // Oblicz jaki powinien być dzienny limit
+    const { toSpend } = calculateAvailableFunds();
+    const targetDaily = toSpend / daysLeft1;
+    
+    if (targetDaily <= 0) {
+        return {
+            score: 100,
+            status: 'critical',
+            message: 'Przekroczono dostępne środki!'
+        };
+    }
+    
+    // Oblicz wskaźnik jako stosunek rzeczywistych wydatków do targetu
+    const ratio = dailyAvg7 / targetDaily;
+    
+    let score = 0;
+    let status = 'safe';
+    let message = '';
+    
+    if (ratio <= 0.5) {
+        score = 0;
+        status = 'safe';
+        message = 'Bardzo dobra sytuacja - wydajesz poniżej 50% limitu';
+    } else if (ratio <= 0.8) {
+        score = 25;
+        status = 'good';
+        message = 'Dobra sytuacja - wydajesz poniżej 80% limitu';
+    } else if (ratio <= 1.0) {
+        score = 50;
+        status = 'moderate';
+        message = 'Umiarkowana sytuacja - wydatki zbliżone do limitu';
+    } else if (ratio <= 1.3) {
+        score = 75;
+        status = 'warning';
+        message = 'Uwaga - wydajesz powyżej limitu!';
+    } else {
+        score = 100;
+        status = 'critical';
+        message = 'Krytyczna sytuacja - znaczne przekroczenie limitu!';
+    }
+    
+    return {
+        score: Math.min(100, Math.max(0, score)),
+        status,
+        message,
+        dailyAvg: dailyAvg7,
+        targetDaily,
+        ratio
     };
 }

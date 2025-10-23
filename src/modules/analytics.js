@@ -1,17 +1,12 @@
-// src/modules/analytics.js - Moduł analityki z przedziałami czasowymi
+// src/modules/analytics.js - Moduł analityki z przedziałami czasowymi + wydatki użytkowników
 import { getExpenses, getIncomes } from './dataManager.js';
 import { getWarsawDateString, formatDateLabel } from '../utils/dateHelpers.js';
+import { getBudgetUsers } from './auth.js';
 
-/**
- * Aktualnie wybrany okres (dni lub custom)
- */
 let currentPeriod = 7;
 let customDateFrom = null;
 let customDateTo = null;
 
-/**
- * Ustaw okres analizy
- */
 export function setAnalyticsPeriod(days) {
   if (days === 'custom') {
     currentPeriod = 'custom';
@@ -22,18 +17,12 @@ export function setAnalyticsPeriod(days) {
   }
 }
 
-/**
- * Ustaw własny przedział dat
- */
 export function setCustomDateRange(from, to) {
   customDateFrom = from;
   customDateTo = to;
   currentPeriod = 'custom';
 }
 
-/**
- * Pobierz daty początku i końca okresu
- */
 function getPeriodDates() {
   const today = getWarsawDateString();
   let dateFrom, dateTo;
@@ -51,9 +40,6 @@ function getPeriodDates() {
   return { dateFrom, dateTo };
 }
 
-/**
- * Pobierz poprzedni okres (dla porównania)
- */
 function getPreviousPeriodDates() {
   const { dateFrom, dateTo } = getPeriodDates();
   
@@ -73,9 +59,6 @@ function getPreviousPeriodDates() {
   };
 }
 
-/**
- * Filtruj transakcje według okresu
- */
 function filterByPeriod(transactions, dateFrom, dateTo) {
   return transactions.filter(t => 
     t.type === 'normal' && 
@@ -84,9 +67,6 @@ function filterByPeriod(transactions, dateFrom, dateTo) {
   );
 }
 
-/**
- * Oblicz statystyki dla okresu
- */
 export function calculatePeriodStats() {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
@@ -110,9 +90,6 @@ export function calculatePeriodStats() {
   };
 }
 
-/**
- * Porównaj z poprzednim okresem
- */
 export function compareToPreviousPeriod() {
   const current = calculatePeriodStats();
   const { dateFrom: prevFrom, dateTo: prevTo } = getPreviousPeriodDates();
@@ -160,9 +137,6 @@ export function compareToPreviousPeriod() {
   };
 }
 
-/**
- * Najkosztowniejsza kategoria w okresie
- */
 export function getMostExpensiveCategory() {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
@@ -200,9 +174,6 @@ export function getMostExpensiveCategory() {
   };
 }
 
-/**
- * Udział wszystkich kategorii w wydatkach
- */
 export function getCategoriesBreakdown() {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
@@ -233,9 +204,37 @@ export function getCategoriesBreakdown() {
   return breakdown;
 }
 
-/**
- * Wykryj anomalie w bieżącym okresie z opisem
- */
+export function getUserExpensesBreakdown() {
+  const { dateFrom, dateTo } = getPeriodDates();
+  const expenses = getExpenses();
+  
+  const periodExpenses = filterByPeriod(expenses, dateFrom, dateTo);
+  
+  if (periodExpenses.length === 0) {
+    return [];
+  }
+  
+  const userMap = new Map();
+  
+  periodExpenses.forEach(exp => {
+    const userId = exp.userId || 'unknown';
+    userMap.set(userId, (userMap.get(userId) || 0) + (exp.amount || 0));
+  });
+  
+  const total = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  
+  const breakdown = Array.from(userMap.entries())
+    .map(([userId, amount]) => ({
+      userId,
+      userName: userId,
+      amount,
+      percentage: total > 0 ? (amount / total) * 100 : 0
+    }))
+    .sort((a, b) => b.amount - a.amount);
+  
+  return breakdown;
+}
+
 export function detectAnomalies() {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
@@ -255,7 +254,6 @@ export function detectAnomalies() {
   
   const anomalies = periodExpenses.filter(e => (e.amount || 0) > threshold);
   
-  // Dodaj opis anomalii
   return anomalies.map(anomaly => {
     const timesAboveMedian = median > 0 ? (anomaly.amount / median).toFixed(1) : '∞';
     const timesAboveAvg = avg > 0 ? (anomaly.amount / avg).toFixed(1) : '∞';
@@ -276,9 +274,6 @@ export function detectAnomalies() {
   });
 }
 
-/**
- * Pobierz szczegóły transakcji dla kategorii
- */
 export function getCategoryTransactions(categoryName) {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
@@ -290,9 +285,6 @@ export function getCategoryTransactions(categoryName) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-/**
- * Eksportuj dane analityczne do CSV
- */
 export function exportAnalyticsToCSV() {
   const stats = calculatePeriodStats();
   const breakdown = getCategoriesBreakdown();
@@ -320,16 +312,10 @@ export function exportAnalyticsToCSV() {
   return csv;
 }
 
-/**
- * Pobierz aktualny okres
- */
 export function getCurrentPeriod() {
   return currentPeriod;
 }
 
-/**
- * Pobierz daty własnego przedziału
- */
 export function getCustomDateRange() {
   return { from: customDateFrom, to: customDateTo };
 }
