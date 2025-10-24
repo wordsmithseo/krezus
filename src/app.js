@@ -106,7 +106,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.9.0';
+const APP_VERSION = '1.9.1';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -390,6 +390,12 @@ function renderDailyEnvelope() {
         calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
       }
     }
+    
+    const overLimitDiv = document.getElementById('envelopeOverLimit');
+    if (overLimitDiv) {
+      overLimitDiv.style.display = 'none';
+    }
+    
     return;
   }
 
@@ -417,6 +423,21 @@ function renderDailyEnvelope() {
         <strong>Składowe:</strong> ${calcInfo.formula}
       </small>
     `;
+  }
+  
+  const overLimitDiv = document.getElementById('envelopeOverLimit');
+  if (overLimitDiv) {
+    if (spent > total) {
+      const overAmount = (spent - total).toFixed(2);
+      overLimitDiv.innerHTML = `
+        <div style="color: #fee; font-weight: 600; margin-top: 10px;">
+          ⚠️ Przekroczono kopertę o ${overAmount} zł
+        </div>
+      `;
+      overLimitDiv.style.display = 'block';
+    } else {
+      overLimitDiv.style.display = 'none';
+    }
   }
 }
 
@@ -566,7 +587,7 @@ function renderCategoriesChart(breakdown) {
     ctx.stroke();
     
     ctx.fillStyle = '#6b7280';
-    ctx.font = isMobile ? '10px Arial' : '12px Arial';
+    ctx.font = isMobile ? '11px Arial' : '12px Arial';
     ctx.textAlign = 'right';
     ctx.fillText(`${value.toFixed(0)}`, startX - (isMobile ? 5 : 10), y + 4);
   }
@@ -606,7 +627,7 @@ function renderCategoriesChart(breakdown) {
     ctx.translate(x + barWidth / 2, startY + (isMobile ? 25 : 20));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 13px Arial';
+    ctx.font = isMobile ? 'bold 13px Arial' : 'bold 14px Arial';
     ctx.textAlign = 'right';
     
     const maxChars = isMobile ? 12 : 15;
@@ -1454,7 +1475,12 @@ window.editExpense = (expenseId) => {
 };
 
 window.deleteExpense = async (expenseId) => {
-  if (!confirm('Czy na pewno chcesz usunąć ten wydatek?')) return;
+  const confirmed = await showPasswordModal(
+    'Usuwanie wydatku',
+    'Czy na pewno chcesz usunąć ten wydatek? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
+  );
+  
+  if (!confirmed) return;
 
   const expenses = getExpenses();
   const expense = expenses.find(e => e.id === expenseId);
@@ -1581,7 +1607,12 @@ window.editIncome = (incomeId) => {
 };
 
 window.deleteIncome = async (incomeId) => {
-  if (!confirm('Czy na pewno chcesz usunąć ten przychód?')) return;
+  const confirmed = await showPasswordModal(
+    'Usuwanie przychodu',
+    'Czy na pewno chcesz usunąć ten przychód? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
+  );
+  
+  if (!confirmed) return;
 
   const incomes = getIncomes();
   const income = incomes.find(i => i.id === incomeId);
