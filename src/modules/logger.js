@@ -1,4 +1,4 @@
-// src/modules/logger.js - System logowania akcji użytkownika
+// src/modules/logger.js - System logowania akcji użytkownika v1.2.0
 import { ref, get, set, push, remove } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
@@ -18,7 +18,9 @@ export async function log(action, details = {}) {
       time: getCurrentTimeString(),
       action,
       details,
-      userId
+      userId,
+      budgetUser: details.budgetUser || null,
+      isSystemAction: details.isSystemAction || false
     };
     
     const logsRef = ref(db, `users/${userId}/logs`);
@@ -66,7 +68,7 @@ export async function getLogs() {
 /**
  * Wyczyść wszystkie logi
  */
-export async function clearAllLogs() {
+export async function clearAllLogs(budgetUserName = null) {
   try {
     const userId = getUserId();
     if (!userId) return;
@@ -77,7 +79,10 @@ export async function clearAllLogs() {
     console.log('✅ Logi wyczyszczone');
     
     // Dodaj wpis o wyczyszczeniu logów
-    await log('LOGS_CLEARED', { message: 'Wszystkie logi zostały wyczyszczone' });
+    await log('LOGS_CLEARED', { 
+      message: 'Wszystkie logi zostały wyczyszczone',
+      budgetUser: budgetUserName
+    });
   } catch (error) {
     console.error('❌ Błąd czyszczenia logów:', error);
     throw error;
@@ -104,9 +109,11 @@ export function formatLogEntry(logEntry) {
     'EXPENSE_ADD': '💸 Dodanie wydatku',
     'EXPENSE_EDIT': '✏️ Edycja wydatku',
     'EXPENSE_DELETE': '🗑️ Usunięcie wydatku',
+    'EXPENSE_REALISE': '✅ Realizacja planowanego wydatku',
     'INCOME_ADD': '💰 Dodanie przychodu',
     'INCOME_EDIT': '✏️ Edycja przychodu',
     'INCOME_DELETE': '🗑️ Usunięcie przychodu',
+    'INCOME_REALISE': '✅ Realizacja planowanego przychodu',
     'CORRECTION_ADD': '🔧 Korekta środków',
     'CATEGORY_ADD': '🏷️ Dodanie kategorii',
     'CATEGORY_DELETE': '🗑️ Usunięcie kategorii',
@@ -116,12 +123,30 @@ export function formatLogEntry(logEntry) {
     'BUDGET_USER_DELETE': '🗑️ Usunięcie użytkownika budżetu',
     'PROFILE_UPDATE': '👤 Aktualizacja profilu',
     'LOGS_CLEARED': '🗑️ Wyczyszczenie logów',
-    'ENVELOPE_UPDATE': '📩 Aktualizacja koperty dnia'
+    'ENVELOPE_UPDATE': '📩 Aktualizacja koperty dnia',
+    'AUTO_REALISE': '🤖 Automatyczna realizacja transakcji'
   };
+  
+  // Określ nazwę użytkownika
+  let userName = null;
+  
+  if (logEntry.isSystemAction) {
+    userName = 'Akcja systemowa';
+  } else if (logEntry.budgetUser) {
+    userName = logEntry.budgetUser;
+  }
+  
+  // Przetwórz szczegóły
+  const processedDetails = { ...logEntry.details };
+  
+  // Usuń budgetUser i isSystemAction z details aby nie duplikować
+  delete processedDetails.budgetUser;
+  delete processedDetails.isSystemAction;
   
   return {
     label: actionLabels[logEntry.action] || logEntry.action,
     timestamp: `${logEntry.date} ${logEntry.time}`,
-    details: logEntry.details
+    userName: userName,
+    details: processedDetails
   };
 }

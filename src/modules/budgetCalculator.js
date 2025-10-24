@@ -1,4 +1,4 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z getEnvelopeCalculationInfo + dynamika + limity bieżące
+// src/modules/budgetCalculator.js - Kalkulator budżetu z getEnvelopeCalculationInfo + dynamika + limity bieżące + wydatki okresowe
 import { parseDateStr, getWarsawDateString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
@@ -37,6 +37,55 @@ export function calculateRealisedTotals(dateStr = null) {
     console.log('📊 SUMA wydatków (zrealizowane, do dziś włącznie):', sumExpense);
 
     return { sumIncome, sumExpense };
+}
+
+/**
+ * Oblicz wydatki dzisiaj
+ */
+export function getTodayExpenses() {
+    const today = getWarsawDateString();
+    const expenses = getExpenses();
+    
+    return expenses
+        .filter(e => e.type === 'normal' && e.date === today)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+}
+
+/**
+ * Oblicz wydatki w tym tygodniu
+ */
+export function getWeekExpenses() {
+    const today = getWarsawDateString();
+    const expenses = getExpenses();
+    
+    // Początek tygodnia (poniedziałek)
+    const todayDate = new Date(today);
+    const dayOfWeek = todayDate.getDay();
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Jeśli niedziela, to -6, w przeciwnym razie 1 - dayOfWeek
+    const weekStart = new Date(todayDate);
+    weekStart.setDate(todayDate.getDate() + diff);
+    const weekStartStr = getWarsawDateString(weekStart);
+    
+    return expenses
+        .filter(e => e.type === 'normal' && e.date >= weekStartStr && e.date <= today)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+}
+
+/**
+ * Oblicz wydatki w tym miesiącu
+ */
+export function getMonthExpenses() {
+    const today = getWarsawDateString();
+    const expenses = getExpenses();
+    
+    // Początek miesiąca
+    const todayDate = new Date(today);
+    const monthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    const monthStartStr = getWarsawDateString(monthStart);
+    
+    return expenses
+        .filter(e => e.type === 'normal' && e.date >= monthStartStr && e.date <= today)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
 /**

@@ -1,11 +1,15 @@
-// src/modules/analytics.js - Moduł analityki z przedziałami czasowymi + wydatki użytkowników
+// src/modules/analytics.js - Moduł analityki z przedziałami czasowymi + wydatki użytkowników (fixed)
 import { getExpenses, getIncomes } from './dataManager.js';
 import { getWarsawDateString, formatDateLabel } from '../utils/dateHelpers.js';
-import { getBudgetUsers } from './auth.js';
 
 let currentPeriod = 7;
 let customDateFrom = null;
 let customDateTo = null;
+let budgetUsersCache = [];
+
+export function setBudgetUsersCache(users) {
+  budgetUsersCache = users || [];
+}
 
 export function setAnalyticsPeriod(days) {
   if (days === 'custom') {
@@ -223,13 +227,29 @@ export function getUserExpensesBreakdown() {
   
   const total = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   
+  // Pobierz nazwy użytkowników z cache
+  const getBudgetUserName = (userId) => {
+    if (!userId || userId === 'unknown') return 'Nieznany';
+    
+    const user = budgetUsersCache.find(u => u.id === userId);
+    if (!user) {
+      // Jeśli użytkownik został usunięty, nie pokazuj go w statystykach
+      return null;
+    }
+    return user.name;
+  };
+  
   const breakdown = Array.from(userMap.entries())
-    .map(([userId, amount]) => ({
-      userId,
-      userName: userId,
-      amount,
-      percentage: total > 0 ? (amount / total) * 100 : 0
-    }))
+    .map(([userId, amount]) => {
+      const userName = getBudgetUserName(userId);
+      return {
+        userId,
+        userName,
+        amount,
+        percentage: total > 0 ? (amount / total) * 100 : 0
+      };
+    })
+    .filter(item => item.userName !== null) // Filtruj usuniętych użytkowników
     .sort((a, b) => b.amount - a.amount);
   
   return breakdown;

@@ -105,6 +105,22 @@
                         </div>
                     </div>
                     
+                    <h3>📅 Wydatki w okresach</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card danger">
+                            <div class="stat-label">Wydano dziś</div>
+                            <div class="stat-value"><span id="todayExpenses">0.00</span><span class="stat-unit">zł</span></div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-label">Wydano w tym tygodniu</div>
+                            <div class="stat-value"><span id="weekExpenses">0.00</span><span class="stat-unit">zł</span></div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-label">Wydano w tym miesiącu</div>
+                            <div class="stat-value"><span id="monthExpenses">0.00</span><span class="stat-unit">zł</span></div>
+                        </div>
+                    </div>
+                    
                     <h3>📊 Limity bieżące (bez planowanych)</h3>
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -225,15 +241,19 @@
                 
                 <div class="section-card">
                     <h2>🔧 Korekta posiadanych środków</h2>
+                    <p style="margin-bottom: 15px; color: var(--gray);">
+                        Aktualne dostępne środki: <strong><span id="currentFundsDisplay">0.00</span> zł</strong>
+                    </p>
                     <form id="correctionForm" onsubmit="addCorrection(event)">
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Kwota korekty (zł)</label>
-                                <input type="number" name="correctionAmount" step="0.01" required placeholder="Dodatnia lub ujemna">
+                                <label>Nowa kwota całkowitych środków (zł)</label>
+                                <input type="number" name="correctionAmount" step="0.01" required placeholder="np. 5000.00">
+                                <small class="text-muted">Wprowadź jaką kwotę środków CHCESZ mieć po korekcie</small>
                             </div>
                             <div class="form-group">
                                 <label>Powód korekty</label>
-                                <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu">
+                                <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu, Korekta bankowa">
                             </div>
                         </div>
                         <button type="submit" class="btn btn-warning mt-20">Wprowadź korektę</button>
@@ -473,6 +493,14 @@
                 document.getElementById('registerTab').classList.add('active');
             }
         }
+        
+        setInterval(() => {
+            const fundsDisplay = document.getElementById('currentFundsDisplay');
+            const availableFunds = document.getElementById('availableFunds');
+            if (fundsDisplay && availableFunds) {
+                fundsDisplay.textContent = availableFunds.textContent;
+            }
+        }, 1000);
     </script>
 </body>
 </html>

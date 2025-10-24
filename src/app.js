@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.6.0
+// src/app.js - Główna aplikacja Krezus v1.7.0
 import { 
   loginUser, 
   registerUser, 
@@ -47,7 +47,10 @@ import {
   getTopSources,
   computeComparisons,
   getEnvelopeCalculationInfo,
-  calculateSpendingDynamics
+  calculateSpendingDynamics,
+  getTodayExpenses,
+  getWeekExpenses,
+  getMonthExpenses
 } from './modules/budgetCalculator.js';
 
 import {
@@ -103,7 +106,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -264,10 +267,18 @@ function renderSummary() {
   const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
   const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
   const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
+  
+  const todayExpenses = getTodayExpenses();
+  const weekExpenses = getWeekExpenses();
+  const monthExpenses = getMonthExpenses();
 
   document.getElementById('availableFunds').textContent = available.toFixed(2);
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   document.getElementById('toSpend').textContent = toSpend.toFixed(2);
+  
+  document.getElementById('todayExpenses').textContent = todayExpenses.toFixed(2);
+  document.getElementById('weekExpenses').textContent = weekExpenses.toFixed(2);
+  document.getElementById('monthExpenses').textContent = monthExpenses.toFixed(2);
 
   // Limity bieżące
   document.getElementById('currentLimit1').textContent = currentLimit1.toFixed(2);
@@ -826,6 +837,7 @@ function renderExpenses() {
         </span>
       </td>
       <td class="actions">
+        ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${exp.id}')" title="Zrealizuj teraz">✅</button>` : ''}
         <button class="btn-icon" onclick="window.editExpense('${exp.id}')" title="Edytuj">✏️</button>
         <button class="btn-icon" onclick="window.deleteExpense('${exp.id}')" title="Usuń">🗑️</button>
       </td>
@@ -876,6 +888,36 @@ window.changeExpensePage = (page) => {
   }
 };
 
+window.realiseExpense = async (expenseId) => {
+  const expenses = getExpenses();
+  const expense = expenses.find(e => e.id === expenseId);
+  
+  if (!expense || expense.type !== 'planned') return;
+  
+  expense.type = 'normal';
+  expense.date = getWarsawDateString();
+  expense.time = getCurrentTimeString();
+  expense.wasPlanned = true;
+  
+  try {
+    await saveExpenses(expenses);
+    await updateDailyEnvelope();
+    
+    const budgetUserName = getBudgetUserName(expense.userId);
+    await log('EXPENSE_REALISE', {
+      amount: expense.amount,
+      category: expense.category,
+      description: expense.description,
+      budgetUser: budgetUserName
+    });
+    
+    showSuccessMessage('Wydatek zrealizowany');
+  } catch (error) {
+    console.error('❌ Błąd realizacji wydatku:', error);
+    showErrorMessage('Nie udało się zrealizować wydatku');
+  }
+};
+
 function renderSources() {
   const incomes = getIncomes();
   const totalIncomes = incomes.length;
@@ -916,6 +958,7 @@ function renderSources() {
         </span>
       </td>
       <td class="actions">
+        ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
         ${!isCorrection ? `
           <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
           <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
@@ -968,6 +1011,35 @@ window.changeIncomePage = (page) => {
   }
 };
 
+window.realiseIncome = async (incomeId) => {
+  const incomes = getIncomes();
+  const income = incomes.find(i => i.id === incomeId);
+  
+  if (!income || income.type !== 'planned') return;
+  
+  income.type = 'normal';
+  income.date = getWarsawDateString();
+  income.time = getCurrentTimeString();
+  income.wasPlanned = true;
+  
+  try {
+    await saveIncomes(incomes);
+    await updateDailyEnvelope();
+    
+    const budgetUserName = getBudgetUserName(income.userId);
+    await log('INCOME_REALISE', {
+      amount: income.amount,
+      source: income.source,
+      budgetUser: budgetUserName
+    });
+    
+    showSuccessMessage('Przychód zrealizowany');
+  } catch (error) {
+    console.error('❌ Błąd realizacji przychodu:', error);
+    showErrorMessage('Nie udało się zrealizować przychodu');
+  }
+};
+
 window.addCategory = async () => {
   const input = document.getElementById('newCategoryName');
   const name = input.value.trim();
@@ -994,7 +1066,15 @@ window.addCategory = async () => {
   try {
     await saveCategories(updated);
     input.value = '';
-    await log('CATEGORY_ADD', { categoryName: name });
+    
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
+    await log('CATEGORY_ADD', { 
+      categoryName: name,
+      budgetUser: displayName
+    });
+    
     showSuccessMessage('Kategoria dodana');
   } catch (error) {
     console.error('❌ Błąd dodawania kategorii:', error);
@@ -1025,7 +1105,16 @@ window.deleteCategory = async (categoryId, categoryName) => {
   
   try {
     await saveCategories(updated);
-    await log('CATEGORY_DELETE', { categoryName, affectedExpenses: count });
+    
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
+    await log('CATEGORY_DELETE', { 
+      categoryName, 
+      affectedExpenses: count,
+      budgetUser: displayName
+    });
+    
     showSuccessMessage('Kategoria usunięta');
   } catch (error) {
     console.error('❌ Błąd usuwania kategorii:', error);
@@ -1107,11 +1196,14 @@ window.addExpense = async (e) => {
       await updateDailyEnvelope();
     }
     
+    const budgetUserName = getBudgetUserName(userId);
+    
     await log(editingExpenseId ? 'EXPENSE_EDIT' : 'EXPENSE_ADD', {
       amount,
       category,
       description,
-      type
+      type,
+      budgetUser: budgetUserName
     });
     
     form.reset();
@@ -1165,10 +1257,13 @@ window.deleteExpense = async (expenseId) => {
       await updateDailyEnvelope();
     }
     
+    const budgetUserName = expense?.userId ? getBudgetUserName(expense.userId) : 'Nieznany';
+    
     await log('EXPENSE_DELETE', {
       amount: expense?.amount,
       category: expense?.category,
-      description: expense?.description
+      description: expense?.description,
+      budgetUser: budgetUserName
     });
     
     showSuccessMessage('Wydatek usunięty');
@@ -1230,10 +1325,13 @@ window.addIncome = async (e) => {
       await updateDailyEnvelope();
     }
     
+    const budgetUserName = getBudgetUserName(userId);
+    
     await log(editingIncomeId ? 'INCOME_EDIT' : 'INCOME_ADD', {
       amount,
       source,
-      type
+      type,
+      budgetUser: budgetUserName
     });
     
     form.reset();
@@ -1286,9 +1384,12 @@ window.deleteIncome = async (incomeId) => {
       await updateDailyEnvelope();
     }
     
+    const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
+    
     await log('INCOME_DELETE', {
       amount: income?.amount,
-      source: income?.source
+      source: income?.source,
+      budgetUser: budgetUserName
     });
     
     showSuccessMessage('Przychód usunięty');
@@ -1302,11 +1403,11 @@ window.addCorrection = async (e) => {
   e.preventDefault();
   
   const form = e.target;
-  const amount = parseFloat(form.correctionAmount.value);
+  const newTotalAmount = parseFloat(form.correctionAmount.value);
   const reason = form.correctionReason.value.trim();
   
-  if (isNaN(amount) || amount === 0) {
-    showErrorMessage('Podaj prawidłową kwotę korekty (dodatnią lub ujemną)');
+  if (isNaN(newTotalAmount)) {
+    showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
     return;
   }
   
@@ -1321,15 +1422,23 @@ window.addCorrection = async (e) => {
     return;
   }
   
+  const { available } = calculateAvailableFunds();
+  const difference = newTotalAmount - available;
+  
+  const correctionType = difference >= 0 ? 'PLUS' : 'MINUS';
+  
   const correction = {
     id: `corr_${Date.now()}`,
-    amount: amount,
+    amount: difference,
     date: getWarsawDateString(),
     time: getCurrentTimeString(),
     type: 'normal',
     userId: user.uid,
     source: 'KOREKTA',
     correctionReason: reason,
+    correctionType: correctionType,
+    previousAmount: available,
+    newAmount: newTotalAmount,
     timestamp: getCurrentTimeString()
   };
   
@@ -1339,13 +1448,20 @@ window.addCorrection = async (e) => {
   try {
     await saveIncomes(updated);
     await updateDailyEnvelope();
+    
+    const displayName = await getDisplayName(user.uid);
+    
     await log('CORRECTION_ADD', {
-      amount,
-      reason
+      difference: difference,
+      correctionType: correctionType,
+      previousAmount: available,
+      newAmount: newTotalAmount,
+      reason: reason,
+      budgetUser: displayName
     });
     
     form.reset();
-    showSuccessMessage(`Korekta wprowadzona: ${amount >= 0 ? '+' : ''}${amount.toFixed(2)} zł`);
+    showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
   } catch (error) {
     console.error('❌ Błąd wprowadzania korekty:', error);
     showErrorMessage('Nie udało się wprowadzić korekty');
@@ -1377,10 +1493,15 @@ window.saveSettings = async (e) => {
     await saveEndDates(endDate1, endDate2);
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
+    
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
     await log('SETTINGS_UPDATE', {
       endDate1,
       endDate2,
-      savingGoal
+      savingGoal,
+      budgetUser: displayName
     });
     
     showSuccessMessage('Ustawienia zapisane');
@@ -1415,6 +1536,11 @@ async function renderLogs() {
             <span class="log-action">${formatted.label}</span>
             <span class="log-timestamp">${formatted.timestamp}</span>
           </div>
+          ${formatted.userName ? `
+            <div class="log-user">
+              <strong>Użytkownik:</strong> ${formatted.userName}
+            </div>
+          ` : ''}
           ${formatted.details && Object.keys(formatted.details).length > 0 ? `
             <div class="log-details">
               ${Object.entries(formatted.details).map(([key, value]) => 
@@ -1439,7 +1565,10 @@ window.clearLogs = async () => {
   }
   
   try {
-    await clearAllLogs();
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
+    await clearAllLogs(displayName);
     await renderLogs();
     showSuccessMessage('Logi wyczyszczone');
   } catch (error) {
@@ -1485,7 +1614,15 @@ window.handleLogin = async (e) => {
 
   try {
     await loginUser(email, password);
-    await log('USER_LOGIN', { email });
+    
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
+    await log('USER_LOGIN', { 
+      email,
+      budgetUser: displayName
+    });
+    
     form.reset();
   } catch (error) {
     console.error('❌ Błąd logowania:', error);
@@ -1513,7 +1650,11 @@ window.handleRegister = async (e) => {
 
   try {
     await registerUser(email, password, displayName);
-    await log('USER_REGISTER', { email, displayName });
+    await log('USER_REGISTER', { 
+      email, 
+      displayName,
+      budgetUser: displayName
+    });
     form.reset();
   } catch (error) {
     console.error('❌ Błąd rejestracji:', error);
@@ -1525,12 +1666,19 @@ window.handleLogout = async () => {
   if (!confirm('Czy na pewno chcesz się wylogować?')) return;
   
   try {
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
-    await log('USER_LOGOUT', {});
+    
+    await log('USER_LOGOUT', {
+      budgetUser: displayName
+    });
+    
     await logoutUser();
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
