@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.8.3 (responsive chart)
+// src/app.js
 import { 
   loginUser, 
   registerUser, 
@@ -106,7 +106,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.9.0';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -529,7 +529,7 @@ function renderCategoriesChart(breakdown) {
   const isMobile = containerWidth < 768;
   
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 500 : 400;
+  canvas.height = isMobile ? 600 : 400;
   
   const ctx = canvas.getContext('2d');
   
@@ -537,11 +537,11 @@ function renderCategoriesChart(breakdown) {
   const data = breakdown.map(b => b.amount);
   
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - 150;
+  const chartHeight = canvas.height - (isMobile ? 200 : 150);
   const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 40 : 60, (chartWidth / breakdown.length) - 20);
+  const barWidth = Math.min(isMobile ? 50 : 60, (chartWidth / breakdown.length) - (isMobile ? 15 : 20));
   const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - 120;
+  const startY = canvas.height - (isMobile ? 150 : 120);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -603,13 +603,13 @@ function renderCategoriesChart(breakdown) {
     ctx.fillRect(x, y, barWidth, barHeight);
     
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + 20);
+    ctx.translate(x + barWidth / 2, startY + (isMobile ? 25 : 20));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? '9px Arial' : 'bold 13px Arial';
+    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 13px Arial';
     ctx.textAlign = 'right';
     
-    const maxChars = isMobile ? 10 : 15;
+    const maxChars = isMobile ? 12 : 15;
     const displayText = item.category.length > maxChars 
       ? item.category.substring(0, maxChars) + '...' 
       : item.category;

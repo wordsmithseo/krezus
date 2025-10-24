@@ -1,4 +1,4 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z naprawionym algorytmem koperty dnia v2.1
+// src/modules/budgetCalculator.js
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
@@ -283,7 +283,7 @@ export async function updateDailyEnvelope(forDate = null) {
     );
     const todayExpensesSum = todayExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
     
-    console.log('🧠 === INTELIGENTNA KOPERTA DNIA ===');
+    console.log('🧠 === INTELIGENTNA KOPERTA DNIA V3 ===');
     console.log('💰 Dostępne środki PRZED dzisiejszym dniem:', availableBeforeToday.toFixed(2), 'PLN');
     console.log('🛡️ Rezerwa (cel oszczędności):', savingGoal.toFixed(2), 'PLN');
     console.log('💵 Do wydania PRZED dzisiejszym dniem:', toSpendBeforeToday.toFixed(2), 'PLN');
@@ -308,44 +308,45 @@ export async function updateDailyEnvelope(forDate = null) {
             e.date < targetDate
         );
         
-        const toSpendTotal = toSpendBeforeToday + todayIncomesSum;
+        const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
         
-        if (historicalExpenses.length >= 5) {
+        console.log('💰 Całkowite środki do wydania dziś:', totalAvailableToday.toFixed(2), 'PLN');
+        
+        if (totalAvailableToday <= 0) {
+            console.log('⚠️ Brak środków do wydania - koperta = 0');
+            smartLimit = 0;
+        } else if (historicalExpenses.length >= 5) {
             const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
             const median = amounts[Math.floor(amounts.length / 2)];
             
-            const simpleLimit = toSpendTotal / daysLeft1;
+            const simpleLimit = totalAvailableToday / daysLeft1;
             
-            const conservativeFactor = 0.85;
-            const calculatedLimit = (median * 0.5 + simpleLimit * 0.5) * conservativeFactor;
+            let calculatedLimit;
+            if (median > simpleLimit * 1.5) {
+                calculatedLimit = simpleLimit * 0.9;
+                console.log('📊 Mediana zbyt wysoka - używam 90% prostego limitu');
+            } else if (median < simpleLimit * 0.3) {
+                calculatedLimit = simpleLimit * 0.7;
+                console.log('📊 Mediana zbyt niska - używam 70% prostego limitu');
+            } else {
+                calculatedLimit = (median * 0.4 + simpleLimit * 0.6);
+                console.log('📊 Używam ważonej średniej: 40% mediana + 60% limit prosty');
+            }
             
-            smartLimit = Math.max(0, Math.min(calculatedLimit, toSpendTotal));
+            smartLimit = Math.max(0, Math.min(calculatedLimit, totalAvailableToday));
             
-            console.log('📊 Mediana wydatków (30 dni, bez dzisiaj):', median.toFixed(2), 'zł');
-            console.log('📊 Prosty limit:', simpleLimit.toFixed(2), 'zł');
-            console.log('📊 Obliczony limit (50% mediana + 50% prosty × 85%):', calculatedLimit.toFixed(2), 'zł');
-            console.log('💰 Inteligentna bazowa kwota koperty:', smartLimit.toFixed(2), 'zł');
+            console.log('📊 Mediana wydatków (30 dni):', median.toFixed(2), 'zł');
+            console.log('📊 Prosty limit dzienny:', simpleLimit.toFixed(2), 'zł');
+            console.log('📊 Obliczony limit:', calculatedLimit.toFixed(2), 'zł');
+            console.log('💰 Inteligentna kwota koperty:', smartLimit.toFixed(2), 'zł');
         } else {
-            const conservativeFactor = 0.6;
-            const calculatedLimit = (toSpendTotal / daysLeft1) * conservativeFactor;
-            smartLimit = Math.max(0, Math.min(calculatedLimit, toSpendTotal));
+            const simpleLimit = totalAvailableToday / daysLeft1;
+            smartLimit = Math.max(0, Math.min(simpleLimit * 0.8, totalAvailableToday));
             
             console.log('⚠️ Niewystarczająca historia wydatków (< 5 transakcji)');
-            console.log('📊 Obliczony limit (60% prostego limitu):', calculatedLimit.toFixed(2), 'zł');
-            console.log('💰 Inteligentna bazowa kwota koperty (zachowawcza):', smartLimit.toFixed(2), 'zł');
-        }
-        
-        if (daysLeft1 > 0 && daysLeft1 <= 3) {
-            const emergencyLimit = toSpendTotal / Math.max(3, daysLeft1);
-            if (smartLimit > emergencyLimit) {
-                console.log('🚨 Włączono tryb awaryjny (≤3 dni) - ograniczenie bezpieczeństwa');
-                smartLimit = emergencyLimit;
-            }
-        }
-        
-        if (smartLimit < 0) {
-            console.log('⚠️ Środki ujemne - koperta = 0');
-            smartLimit = 0;
+            console.log('📊 Prosty limit dzienny:', simpleLimit.toFixed(2), 'zł');
+            console.log('📊 Używam 80% prostego limitu (zachowawczo)');
+            console.log('💰 Kwota koperty:', smartLimit.toFixed(2), 'zł');
         }
     }
     
@@ -445,20 +446,31 @@ export function getEnvelopeCalculationInfo() {
     if (!date1 || date1.trim() === '' || daysLeft1 <= 0) {
         description = 'Brak ustawionej daty końcowej okresu';
         formula = 'Ustaw datę końcową w ustawieniach';
-    } else if (historicalExpenses.length >= 5) {
-        const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
-        const median = amounts[Math.floor(amounts.length / 2)];
-        const toSpendTotal = toSpendBeforeToday + todayIncomesSum;
-        const simpleLimit = toSpendTotal / daysLeft1;
-        
-        description = `Algorytm inteligentny (historia ${historicalExpenses.length} transakcji z 30 dni)`;
-        formula = `[(Mediana ${median.toFixed(2)} zł × 50%) + (Limit prosty ${simpleLimit.toFixed(2)} zł × 50%)] × 85%`;
     } else {
-        const toSpendTotal = toSpendBeforeToday + todayIncomesSum;
-        const simpleLimit = toSpendTotal / daysLeft1;
+        const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
+        const simpleLimit = totalAvailableToday / daysLeft1;
         
-        description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
-        formula = `Limit prosty ${simpleLimit.toFixed(2)} zł × 60%`;
+        if (totalAvailableToday <= 0) {
+            description = 'Brak środków do wydania';
+            formula = 'Dostępne środki: 0 zł';
+        } else if (historicalExpenses.length >= 5) {
+            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
+            const median = amounts[Math.floor(amounts.length / 2)];
+            
+            if (median > simpleLimit * 1.5) {
+                description = `Algorytm inteligentny - mediana zbyt wysoka (${historicalExpenses.length} transakcji)`;
+                formula = `90% limitu prostego ${simpleLimit.toFixed(2)} zł = ${(simpleLimit * 0.9).toFixed(2)} zł`;
+            } else if (median < simpleLimit * 0.3) {
+                description = `Algorytm inteligentny - mediana zbyt niska (${historicalExpenses.length} transakcji)`;
+                formula = `70% limitu prostego ${simpleLimit.toFixed(2)} zł = ${(simpleLimit * 0.7).toFixed(2)} zł`;
+            } else {
+                description = `Algorytm inteligentny (${historicalExpenses.length} transakcji z 30 dni)`;
+                formula = `40% mediany ${median.toFixed(2)} zł + 60% limitu ${simpleLimit.toFixed(2)} zł`;
+            }
+        } else {
+            description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
+            formula = `80% limitu prostego ${simpleLimit.toFixed(2)} zł = ${(simpleLimit * 0.8).toFixed(2)} zł`;
+        }
     }
     
     return {
