@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.7.0
+// src/app.js - Główna aplikacja Krezus v1.8.0
 import { 
   loginUser, 
   registerUser, 
@@ -58,11 +58,12 @@ import {
   setCustomDateRange,
   calculatePeriodStats,
   compareToPreviousPeriod,
-  getMostExpensiveCategory,
+  getMostExpensiveCategories,
   getCategoriesBreakdown,
   detectAnomalies,
   getUserExpensesBreakdown,
-  getCurrentPeriod
+  getCurrentPeriod,
+  setBudgetUsersCache
 } from './modules/analytics.js';
 
 import { 
@@ -106,7 +107,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -213,6 +214,7 @@ async function loadBudgetUsers(uid) {
   budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
     budgetUsersCache = users;
     updateBudgetUsersSelects();
+    setBudgetUsersCache(users);
   });
 }
 
@@ -319,32 +321,54 @@ function renderSummary() {
 
 function renderSpendingDynamics() {
   const dynamics = calculateSpendingDynamics();
-  const gauge = document.getElementById('dynamicsGauge');
-  const indicator = document.getElementById('dynamicsIndicator');
-  const info = document.getElementById('dynamicsInfo');
+  const container = document.getElementById('dynamicsInfo');
   
-  if (!gauge || !indicator || !info) return;
+  if (!container) return;
   
-  const position = dynamics.score;
-  
-  indicator.style.left = `${position}%`;
-  
-  const colors = {
-    safe: '#10b981',
-    good: '#34d399',
-    moderate: '#3b82f6',
-    warning: '#f59e0b',
-    critical: '#ef4444'
-  };
-  
-  indicator.style.background = colors[dynamics.status] || colors.moderate;
-  
-  let infoHTML = `<strong>${dynamics.message}</strong>`;
-  if (dynamics.dailyAvg !== undefined && dynamics.targetDaily !== undefined) {
-    infoHTML += `<br><small>Średnia dzienna (7 dni): ${dynamics.dailyAvg.toFixed(2)} zł | Docelowy limit: ${dynamics.targetDaily.toFixed(2)} zł</small>`;
+  let statusClass = '';
+  switch(dynamics.status) {
+    case 'excellent':
+      statusClass = 'dynamics-excellent';
+      break;
+    case 'good':
+      statusClass = 'dynamics-good';
+      break;
+    case 'moderate':
+      statusClass = 'dynamics-moderate';
+      break;
+    case 'warning':
+      statusClass = 'dynamics-warning';
+      break;
+    case 'critical':
+      statusClass = 'dynamics-critical';
+      break;
+    case 'no-date':
+      statusClass = 'dynamics-no-date';
+      break;
   }
   
-  info.innerHTML = infoHTML;
+  let html = `
+    <div class="dynamics-card ${statusClass}">
+      <h4 class="dynamics-title">${dynamics.title}</h4>
+      <p class="dynamics-summary">${dynamics.summary}</p>
+      
+      ${dynamics.details.length > 0 ? `
+        <div class="dynamics-details">
+          <strong>📊 Szczegóły:</strong>
+          <ul>
+            ${dynamics.details.map(detail => `<li>${detail}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+      
+      <div class="dynamics-recommendation">
+        <strong>💡 Rekomendacja:</strong>
+        <p>${dynamics.recommendation}</p>
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = html;
 }
 
 function renderDailyEnvelope() {
@@ -362,7 +386,11 @@ function renderDailyEnvelope() {
     
     const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
     if (calcInfoDiv) {
-      calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
+      if (calcInfo) {
+        calcInfoDiv.innerHTML = `<small style="color: white; opacity: 0.95;">${calcInfo.description}</small>`;
+      } else {
+        calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
+      }
     }
     return;
   }
@@ -397,7 +425,7 @@ function renderDailyEnvelope() {
 function renderAnalytics() {
   const stats = calculatePeriodStats();
   const comparison = compareToPreviousPeriod();
-  const mostExpensive = getMostExpensiveCategory();
+  const topCategories = getMostExpensiveCategories(3);
   const breakdown = getCategoriesBreakdown();
   const anomalies = detectAnomalies();
   const userExpenses = getUserExpensesBreakdown();
@@ -436,36 +464,31 @@ function renderAnalytics() {
     userExpDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
   }
 
-  const mostExpCat = document.getElementById('mostExpensiveCategory');
-  if (mostExpensive) {
-    mostExpCat.innerHTML = `
+  const topCatDiv = document.getElementById('mostExpensiveCategory');
+  if (topCategories.length > 0) {
+    topCatDiv.innerHTML = topCategories.map((cat, index) => `
       <div class="top-category-item">
         <div>
-          <strong>${mostExpensive.category}</strong>
-          <small>${mostExpensive.percentage.toFixed(1)}% wszystkich wydatków</small>
+          <strong>${index + 1}. ${cat.category}</strong>
+          <small>${cat.percentage.toFixed(1)}% wszystkich wydatków</small>
         </div>
-        <span class="amount">${mostExpensive.amount.toFixed(2)} zł</span>
-      </div>
-    `;
-  } else {
-    mostExpCat.innerHTML = '<p class="empty-state">Brak danych</p>';
-  }
-
-  const breakdownDiv = document.getElementById('categoriesBreakdown');
-  if (breakdown.length > 0) {
-    breakdownDiv.innerHTML = breakdown.map(cat => `
-      <div class="category-breakdown-item">
-        <div class="category-breakdown-header">
-          <strong>${cat.category}</strong>
-          <span>${cat.amount.toFixed(2)} zł (${cat.percentage.toFixed(1)}%)</span>
-        </div>
-        <div class="category-breakdown-bar">
-          <div class="category-breakdown-fill" style="width: ${cat.percentage}%"></div>
-        </div>
+        <span class="amount">${cat.amount.toFixed(2)} zł</span>
       </div>
     `).join('');
   } else {
-    breakdownDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
+    topCatDiv.innerHTML = '<p class="empty-state">Brak danych</p>';
+  }
+
+  const chartCanvas = document.getElementById('categoriesChart');
+  if (chartCanvas && breakdown.length > 0) {
+    renderCategoriesChart(breakdown);
+  } else if (chartCanvas) {
+    const ctx = chartCanvas.getContext('2d');
+    ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#6b7280';
+    ctx.textAlign = 'center';
+    ctx.fillText('Brak wydatków w wybranym okresie', chartCanvas.width / 2, chartCanvas.height / 2);
   }
 
   const anomaliesDiv = document.getElementById('anomaliesList');
@@ -485,6 +508,97 @@ function renderAnalytics() {
   } else {
     anomaliesDiv.innerHTML = '<p class="empty-state">Brak wykrytych anomalii</p>';
   }
+}
+
+let categoriesChartInstance = null;
+
+function renderCategoriesChart(breakdown) {
+  const canvas = document.getElementById('categoriesChart');
+  if (!canvas) return;
+  
+  if (categoriesChartInstance) {
+    categoriesChartInstance.destroy();
+  }
+  
+  const ctx = canvas.getContext('2d');
+  
+  const labels = breakdown.map(b => b.category);
+  const data = breakdown.map(b => b.amount);
+  
+  const maxAmount = Math.max(...data);
+  const chartHeight = canvas.height - 80;
+  const chartWidth = canvas.width - 100;
+  const barWidth = Math.min(60, chartWidth / breakdown.length - 20);
+  const startX = 60;
+  const startY = canvas.height - 40;
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Osie
+  ctx.strokeStyle = '#e5e7eb';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(startX, 20);
+  ctx.lineTo(startX, startY);
+  ctx.lineTo(canvas.width - 20, startY);
+  ctx.stroke();
+  
+  // Słupki
+  const colors = [
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#ec4899',
+    '#14b8a6',
+    '#f97316'
+  ];
+  
+  breakdown.forEach((item, index) => {
+    const barHeight = (item.amount / maxAmount) * chartHeight;
+    const x = startX + 20 + (index * (barWidth + 20));
+    const y = startY - barHeight;
+    
+    // Słupek
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fillRect(x, y, barWidth, barHeight);
+    
+    // Wartość na słupku
+    ctx.fillStyle = '#1f2937';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${item.amount.toFixed(0)} zł`, x + barWidth / 2, y - 5);
+    
+    // Procent
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#6b7280';
+    ctx.fillText(`${item.percentage.toFixed(1)}%`, x + barWidth / 2, y - 20);
+  });
+  
+  // Legenda
+  const legendY = 10;
+  const legendItemWidth = 150;
+  const legendItemsPerRow = Math.floor((canvas.width - 40) / legendItemWidth);
+  
+  breakdown.forEach((item, index) => {
+    const row = Math.floor(index / legendItemsPerRow);
+    const col = index % legendItemsPerRow;
+    const x = 20 + (col * legendItemWidth);
+    const y = legendY + (row * 20);
+    
+    // Kolor
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fillRect(x, y, 12, 12);
+    
+    // Tekst
+    ctx.fillStyle = '#1f2937';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.category, x + 18, y + 10);
+  });
+  
+  categoriesChartInstance = { destroy: () => {} };
 }
 
 window.selectPeriod = (days) => {
@@ -861,12 +975,16 @@ function renderExpensesPagination(total) {
   let html = '';
   html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage - 1})">◀</button>`;
   
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= currentExpensePage - 1 && i <= currentExpensePage + 1)) {
-      html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
-    } else if (i === currentExpensePage - 2 || i === currentExpensePage + 2) {
-      html += `<span class="pagination-ellipsis">...</span>`;
-    }
+  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
+  let startPage = Math.max(1, currentExpensePage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+  
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
   }
   
   html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage + 1})">▶</button>`;
@@ -984,12 +1102,16 @@ function renderIncomesPagination(total) {
   let html = '';
   html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage - 1})">◀</button>`;
   
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= currentIncomePage - 1 && i <= currentIncomePage + 1)) {
-      html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
-    } else if (i === currentIncomePage - 2 || i === currentIncomePage + 2) {
-      html += `<span class="pagination-ellipsis">...</span>`;
-    }
+  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
+  let startPage = Math.max(1, currentIncomePage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+  
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
   }
   
   html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage + 1})">▶</button>`;
@@ -1560,9 +1682,12 @@ async function renderLogs() {
 }
 
 window.clearLogs = async () => {
-  if (!confirm('Czy na pewno chcesz wyczyścić wszystkie logi? Ta operacja jest nieodwracalna.')) {
-    return;
-  }
+  const confirmed = await showPasswordModal(
+    'Czyszczenie logów',
+    'Czy na pewno chcesz wyczyścić wszystkie logi? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
+  );
+  
+  if (!confirmed) return;
   
   try {
     const user = getCurrentUser();

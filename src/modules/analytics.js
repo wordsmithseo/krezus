@@ -1,4 +1,4 @@
-// src/modules/analytics.js - Moduł analityki z przedziałami czasowymi + wydatki użytkowników (fixed)
+// src/modules/analytics.js - Moduł analityki z top3 + wykres słupkowy
 import { getExpenses, getIncomes } from './dataManager.js';
 import { getWarsawDateString, formatDateLabel } from '../utils/dateHelpers.js';
 
@@ -141,14 +141,14 @@ export function compareToPreviousPeriod() {
   };
 }
 
-export function getMostExpensiveCategory() {
+export function getMostExpensiveCategories(limit = 3) {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();
   
   const periodExpenses = filterByPeriod(expenses, dateFrom, dateTo);
   
   if (periodExpenses.length === 0) {
-    return null;
+    return [];
   }
   
   const categoryMap = new Map();
@@ -158,24 +158,16 @@ export function getMostExpensiveCategory() {
     categoryMap.set(cat, (categoryMap.get(cat) || 0) + (exp.amount || 0));
   });
   
-  let maxCategory = null;
-  let maxAmount = 0;
-  
-  categoryMap.forEach((amount, category) => {
-    if (amount > maxAmount) {
-      maxAmount = amount;
-      maxCategory = category;
-    }
-  });
-  
   const total = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const percentage = total > 0 ? (maxAmount / total) * 100 : 0;
   
-  return {
-    category: maxCategory,
-    amount: maxAmount,
-    percentage
-  };
+  return Array.from(categoryMap.entries())
+    .map(([category, amount]) => ({
+      category,
+      amount,
+      percentage: total > 0 ? (amount / total) * 100 : 0
+    }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, limit);
 }
 
 export function getCategoriesBreakdown() {
@@ -227,13 +219,11 @@ export function getUserExpensesBreakdown() {
   
   const total = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   
-  // Pobierz nazwy użytkowników z cache
   const getBudgetUserName = (userId) => {
     if (!userId || userId === 'unknown') return 'Nieznany';
     
     const user = budgetUsersCache.find(u => u.id === userId);
     if (!user) {
-      // Jeśli użytkownik został usunięty, nie pokazuj go w statystykach
       return null;
     }
     return user.name;
@@ -249,7 +239,7 @@ export function getUserExpensesBreakdown() {
         percentage: total > 0 ? (amount / total) * 100 : 0
       };
     })
-    .filter(item => item.userName !== null) // Filtruj usuniętych użytkowników
+    .filter(item => item.userName !== null)
     .sort((a, b) => b.amount - a.amount);
   
   return breakdown;

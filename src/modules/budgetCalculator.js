@@ -100,18 +100,18 @@ export function calculateSpendingPeriods() {
     let daysLeft1 = 0;
     let daysLeft2 = 0;
     
-    if (date1) {
+    if (date1 && date1.trim() !== '') {
         const d1 = parseDateStr(date1);
         const td = parseDateStr(today);
-        if (d1 && td) {
+        if (d1 && td && !isNaN(d1.getTime()) && !isNaN(td.getTime())) {
             daysLeft1 = Math.max(0, Math.floor((d1 - td) / (1000*60*60*24)));
         }
     }
     
-    if (date2) {
+    if (date2 && date2.trim() !== '') {
         const d2 = parseDateStr(date2);
         const td = parseDateStr(today);
-        if (d2 && td) {
+        if (d2 && td && !isNaN(d2.getTime()) && !isNaN(td.getTime())) {
             daysLeft2 = Math.max(0, Math.floor((d2 - td) / (1000*60*60*24)));
         }
     }
@@ -300,7 +300,7 @@ export async function updateDailyEnvelope(forDate = null) {
     const savingGoal = getSavingGoal();
     const toSpend = available - savingGoal;
     
-    const { daysLeft1 } = calculateSpendingPeriods();
+    const { daysLeft1, date1 } = calculateSpendingPeriods();
     
     // Pobierz dzisiejsze wpływy (type === 'normal' na dziś)
     const incomes = getIncomes();
@@ -314,11 +314,12 @@ export async function updateDailyEnvelope(forDate = null) {
     console.log('🛡️ Rezerwa (cel oszczędności):', savingGoal.toFixed(2), 'PLN');
     console.log('💵 Do wydania:', toSpend.toFixed(2), 'PLN');
     console.log('📅 Dni do końca okresu:', daysLeft1);
+    console.log('📅 Data końcowa okresu:', date1);
     
     let smartLimit = 0;
     
-    if (daysLeft1 <= 0) {
-        console.log(' ⚠️ Brak dni do końca okresu - ustaw datę końcową!');
+    if (!date1 || date1.trim() === '' || daysLeft1 <= 0) {
+        console.log('⚠️ Brak dni do końca okresu - ustaw datę końcową!');
         smartLimit = 0;
     } else {
         // INTELIGENTNY ALGORYTM
@@ -402,13 +403,22 @@ export async function updateDailyEnvelope(forDate = null) {
  */
 export function getEnvelopeCalculationInfo() {
     const envelope = getDailyEnvelope();
-    if (!envelope) return null;
+    const { date1, daysLeft1 } = calculateSpendingPeriods();
+    
+    if (!envelope) {
+        if (!date1 || date1.trim() === '') {
+            return {
+                description: 'Brak ustawionej daty końcowej okresu',
+                formula: 'Ustaw datę końcową w ustawieniach'
+            };
+        }
+        return null;
+    }
     
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const available = sumIncome - sumExpense;
     const savingGoal = getSavingGoal();
     const toSpend = available - savingGoal;
-    const { daysLeft1 } = calculateSpendingPeriods();
     
     const expenses = getExpenses();
     const today = getWarsawDateString();
@@ -425,7 +435,7 @@ export function getEnvelopeCalculationInfo() {
     let description = '';
     let formula = '';
     
-    if (daysLeft1 <= 0) {
+    if (!date1 || date1.trim() === '' || daysLeft1 <= 0) {
         description = 'Brak ustawionej daty końcowej okresu';
         formula = 'Ustaw datę końcową w ustawieniach';
     } else if (historicalExpenses.length >= 5) {
@@ -618,21 +628,21 @@ export function computeComparisons() {
 }
 
 /**
- * Oblicz dynamikę wydatków (wskaźnik od 0 do 100)
- * 0 = bardzo stabilna sytuacja (zielony)
- * 50 = umiarkowana (niebieski)
- * 100 = niestabilna, szybkie wydawanie (czerwony)
+ * Oblicz dynamikę wydatków - OPISOWA WERSJA
  */
 export function calculateSpendingDynamics() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    const { daysLeft1 } = calculateSpendingPeriods();
+    const { daysLeft1, date1 } = calculateSpendingPeriods();
+    const { toSpend } = calculateAvailableFunds();
     
-    if (daysLeft1 <= 0) {
+    if (!date1 || date1.trim() === '' || daysLeft1 <= 0) {
         return {
-            score: 50,
-            status: 'neutral',
-            message: 'Brak ustawionej daty końcowej okresu'
+            status: 'no-date',
+            title: '⚠️ Brak ustawionej daty końcowej',
+            summary: 'Aby zobaczyć analizę dynamiki wydatków, ustaw datę końcową okresu w ustawieniach.',
+            details: [],
+            recommendation: 'Przejdź do ustawień i ustaw datę końcową okresu głównego.'
         };
     }
     
@@ -649,62 +659,82 @@ export function calculateSpendingDynamics() {
     
     if (last7.length === 0) {
         return {
-            score: 0,
-            status: 'safe',
-            message: 'Brak wydatków w ostatnich 7 dniach - świetnie!'
+            status: 'excellent',
+            title: '🎉 Doskonała sytuacja!',
+            summary: 'W ostatnich 7 dniach nie było żadnych wydatków. Twój budżet jest w świetnym stanie.',
+            details: [
+                `Dostępne środki: ${toSpend.toFixed(2)} zł`,
+                `Dni do końca okresu: ${daysLeft1}`,
+                `Teoretyczny dzienny limit: ${(toSpend / daysLeft1).toFixed(2)} zł`
+            ],
+            recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.'
         };
     }
     
     const sum7 = last7.reduce((sum, e) => sum + (e.amount || 0), 0);
     const dailyAvg7 = sum7 / 7;
-    
-    // Oblicz jaki powinien być dzienny limit
-    const { toSpend } = calculateAvailableFunds();
     const targetDaily = toSpend / daysLeft1;
     
     if (targetDaily <= 0) {
         return {
-            score: 100,
             status: 'critical',
-            message: 'Przekroczono dostępne środki!'
+            title: '🚨 Sytuacja krytyczna!',
+            summary: 'Przekroczyłeś dostępny budżet. Środki do wydania są ujemne.',
+            details: [
+                `Dostępne środki: ${toSpend.toFixed(2)} zł`,
+                `Średnie dzienne wydatki (7 dni): ${dailyAvg7.toFixed(2)} zł`,
+                `Dni do końca okresu: ${daysLeft1}`
+            ],
+            recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.'
         };
     }
     
-    // Oblicz wskaźnik jako stosunek rzeczywistych wydatków do targetu
     const ratio = dailyAvg7 / targetDaily;
+    const percentageOfLimit = (ratio * 100).toFixed(0);
     
-    let score = 0;
-    let status = 'safe';
-    let message = '';
+    let status, title, summary, recommendation;
     
     if (ratio <= 0.5) {
-        score = 0;
-        status = 'safe';
-        message = 'Bardzo dobra sytuacja - wydajesz poniżej 50% limitu';
+        status = 'excellent';
+        title = '🌟 Doskonała kontrola wydatków!';
+        summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% dziennego limitu. Budżet jest w bardzo dobrej kondycji.`;
+        recommendation = 'Świetna robota! Masz dużo przestrzeni w budżecie. Możesz kontynuować obecny styl życia lub rozważyć zwiększenie oszczędności.';
     } else if (ratio <= 0.8) {
-        score = 25;
         status = 'good';
-        message = 'Dobra sytuacja - wydajesz poniżej 80% limitu';
+        title = '✅ Dobra sytuacja budżetowa';
+        summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% dziennego limitu (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
+        recommendation = 'Dobrze Ci idzie! Kontynuuj obecne tempo wydatków, ale uważaj na większe zakupy.';
     } else if (ratio <= 1.0) {
-        score = 50;
         status = 'moderate';
-        message = 'Umiarkowana sytuacja - wydatki zbliżone do limitu';
+        title = '⚡ Wydatki zbliżone do limitu';
+        summary = `Średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) zbliżają się do limitu (${targetDaily.toFixed(2)} zł). Stanowią ${percentageOfLimit}% dostępnego budżetu dziennego.`;
+        recommendation = 'Sytuacja jest pod kontrolą, ale nie masz dużego marginesu błędu. Uważaj na spontaniczne zakupy i monitoruj wydatki częściej.';
     } else if (ratio <= 1.3) {
-        score = 75;
         status = 'warning';
-        message = 'Uwaga - wydajesz powyżej limitu!';
+        title = '⚠️ Przekraczasz dzienny limit!';
+        summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% dziennego limitu (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
+        recommendation = 'Czas na większą ostrożność! Ogranicz niepotrzebne wydatki i skup się na priorytetach. Jeśli tak dalej pójdzie, możesz nie zmieścić się w budżecie do końca okresu.';
     } else {
-        score = 100;
         status = 'critical';
-        message = 'Krytyczna sytuacja - znaczne przekroczenie limitu!';
+        title = '🚨 Znaczne przekroczenie limitu!';
+        summary = `Alarm! Średnie wydatki dzienne (${dailyAvg7.toFixed(2)} zł) przekraczają limit (${targetDaily.toFixed(2)} zł) o ${((ratio - 1) * 100).toFixed(0)}%! To ${(dailyAvg7 - targetDaily).toFixed(2)} zł dziennie ponad budżet.`;
+        recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
     
+    const details = [
+        `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,
+        `Dni do końca okresu: ${daysLeft1}`,
+        `Dzienny limit budżetowy: ${targetDaily.toFixed(2)} zł`,
+        `Średnie wydatki dzienne (7 dni): ${dailyAvg7.toFixed(2)} zł`,
+        `Liczba transakcji (7 dni): ${last7.length}`,
+        `Prognozowane wydatki do końca okresu: ${(dailyAvg7 * daysLeft1).toFixed(2)} zł`
+    ];
+    
     return {
-        score: Math.min(100, Math.max(0, score)),
         status,
-        message,
-        dailyAvg: dailyAvg7,
-        targetDaily,
-        ratio
+        title,
+        summary,
+        details,
+        recommendation
     };
 }

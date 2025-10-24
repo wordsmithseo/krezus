@@ -165,13 +165,7 @@
                     </div>
                     
                     <h3>🎯 Dynamika wydatków</h3>
-                    <div class="spending-dynamics">
-                        <div class="dynamics-gauge-container">
-                            <div id="dynamicsGauge" class="dynamics-gauge"></div>
-                            <div class="dynamics-indicator" id="dynamicsIndicator"></div>
-                        </div>
-                        <div class="dynamics-info" id="dynamicsInfo"></div>
-                    </div>
+                    <div id="dynamicsInfo" class="spending-dynamics"></div>
                 </div>
             </section>
 
@@ -433,10 +427,10 @@
                     </div>
                     <h3>👥 Wydatki użytkowników</h3>
                     <div id="userExpensesBreakdown"></div>
-                    <h3>🏆 Najkosztowniejsza kategoria</h3>
+                    <h3>🏆 Top 3 najkosztowniejszych kategorii</h3>
                     <div id="mostExpensiveCategory"></div>
                     <h3>📊 Udział kategorii w wydatkach</h3>
-                    <div id="categoriesBreakdown"></div>
+                    <canvas id="categoriesChart" width="800" height="400" style="max-width: 100%; margin: 20px 0;"></canvas>
                     <h3>⚠️ Wykryte anomalie</h3>
                     <div id="anomaliesList"></div>
                 </div>

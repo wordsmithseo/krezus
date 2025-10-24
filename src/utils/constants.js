@@ -1,7 +1,8 @@
+// src/utils/constants.js
 export const PAGINATION = {
   ITEMS_PER_PAGE: 8,
-  EXPENSES_PER_PAGE: 10,
-  INCOMES_PER_PAGE: 10,
+  EXPENSES_PER_PAGE: 100,
+  INCOMES_PER_PAGE: 100,
   MAX_PAGE_BUTTONS: 5
 };
 
