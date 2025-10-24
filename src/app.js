@@ -106,7 +106,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.9.1';
+const APP_VERSION = '1.9.2';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -550,7 +550,8 @@ function renderCategoriesChart(breakdown) {
   const isMobile = containerWidth < 768;
   
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 600 : 400;
+  canvas.height = isMobile ? 700 : 450;
+  canvas.style.display = 'block';
   
   const ctx = canvas.getContext('2d');
   
@@ -558,11 +559,11 @@ function renderCategoriesChart(breakdown) {
   const data = breakdown.map(b => b.amount);
   
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - (isMobile ? 200 : 150);
+  const chartHeight = canvas.height - (isMobile ? 250 : 150);
   const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 50 : 60, (chartWidth / breakdown.length) - (isMobile ? 15 : 20));
+  const barWidth = Math.min(isMobile ? 60 : 70, (chartWidth / breakdown.length) - (isMobile ? 15 : 25));
   const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - (isMobile ? 150 : 120);
+  const startY = canvas.height - (isMobile ? 200 : 120);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -587,7 +588,7 @@ function renderCategoriesChart(breakdown) {
     ctx.stroke();
     
     ctx.fillStyle = '#6b7280';
-    ctx.font = isMobile ? '11px Arial' : '12px Arial';
+    ctx.font = isMobile ? '12px Arial' : '13px Arial';
     ctx.textAlign = 'right';
     ctx.fillText(`${value.toFixed(0)}`, startX - (isMobile ? 5 : 10), y + 4);
   }
@@ -607,7 +608,7 @@ function renderCategoriesChart(breakdown) {
   
   breakdown.forEach((item, index) => {
     const barHeight = (item.amount / maxAmount) * chartHeight;
-    const x = startX + 20 + (index * (barWidth + (isMobile ? 10 : 20)));
+    const x = startX + 20 + (index * (barWidth + (isMobile ? 10 : 25)));
     const y = startY - barHeight;
     
     barData.push({
@@ -624,13 +625,13 @@ function renderCategoriesChart(breakdown) {
     ctx.fillRect(x, y, barWidth, barHeight);
     
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 25 : 20));
+    ctx.translate(x + barWidth / 2, startY + (isMobile ? 35 : 25));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 13px Arial' : 'bold 14px Arial';
+    ctx.font = isMobile ? 'bold 15px Arial' : 'bold 14px Arial';
     ctx.textAlign = 'right';
     
-    const maxChars = isMobile ? 12 : 15;
+    const maxChars = isMobile ? 10 : 15;
     const displayText = item.category.length > maxChars 
       ? item.category.substring(0, maxChars) + '...' 
       : item.category;
@@ -1842,6 +1843,15 @@ window.showSection = (sectionId) => {
   
   if (sectionId === 'settingsSection') {
     renderLogs();
+  }
+  
+  if (sectionId === 'analyticsSection') {
+    setTimeout(() => {
+      const breakdown = getCategoriesBreakdown();
+      if (breakdown.length > 0) {
+        renderCategoriesChart(breakdown);
+      }
+    }, 100);
   }
 };
 
