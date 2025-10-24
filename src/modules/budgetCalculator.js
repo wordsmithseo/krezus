@@ -1,10 +1,7 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z poprawionym algorytmem koperty dnia
+// src/modules/budgetCalculator.js - Kalkulator budżetu z poprawionym algorytmem koperty dnia v2.0
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
-/**
- * Oblicz zrealizowane sumy (type === 'normal', WŁĄCZNIE z dzisiejszymi transakcjami)
- */
 export function calculateRealisedTotals(dateStr = null) {
     const today = dateStr || getWarsawDateString();
     console.log('📊 Obliczanie zrealizowanych sum (WŁĄCZNIE z dzisiejszymi)');
@@ -19,14 +16,12 @@ export function calculateRealisedTotals(dateStr = null) {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    // Przychody (type === 'normal', do dziś WŁĄCZNIE)
     incomes.forEach(inc => {
         if (inc.type === 'normal' && inc.date <= today) {
             sumIncome += inc.amount || 0;
         }
     });
 
-    // Wydatki (type === 'normal', do dziś WŁĄCZNIE)
     expenses.forEach(exp => {
         if (exp.type === 'normal' && exp.date <= today) {
             sumExpense += exp.amount || 0;
@@ -39,9 +34,6 @@ export function calculateRealisedTotals(dateStr = null) {
     return { sumIncome, sumExpense };
 }
 
-/**
- * Oblicz wydatki dzisiaj
- */
 export function getTodayExpenses() {
     const today = getWarsawDateString();
     const expenses = getExpenses();
@@ -51,14 +43,10 @@ export function getTodayExpenses() {
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
-/**
- * Oblicz wydatki w tym tygodniu
- */
 export function getWeekExpenses() {
     const today = getWarsawDateString();
     const expenses = getExpenses();
     
-    // Początek tygodnia (poniedziałek)
     const todayDate = new Date(today);
     const dayOfWeek = todayDate.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -71,14 +59,10 @@ export function getWeekExpenses() {
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
-/**
- * Oblicz wydatki w tym miesiącu
- */
 export function getMonthExpenses() {
     const today = getWarsawDateString();
     const expenses = getExpenses();
     
-    // Początek miesiąca
     const todayDate = new Date(today);
     const monthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
     const monthStartStr = getWarsawDateString(monthStart);
@@ -88,9 +72,6 @@ export function getMonthExpenses() {
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
-/**
- * Oblicz okresy wydatkowe
- */
 export function calculateSpendingPeriods() {
     const endDates = getEndDates();
     const date1 = endDates.primary || endDates.date1 || '';
@@ -119,9 +100,6 @@ export function calculateSpendingPeriods() {
     return { date1, date2, daysLeft1, daysLeft2 };
 }
 
-/**
- * Oblicz dostępne środki (bez limitów dziennych)
- */
 export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const available = sumIncome - sumExpense;
@@ -133,9 +111,6 @@ export function calculateAvailableFunds() {
     };
 }
 
-/**
- * Oblicz bieżące limity (bez planowanych transakcji)
- */
 export function calculateCurrentLimits() {
     const { available, savingGoal } = calculateAvailableFunds();
     const toSpend = available - savingGoal;
@@ -154,9 +129,6 @@ export function calculateCurrentLimits() {
     };
 }
 
-/**
- * Oblicz prognozy limitów (z planowanymi transakcjami)
- */
 export function calculateForecastLimits() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const incomes = getIncomes();
@@ -166,14 +138,12 @@ export function calculateForecastLimits() {
     let futureIncome = 0;
     let futureExpense = 0;
     
-    // Planowane przychody (type === 'planned' ORAZ dziś i w przyszłości)
     incomes.forEach(inc => {
         if (inc.type === 'planned' && inc.date >= today) {
             futureIncome += inc.amount || 0;
         }
     });
     
-    // Planowane wydatki (type === 'planned' ORAZ dziś i w przyszłości)
     expenses.forEach(exp => {
         if (exp.type === 'planned' && exp.date >= today) {
             futureExpense += exp.amount || 0;
@@ -198,9 +168,6 @@ export function calculateForecastLimits() {
     };
 }
 
-/**
- * Oblicz pozostałe środki z poszczególnych źródeł
- */
 export function computeSourcesRemaining() {
     const incomes = getIncomes();
     const expenses = getExpenses();
@@ -208,7 +175,6 @@ export function computeSourcesRemaining() {
     
     const sourcesMap = new Map();
     
-    // Sumuj przychody według źródeł (type === 'normal')
     incomes.forEach(inc => {
         if (inc.type === 'normal' && inc.date <= today) {
             const src = inc.source || 'Brak źródła';
@@ -216,7 +182,6 @@ export function computeSourcesRemaining() {
         }
     });
     
-    // Odejmij wydatki według źródeł (type === 'normal')
     expenses.forEach(exp => {
         if (exp.type === 'normal' && exp.date <= today) {
             const src = exp.source || 'Brak źródła';
@@ -230,14 +195,10 @@ export function computeSourcesRemaining() {
     }));
 }
 
-/**
- * Wykryj anomalie w wydatkach
- */
 export function checkAnomalies() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
     
-    // Ostatnie 30 dni
     const d30 = new Date();
     d30.setDate(d30.getDate() - 30);
     const date30str = getWarsawDateString(d30);
@@ -264,9 +225,6 @@ export function checkAnomalies() {
     );
 }
 
-/**
- * Oblicz medianę wydatków z ostatnich 30 dni
- */
 export function getGlobalMedian30d() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
@@ -287,9 +245,6 @@ export function getGlobalMedian30d() {
     return amounts[Math.floor(amounts.length / 2)];
 }
 
-/**
- * INTELIGENTNA KOPERTA DNIA - Główny algorytm (POPRAWIONY)
- */
 export async function updateDailyEnvelope(forDate = null) {
     const targetDate = forDate || getWarsawDateString();
     console.log('📅 Aktualizowanie inteligentnej koperty dla daty:', targetDate);
@@ -301,14 +256,12 @@ export async function updateDailyEnvelope(forDate = null) {
     
     const { daysLeft1, date1 } = calculateSpendingPeriods();
     
-    // Pobierz dzisiejsze wpływy (type === 'normal' na dziś)
     const incomes = getIncomes();
     const todayIncomes = incomes.filter(inc => 
         inc.date === targetDate && inc.type === 'normal'
     );
     const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
     
-    // Pobierz dzisiejsze wydatki
     const expenses = getExpenses();
     const todayExpenses = expenses.filter(exp => 
         exp.date === targetDate && exp.type === 'normal'
@@ -329,9 +282,6 @@ export async function updateDailyEnvelope(forDate = null) {
         console.log('⚠️ Brak dni do końca okresu - ustaw datę końcową!');
         smartLimit = 0;
     } else {
-        // POPRAWIONY INTELIGENTNY ALGORYTM
-        
-        // Historia wydatków z ostatnich 30 dni (WŁĄCZNIE z dzisiejszymi)
         const d30 = new Date();
         d30.setDate(d30.getDate() - 30);
         const date30str = getWarsawDateString(d30);
@@ -343,51 +293,49 @@ export async function updateDailyEnvelope(forDate = null) {
         );
         
         if (historicalExpenses.length >= 5) {
-            // MAMY HISTORIĘ - Używamy mediany
             const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
             const median = amounts[Math.floor(amounts.length / 2)];
             
-            // Prosty limit (równy podział) - ALE NIE WIĘCEJ NIŻ DOSTĘPNE ŚRODKI
-            const simpleLimit = Math.min(toSpend / daysLeft1, toSpend);
+            const simpleLimit = toSpend / daysLeft1;
             
-            // Średnia ważona: 60% mediany, 40% prostego limitu
-            // ALE ZAWSZE OGRANICZONA DO DOSTĘPNYCH ŚRODKÓW
-            const calculatedLimit = (median * 0.6) + (simpleLimit * 0.4);
+            const conservativeFactor = 0.85;
+            const calculatedLimit = (median * 0.5 + simpleLimit * 0.5) * conservativeFactor;
+            
             smartLimit = Math.min(calculatedLimit, toSpend);
             
             console.log('📊 Mediana wydatków (30 dni):', median.toFixed(2), 'zł');
             console.log('📊 Prosty limit:', simpleLimit.toFixed(2), 'zł');
-            console.log('📊 Obliczony limit:', calculatedLimit.toFixed(2), 'zł');
+            console.log('📊 Obliczony limit (50% mediana + 50% prosty × 85%):', calculatedLimit.toFixed(2), 'zł');
             console.log('💰 Inteligentna bazowa kwota koperty (ograniczona do dostępnych):', smartLimit.toFixed(2), 'zł');
         } else {
-            // BRAK HISTORII - Zachowawcze podejście
-            // Używamy 70% dostępnych środków podzielonych na dni
-            // ALE NIE WIĘCEJ NIŻ FAKTYCZNIE DOSTĘPNE
-            const calculatedLimit = (toSpend * 0.7) / daysLeft1;
+            const conservativeFactor = 0.6;
+            const calculatedLimit = (toSpend / daysLeft1) * conservativeFactor;
             smartLimit = Math.min(calculatedLimit, toSpend);
             
             console.log('⚠️ Niewystarczająca historia wydatków (< 5 transakcji)');
-            console.log('📊 Obliczony limit:', calculatedLimit.toFixed(2), 'zł');
+            console.log('📊 Obliczony limit (60% prostego limitu):', calculatedLimit.toFixed(2), 'zł');
             console.log('💰 Inteligentna bazowa kwota koperty (zachowawcza, ograniczona):', smartLimit.toFixed(2), 'zł');
         }
         
-        // DODATKOWE ZABEZPIECZENIE - jeśli zostało mniej niż 3 dni, bierz maksymalnie 1/3 dostępnych środków na dzień
         if (daysLeft1 > 0 && daysLeft1 <= 3) {
-            const emergencyLimit = toSpend / 3;
+            const emergencyLimit = toSpend / Math.max(3, daysLeft1);
             if (smartLimit > emergencyLimit) {
-                console.log('🚨 Włączono tryb awaryjny (≤3 dni) - ograniczenie do 1/3 dostępnych środków');
+                console.log('🚨 Włączono tryb awaryjny (≤3 dni) - ograniczenie bezpieczeństwa');
                 smartLimit = emergencyLimit;
             }
         }
+        
+        if (smartLimit > toSpend) {
+            console.log('⚠️ Koperta przekracza dostępne środki - ograniczenie do dostępnych');
+            smartLimit = toSpend;
+        }
     }
     
-    // Sprawdź czy istnieje już koperta na ten dzień
     const existing = getDailyEnvelope();
     
     if (existing && existing.date === targetDate) {
         console.log('ℹ️ Koperta już istnieje dla tego dnia');
         
-        // Aktualizuj bazową kwotę i wydatki
         const updatedEnvelope = {
             ...existing,
             baseAmount: smartLimit,
@@ -407,7 +355,6 @@ export async function updateDailyEnvelope(forDate = null) {
         return updatedEnvelope;
     }
     
-    // Utwórz nową kopertę
     const totalEnvelope = smartLimit + todayIncomesSum;
     console.log('💵 Dodatkowe środki z dzisiejszych wpływów:', todayIncomesSum.toFixed(2), 'zł');
     console.log('💸 Dzisiejsze wydatki:', todayExpensesSum.toFixed(2), 'zł');
@@ -427,9 +374,6 @@ export async function updateDailyEnvelope(forDate = null) {
     return envelope;
 }
 
-/**
- * Pobierz informacje o wyliczeniu koperty (dla UI)
- */
 export function getEnvelopeCalculationInfo() {
     const envelope = getDailyEnvelope();
     const { date1, daysLeft1 } = calculateSpendingPeriods();
@@ -470,15 +414,16 @@ export function getEnvelopeCalculationInfo() {
     } else if (historicalExpenses.length >= 5) {
         const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
         const median = amounts[Math.floor(amounts.length / 2)];
-        const simpleLimit = Math.min(toSpend / daysLeft1, toSpend);
+        const simpleLimit = toSpend / daysLeft1;
         
         description = `Algorytm inteligentny (historia ${historicalExpenses.length} transakcji z 30 dni)`;
-        formula = `Mediana (${median.toFixed(2)} zł) × 60% + Limit prosty (${simpleLimit.toFixed(2)} zł) × 40% + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł) [Ograniczono do dostępnych: ${toSpend.toFixed(2)} zł]`;
+        formula = `[(Mediana ${median.toFixed(2)} zł × 50%) + (Limit prosty ${simpleLimit.toFixed(2)} zł × 50%)] × 85% + Dzisiejsze wpływy ${envelope.additionalFunds.toFixed(2)} zł`;
     } else {
-        const conservativeBase = Math.min((toSpend * 0.7) / daysLeft1, toSpend);
+        const simpleLimit = toSpend / daysLeft1;
+        const conservativeBase = simpleLimit * 0.6;
         
         description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
-        formula = `70% środków (${conservativeBase.toFixed(2)} zł) ÷ ${daysLeft1} dni + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł) [Ograniczono do dostępnych: ${toSpend.toFixed(2)} zł]`;
+        formula = `Limit prosty ${simpleLimit.toFixed(2)} zł × 60% + Dzisiejsze wpływy ${envelope.additionalFunds.toFixed(2)} zł`;
     }
     
     return {
@@ -487,9 +432,6 @@ export function getEnvelopeCalculationInfo() {
     };
 }
 
-/**
- * Oblicz wskaźnik wydatków (gauge)
- */
 export function calculateSpendingGauge() {
     const envelope = getDailyEnvelope();
     
@@ -515,14 +457,10 @@ export function calculateSpendingGauge() {
     };
 }
 
-/**
- * Pobierz top kategorie
- */
 export function getTopCategories(limit = 5) {
     const expenses = getExpenses();
     const today = getWarsawDateString();
     
-    // Ostatnie 30 dni
     const d30 = new Date();
     d30.setDate(d30.getDate() - 30);
     const date30str = getWarsawDateString(d30);
@@ -546,9 +484,6 @@ export function getTopCategories(limit = 5) {
         .slice(0, limit);
 }
 
-/**
- * Pobierz top opisy dla kategorii
- */
 export function getTopDescriptionsForCategory(categoryName, limit = 3) {
     const expenses = getExpenses();
     const today = getWarsawDateString();
@@ -577,14 +512,10 @@ export function getTopDescriptionsForCategory(categoryName, limit = 3) {
         .slice(0, limit);
 }
 
-/**
- * Pobierz top źródła przychodów
- */
 export function getTopSources(limit = 5) {
   const incomes = getIncomes();
   const today = getWarsawDateString();
   
-  // Ostatnie 30 dni
   const d30 = new Date();
   d30.setDate(d30.getDate() - 30);
   const date30str = getWarsawDateString(d30);
@@ -612,19 +543,14 @@ export function getTopSources(limit = 5) {
     .slice(0, limit);
 }
 
-/**
- * Oblicz porównania tygodniowe
- */
 export function computeComparisons() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
     
-    // Ostatnie 7 dni
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
     const date7str = getWarsawDateString(d7);
     
-    // Poprzednie 7 dni
     const d14 = new Date();
     d14.setDate(d14.getDate() - 14);
     const date14str = getWarsawDateString(d14);
@@ -656,9 +582,6 @@ export function computeComparisons() {
     };
 }
 
-/**
- * Oblicz dynamikę wydatków - OPISOWA WERSJA
- */
 export function calculateSpendingDynamics() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
@@ -676,7 +599,6 @@ export function calculateSpendingDynamics() {
         };
     }
     
-    // Ostatnie 7 dni
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
     const date7str = getWarsawDateString(d7);

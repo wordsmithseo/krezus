@@ -1,4 +1,4 @@
-// src/components/modals.js - Modale aplikacji Krezus v1.5.2
+// src/components/modals.js - Modale aplikacji Krezus v1.5.3
 import { 
   getCurrentUser,
   getDisplayName,
@@ -37,7 +37,6 @@ export async function showProfileModal() {
   }
 
   document.getElementById('profileEmail').textContent = user.email;
-  document.getElementById('profileDisplayName').value = await getDisplayName(user.uid);
 
   await loadBudgetUsers(user.uid);
 
@@ -60,15 +59,6 @@ function createProfileModal() {
         <p id="profileEmail" style="color: var(--gray);"></p>
       </div>
 
-      <form id="profileForm" onsubmit="handleProfileUpdate(event)">
-        <div class="form-group">
-          <label>Nazwa użytkownika</label>
-          <input type="text" id="profileDisplayName" required minlength="2">
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
-      </form>
-
       <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border);">
 
       <h3>👥 Użytkownicy budżetu</h3>
@@ -89,28 +79,6 @@ function createProfileModal() {
   document.body.appendChild(modal);
   return modal;
 }
-
-window.handleProfileUpdate = async (e) => {
-  e.preventDefault();
-  
-  const user = getCurrentUser();
-  if (!user) return;
-
-  const newDisplayName = document.getElementById('profileDisplayName').value.trim();
-  
-  if (!newDisplayName || newDisplayName.length < 2) {
-    showErrorMessage('Nazwa użytkownika musi mieć minimum 2 znaki');
-    return;
-  }
-
-  try {
-    await updateDisplayName(user.uid, newDisplayName);
-    showSuccessMessage('Nazwa użytkownika zaktualizowana');
-  } catch (error) {
-    console.error('❌ Błąd aktualizacji profilu:', error);
-    showErrorMessage('Nie udało się zaktualizować profilu');
-  }
-};
 
 // ==================== ZARZĄDZANIE UŻYTKOWNIKAMI BUDŻETU ====================
 
@@ -201,7 +169,6 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
   const user = getCurrentUser();
   if (!user) return;
   
-  // Sprawdź ile transakcji ma użytkownik
   const expenses = getExpenses();
   const incomes = getIncomes();
   
@@ -217,7 +184,6 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
     
     if (!confirmed) return;
     
-    // Usuń wszystkie transakcje użytkownika
     const updatedExpenses = expenses.filter(e => e.userId !== userId);
     const updatedIncomes = incomes.filter(i => i.userId !== userId);
     
@@ -268,7 +234,6 @@ export async function showPasswordModal(title, message) {
       }
       
       try {
-        // Weryfikacja hasła poprzez ponowne logowanie
         await loginUser(user.email, password);
         showSuccessMessage('Hasło poprawne');
         resolve(true);

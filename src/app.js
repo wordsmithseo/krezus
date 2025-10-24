@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.8.1
+// src/app.js - Główna aplikacja Krezus v1.8.2 (fix wykresu)
 import { 
   loginUser, 
   registerUser, 
@@ -99,7 +99,6 @@ import {
   formatLogEntry
 } from './modules/logger.js';
 
-// Stan aplikacji
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let editingExpenseId = null;
@@ -107,7 +106,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.8.2';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -283,7 +282,6 @@ function renderSummary() {
   document.getElementById('weekExpenses').textContent = weekExpenses.toFixed(2);
   document.getElementById('monthExpenses').textContent = monthExpenses.toFixed(2);
 
-  // Limity bieżące
   document.getElementById('currentLimit1').textContent = currentLimit1.toFixed(2);
   document.getElementById('currentDaysLeft1').textContent = daysLeft1;
   document.getElementById('currentLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
@@ -298,7 +296,6 @@ function renderSummary() {
     currentLimit2Section.style.display = 'none';
   }
 
-  // Prognozy
   document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
   document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
   document.getElementById('daysLeft1').textContent = daysLeft1;
@@ -533,15 +530,14 @@ function renderCategoriesChart(breakdown) {
   const data = breakdown.map(b => b.amount);
   
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - 120;
+  const chartHeight = canvas.height - 150;
   const chartWidth = canvas.width - 120;
   const barWidth = Math.min(60, chartWidth / breakdown.length - 20);
   const startX = 70;
-  const startY = canvas.height - 100;
+  const startY = canvas.height - 120;
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Osie
   ctx.strokeStyle = '#e5e7eb';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -550,7 +546,6 @@ function renderCategoriesChart(breakdown) {
   ctx.lineTo(canvas.width - 20, startY);
   ctx.stroke();
   
-  // Siatka i etykiety Y
   const numYLabels = 5;
   for (let i = 0; i <= numYLabels; i++) {
     const y = startY - (i / numYLabels) * chartHeight;
@@ -569,7 +564,6 @@ function renderCategoriesChart(breakdown) {
     ctx.fillText(`${value.toFixed(0)} zł`, startX - 10, y + 4);
   }
   
-  // Słupki
   const colors = [
     '#3b82f6',
     '#10b981',
@@ -598,34 +592,38 @@ function renderCategoriesChart(breakdown) {
       percentage: item.percentage
     });
     
-    // Słupek
     ctx.fillStyle = colors[index % colors.length];
     ctx.fillRect(x, y, barWidth, barHeight);
     
-    // Etykieta kategorii
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + 15);
+    ctx.translate(x + barWidth / 2, startY + 20);
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = 'bold 11px Arial';
+    ctx.font = 'bold 13px Arial';
     ctx.textAlign = 'right';
-    ctx.fillText(item.category, 0, 0);
+    
+    const maxChars = 15;
+    const displayText = item.category.length > maxChars 
+      ? item.category.substring(0, maxChars) + '...' 
+      : item.category;
+    
+    ctx.fillText(displayText, 0, 0);
     ctx.restore();
   });
   
-  // Tooltip
   chartTooltip = document.createElement('div');
   chartTooltip.style.cssText = `
     position: fixed;
     background: rgba(0, 0, 0, 0.9);
     color: white;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     pointer-events: none;
     z-index: 10000;
     display: none;
     white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   `;
   document.body.appendChild(chartTooltip);
   
@@ -645,8 +643,8 @@ function renderCategoriesChart(breakdown) {
     
     if (hoveredBar) {
       chartTooltip.style.display = 'block';
-      chartTooltip.style.left = `${e.clientX + 10}px`;
-      chartTooltip.style.top = `${e.clientY + 10}px`;
+      chartTooltip.style.left = `${e.clientX + 15}px`;
+      chartTooltip.style.top = `${e.clientY + 15}px`;
       chartTooltip.innerHTML = `
         <strong>${hoveredBar.category}</strong><br>
         Kwota: ${hoveredBar.amount.toFixed(2)} zł<br>
