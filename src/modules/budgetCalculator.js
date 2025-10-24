@@ -1,5 +1,5 @@
-// src/modules/budgetCalculator.js - Kalkulator budżetu z getEnvelopeCalculationInfo + dynamika + limity bieżące + wydatki okresowe
-import { parseDateStr, getWarsawDateString, isRealised } from '../utils/dateHelpers.js';
+// src/modules/budgetCalculator.js - Kalkulator budżetu z poprawionym algorytmem koperty dnia
+import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
 /**
@@ -61,7 +61,7 @@ export function getWeekExpenses() {
     // Początek tygodnia (poniedziałek)
     const todayDate = new Date(today);
     const dayOfWeek = todayDate.getDay();
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Jeśli niedziela, to -6, w przeciwnym razie 1 - dayOfWeek
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const weekStart = new Date(todayDate);
     weekStart.setDate(todayDate.getDate() + diff);
     const weekStartStr = getWarsawDateString(weekStart);
@@ -126,12 +126,10 @@ export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const available = sumIncome - sumExpense;
     const savingGoal = getSavingGoal();
-    const toSpend = available - savingGoal;
     
     return {
         available,
-        savingGoal,
-        toSpend
+        savingGoal
     };
 }
 
@@ -139,7 +137,8 @@ export function calculateAvailableFunds() {
  * Oblicz bieżące limity (bez planowanych transakcji)
  */
 export function calculateCurrentLimits() {
-    const { available, savingGoal, toSpend } = calculateAvailableFunds();
+    const { available, savingGoal } = calculateAvailableFunds();
+    const toSpend = available - savingGoal;
     const { date1, date2, daysLeft1, daysLeft2 } = calculateSpendingPeriods();
     
     const currentLimit1 = daysLeft1 > 0 ? toSpend / daysLeft1 : 0;
@@ -289,7 +288,7 @@ export function getGlobalMedian30d() {
 }
 
 /**
- * INTELIGENTNA KOPERTA DNIA - Główny algorytm
+ * INTELIGENTNA KOPERTA DNIA - Główny algorytm (POPRAWIONY)
  */
 export async function updateDailyEnvelope(forDate = null) {
     const targetDate = forDate || getWarsawDateString();
@@ -309,12 +308,20 @@ export async function updateDailyEnvelope(forDate = null) {
     );
     const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
     
+    // Pobierz dzisiejsze wydatki
+    const expenses = getExpenses();
+    const todayExpenses = expenses.filter(exp => 
+        exp.date === targetDate && exp.type === 'normal'
+    );
+    const todayExpensesSum = todayExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    
     console.log('🧠 === INTELIGENTNA KOPERTA DNIA ===');
     console.log('💰 Dostępne środki:', available.toFixed(2), 'PLN');
     console.log('🛡️ Rezerwa (cel oszczędności):', savingGoal.toFixed(2), 'PLN');
     console.log('💵 Do wydania:', toSpend.toFixed(2), 'PLN');
     console.log('📅 Dni do końca okresu:', daysLeft1);
     console.log('📅 Data końcowa okresu:', date1);
+    console.log('💸 Dzisiejsze wydatki:', todayExpensesSum.toFixed(2), 'PLN');
     
     let smartLimit = 0;
     
@@ -322,8 +329,7 @@ export async function updateDailyEnvelope(forDate = null) {
         console.log('⚠️ Brak dni do końca okresu - ustaw datę końcową!');
         smartLimit = 0;
     } else {
-        // INTELIGENTNY ALGORYTM
-        const expenses = getExpenses();
+        // POPRAWIONY INTELIGENTNY ALGORYTM
         
         // Historia wydatków z ostatnich 30 dni (WŁĄCZNIE z dzisiejszymi)
         const d30 = new Date();
@@ -341,55 +347,78 @@ export async function updateDailyEnvelope(forDate = null) {
             const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
             const median = amounts[Math.floor(amounts.length / 2)];
             
-            // Prosty limit (równy podział)
-            const simpleLimit = toSpend / daysLeft1;
+            // Prosty limit (równy podział) - ALE NIE WIĘCEJ NIŻ DOSTĘPNE ŚRODKI
+            const simpleLimit = Math.min(toSpend / daysLeft1, toSpend);
             
             // Średnia ważona: 60% mediany, 40% prostego limitu
-            smartLimit = (median * 0.6) + (simpleLimit * 0.4);
+            // ALE ZAWSZE OGRANICZONA DO DOSTĘPNYCH ŚRODKÓW
+            const calculatedLimit = (median * 0.6) + (simpleLimit * 0.4);
+            smartLimit = Math.min(calculatedLimit, toSpend);
             
             console.log('📊 Mediana wydatków (30 dni):', median.toFixed(2), 'zł');
             console.log('📊 Prosty limit:', simpleLimit.toFixed(2), 'zł');
-            console.log('💰 Inteligentna bazowa kwota koperty:', smartLimit.toFixed(2), 'zł');
+            console.log('📊 Obliczony limit:', calculatedLimit.toFixed(2), 'zł');
+            console.log('💰 Inteligentna bazowa kwota koperty (ograniczona do dostępnych):', smartLimit.toFixed(2), 'zł');
         } else {
             // BRAK HISTORII - Zachowawcze podejście
             // Używamy 70% dostępnych środków podzielonych na dni
-            smartLimit = (toSpend * 0.7) / daysLeft1;
+            // ALE NIE WIĘCEJ NIŻ FAKTYCZNIE DOSTĘPNE
+            const calculatedLimit = (toSpend * 0.7) / daysLeft1;
+            smartLimit = Math.min(calculatedLimit, toSpend);
             
             console.log('⚠️ Niewystarczająca historia wydatków (< 5 transakcji)');
-            console.log('💰 Inteligentna bazowa kwota koperty (zachowawcza):', smartLimit.toFixed(2), 'zł');
+            console.log('📊 Obliczony limit:', calculatedLimit.toFixed(2), 'zł');
+            console.log('💰 Inteligentna bazowa kwota koperty (zachowawcza, ograniczona):', smartLimit.toFixed(2), 'zł');
+        }
+        
+        // DODATKOWE ZABEZPIECZENIE - jeśli zostało mniej niż 3 dni, bierz maksymalnie 1/3 dostępnych środków na dzień
+        if (daysLeft1 > 0 && daysLeft1 <= 3) {
+            const emergencyLimit = toSpend / 3;
+            if (smartLimit > emergencyLimit) {
+                console.log('🚨 Włączono tryb awaryjny (≤3 dni) - ograniczenie do 1/3 dostępnych środków');
+                smartLimit = emergencyLimit;
+            }
         }
     }
     
-    // Dodaj dzisiejsze wpływy
-    const totalEnvelope = smartLimit + todayIncomesSum;
-    console.log('💵 Dodatkowe środki z dzisiejszych wpływów:', todayIncomesSum.toFixed(2), 'zł');
-    console.log('✅ KOŃCOWA KOPERTA DNIA:', totalEnvelope.toFixed(2), 'zł');
-    
-    // Sprawdź czy koperta już istnieje dla tego dnia
+    // Sprawdź czy istnieje już koperta na ten dzień
     const existing = getDailyEnvelope();
     
     if (existing && existing.date === targetDate) {
         console.log('ℹ️ Koperta już istnieje dla tego dnia');
         
-        // Aktualizuj tylko jeśli zmieniły się dodatkowe środki
-        if (existing.additionalFunds !== todayIncomesSum) {
-            console.log('🔄 Aktualizowanie dodatkowych środków:', todayIncomesSum);
-            await saveDailyEnvelope(targetDate, {
-                ...existing,
-                additionalFunds: todayIncomesSum,
-                totalAmount: existing.baseAmount + todayIncomesSum
-            });
-        }
-        return existing;
+        // Aktualizuj bazową kwotę i wydatki
+        const updatedEnvelope = {
+            ...existing,
+            baseAmount: smartLimit,
+            additionalFunds: todayIncomesSum,
+            totalAmount: smartLimit + todayIncomesSum,
+            spent: todayExpensesSum
+        };
+        
+        console.log('🔄 Aktualizacja koperty:', {
+            bazowa: smartLimit.toFixed(2),
+            dodatkowe: todayIncomesSum.toFixed(2),
+            wydano: todayExpensesSum.toFixed(2),
+            razem: updatedEnvelope.totalAmount.toFixed(2)
+        });
+        
+        await saveDailyEnvelope(targetDate, updatedEnvelope);
+        return updatedEnvelope;
     }
     
-    // Zapisz nową kopertę
+    // Utwórz nową kopertę
+    const totalEnvelope = smartLimit + todayIncomesSum;
+    console.log('💵 Dodatkowe środki z dzisiejszych wpływów:', todayIncomesSum.toFixed(2), 'zł');
+    console.log('💸 Dzisiejsze wydatki:', todayExpensesSum.toFixed(2), 'zł');
+    console.log('✅ KOŃCOWA KOPERTA DNIA:', totalEnvelope.toFixed(2), 'zł');
+    
     const envelope = {
         date: targetDate,
         baseAmount: smartLimit,
         additionalFunds: todayIncomesSum,
         totalAmount: totalEnvelope,
-        spent: 0
+        spent: todayExpensesSum
     };
     
     console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
@@ -441,15 +470,15 @@ export function getEnvelopeCalculationInfo() {
     } else if (historicalExpenses.length >= 5) {
         const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
         const median = amounts[Math.floor(amounts.length / 2)];
-        const simpleLimit = toSpend / daysLeft1;
+        const simpleLimit = Math.min(toSpend / daysLeft1, toSpend);
         
         description = `Algorytm inteligentny (historia ${historicalExpenses.length} transakcji z 30 dni)`;
-        formula = `Mediana (${median.toFixed(2)} zł) × 60% + Limit prosty (${simpleLimit.toFixed(2)} zł) × 40% + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł)`;
+        formula = `Mediana (${median.toFixed(2)} zł) × 60% + Limit prosty (${simpleLimit.toFixed(2)} zł) × 40% + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł) [Ograniczono do dostępnych: ${toSpend.toFixed(2)} zł]`;
     } else {
-        const conservativeBase = (toSpend * 0.7) / daysLeft1;
+        const conservativeBase = Math.min((toSpend * 0.7) / daysLeft1, toSpend);
         
         description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
-        formula = `70% środków (${conservativeBase.toFixed(2)} zł) ÷ ${daysLeft1} dni + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł)`;
+        formula = `70% środków (${conservativeBase.toFixed(2)} zł) ÷ ${daysLeft1} dni + Dzisiejsze wpływy (${envelope.additionalFunds.toFixed(2)} zł) [Ograniczono do dostępnych: ${toSpend.toFixed(2)} zł]`;
     }
     
     return {
@@ -634,7 +663,8 @@ export function calculateSpendingDynamics() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
     const { daysLeft1, date1 } = calculateSpendingPeriods();
-    const { toSpend } = calculateAvailableFunds();
+    const { available, savingGoal } = calculateAvailableFunds();
+    const toSpend = available - savingGoal;
     
     if (!date1 || date1.trim() === '' || daysLeft1 <= 0) {
         return {

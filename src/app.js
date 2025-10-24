@@ -1,4 +1,4 @@
-// src/app.js - Główna aplikacja Krezus v1.8.0
+// src/app.js - Główna aplikacja Krezus v1.8.1
 import { 
   loginUser, 
   registerUser, 
@@ -107,7 +107,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -173,14 +173,16 @@ async function loadAllData() {
         renderCategories();
         setupCategorySuggestions();
       },
-      onExpensesChange: () => {
+      onExpensesChange: async () => {
+        await updateDailyEnvelope();
         renderExpenses();
         renderCategories();
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
       },
-      onIncomesChange: () => {
+      onIncomesChange: async () => {
+        await updateDailyEnvelope();
         renderSources();
         renderSummary();
         renderDailyEnvelope();
@@ -265,7 +267,7 @@ async function renderAll() {
 }
 
 function renderSummary() {
-  const { available, savingGoal, toSpend } = calculateAvailableFunds();
+  const { available, savingGoal } = calculateAvailableFunds();
   const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
   const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
   const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
@@ -276,7 +278,6 @@ function renderSummary() {
 
   document.getElementById('availableFunds').textContent = available.toFixed(2);
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
-  document.getElementById('toSpend').textContent = toSpend.toFixed(2);
   
   document.getElementById('todayExpenses').textContent = todayExpenses.toFixed(2);
   document.getElementById('weekExpenses').textContent = weekExpenses.toFixed(2);
@@ -511,6 +512,7 @@ function renderAnalytics() {
 }
 
 let categoriesChartInstance = null;
+let chartTooltip = null;
 
 function renderCategoriesChart(breakdown) {
   const canvas = document.getElementById('categoriesChart');
@@ -520,17 +522,22 @@ function renderCategoriesChart(breakdown) {
     categoriesChartInstance.destroy();
   }
   
+  if (chartTooltip) {
+    chartTooltip.remove();
+    chartTooltip = null;
+  }
+  
   const ctx = canvas.getContext('2d');
   
   const labels = breakdown.map(b => b.category);
   const data = breakdown.map(b => b.amount);
   
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - 80;
-  const chartWidth = canvas.width - 100;
+  const chartHeight = canvas.height - 120;
+  const chartWidth = canvas.width - 120;
   const barWidth = Math.min(60, chartWidth / breakdown.length - 20);
-  const startX = 60;
-  const startY = canvas.height - 40;
+  const startX = 70;
+  const startY = canvas.height - 100;
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -542,6 +549,25 @@ function renderCategoriesChart(breakdown) {
   ctx.lineTo(startX, startY);
   ctx.lineTo(canvas.width - 20, startY);
   ctx.stroke();
+  
+  // Siatka i etykiety Y
+  const numYLabels = 5;
+  for (let i = 0; i <= numYLabels; i++) {
+    const y = startY - (i / numYLabels) * chartHeight;
+    const value = (i / numYLabels) * maxAmount;
+    
+    ctx.strokeStyle = '#f3f4f6';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(startX, y);
+    ctx.lineTo(canvas.width - 20, y);
+    ctx.stroke();
+    
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${value.toFixed(0)} zł`, startX - 10, y + 4);
+  }
   
   // Słupki
   const colors = [
@@ -555,50 +581,97 @@ function renderCategoriesChart(breakdown) {
     '#f97316'
   ];
   
+  const barData = [];
+  
   breakdown.forEach((item, index) => {
     const barHeight = (item.amount / maxAmount) * chartHeight;
     const x = startX + 20 + (index * (barWidth + 20));
     const y = startY - barHeight;
     
+    barData.push({
+      x,
+      y,
+      width: barWidth,
+      height: barHeight,
+      category: item.category,
+      amount: item.amount,
+      percentage: item.percentage
+    });
+    
     // Słupek
     ctx.fillStyle = colors[index % colors.length];
     ctx.fillRect(x, y, barWidth, barHeight);
     
-    // Wartość na słupku
+    // Etykieta kategorii
+    ctx.save();
+    ctx.translate(x + barWidth / 2, startY + 15);
+    ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${item.amount.toFixed(0)} zł`, x + barWidth / 2, y - 5);
-    
-    // Procent
-    ctx.font = '11px Arial';
-    ctx.fillStyle = '#6b7280';
-    ctx.fillText(`${item.percentage.toFixed(1)}%`, x + barWidth / 2, y - 20);
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(item.category, 0, 0);
+    ctx.restore();
   });
   
-  // Legenda
-  const legendY = 10;
-  const legendItemWidth = 150;
-  const legendItemsPerRow = Math.floor((canvas.width - 40) / legendItemWidth);
+  // Tooltip
+  chartTooltip = document.createElement('div');
+  chartTooltip.style.cssText = `
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 10000;
+    display: none;
+    white-space: nowrap;
+  `;
+  document.body.appendChild(chartTooltip);
   
-  breakdown.forEach((item, index) => {
-    const row = Math.floor(index / legendItemsPerRow);
-    const col = index % legendItemsPerRow;
-    const x = 20 + (col * legendItemWidth);
-    const y = legendY + (row * 20);
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
     
-    // Kolor
-    ctx.fillStyle = colors[index % colors.length];
-    ctx.fillRect(x, y, 12, 12);
+    let hoveredBar = null;
+    for (const bar of barData) {
+      if (mouseX >= bar.x && mouseX <= bar.x + bar.width &&
+          mouseY >= bar.y && mouseY <= bar.y + bar.height) {
+        hoveredBar = bar;
+        break;
+      }
+    }
     
-    // Tekst
-    ctx.fillStyle = '#1f2937';
-    ctx.font = '11px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(item.category, x + 18, y + 10);
+    if (hoveredBar) {
+      chartTooltip.style.display = 'block';
+      chartTooltip.style.left = `${e.clientX + 10}px`;
+      chartTooltip.style.top = `${e.clientY + 10}px`;
+      chartTooltip.innerHTML = `
+        <strong>${hoveredBar.category}</strong><br>
+        Kwota: ${hoveredBar.amount.toFixed(2)} zł<br>
+        Udział: ${hoveredBar.percentage.toFixed(1)}%
+      `;
+      canvas.style.cursor = 'pointer';
+    } else {
+      chartTooltip.style.display = 'none';
+      canvas.style.cursor = 'default';
+    }
   });
   
-  categoriesChartInstance = { destroy: () => {} };
+  canvas.addEventListener('mouseleave', () => {
+    chartTooltip.style.display = 'none';
+    canvas.style.cursor = 'default';
+  });
+  
+  categoriesChartInstance = { 
+    destroy: () => {
+      if (chartTooltip) {
+        chartTooltip.remove();
+        chartTooltip = null;
+      }
+    } 
+  };
 }
 
 window.selectPeriod = (days) => {
