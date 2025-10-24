@@ -625,13 +625,13 @@ function renderCategoriesChart(breakdown) {
     ctx.fillRect(x, y, barWidth, barHeight);
     
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 35 : 25));
+    ctx.translate(x + barWidth / 2, startY + (isMobile ? 45 : 25));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 15px Arial' : 'bold 14px Arial';
+    ctx.font = isMobile ? 'bold 20px Arial' : 'bold 14px Arial';
     ctx.textAlign = 'right';
     
-    const maxChars = isMobile ? 10 : 15;
+    const maxChars = isMobile ? 8 : 15;
     const displayText = item.category.length > maxChars 
       ? item.category.substring(0, maxChars) + '...' 
       : item.category;
