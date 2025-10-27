@@ -68,7 +68,8 @@ import {
 
 import { 
   showProfileModal,
-  showPasswordModal
+  showPasswordModal,
+  showEditCategoryModal
 } from './components/modals.js';
 
 import {
@@ -106,7 +107,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 
-const APP_VERSION = '1.9.2';
+const APP_VERSION = '1.9.3';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -768,7 +769,10 @@ function renderCategories() {
         <span class="category-name">${cat.name}</span>
         <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
       </div>
-      <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name}')">🗑️</button>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-icon" onclick="window.editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">✏️</button>
+        <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">🗑️</button>
+      </div>
     </div>
   `).join('');
 
@@ -1312,6 +1316,10 @@ window.addCategory = async () => {
     console.error('❌ Błąd dodawania kategorii:', error);
     showErrorMessage('Nie udało się dodać kategorii');
   }
+};
+
+window.editCategory = async (categoryId, currentName) => {
+  showEditCategoryModal(categoryId, currentName);
 };
 
 window.deleteCategory = async (categoryId, categoryName) => {

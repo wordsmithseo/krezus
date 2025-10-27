@@ -1,4 +1,4 @@
-// src/components/modals.js - Modale aplikacji Krezus v1.5.3
+// src/components/modals.js
 import { 
   getCurrentUser,
   getDisplayName,
@@ -15,13 +15,23 @@ import {
   getExpenses,
   getIncomes,
   saveExpenses,
-  saveIncomes
+  saveIncomes,
+  getCategories,
+  saveCategories
 } from '../modules/dataManager.js';
 
 import { 
   showErrorMessage, 
   showSuccessMessage 
 } from '../utils/errorHandler.js';
+
+import {
+  validateCategoryName
+} from '../utils/validators.js';
+
+import {
+  log
+} from '../modules/logger.js';
 
 let budgetUsersUnsubscribe = null;
 
@@ -206,6 +216,110 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
       console.error('❌ Błąd usuwania użytkownika:', error);
       showErrorMessage(error.message || 'Nie udało się usunąć użytkownika');
     }
+  }
+};
+
+// ==================== MODAL EDYCJI KATEGORII ====================
+
+export function showEditCategoryModal(categoryId, currentName) {
+  const modal = document.getElementById('editCategoryModal') || createEditCategoryModal();
+  
+  document.getElementById('editCategoryId').value = categoryId;
+  document.getElementById('editCategoryName').value = currentName;
+  document.getElementById('editCategoryCurrentName').textContent = currentName;
+  
+  modal.classList.add('active');
+  document.getElementById('editCategoryName').focus();
+}
+
+function createEditCategoryModal() {
+  const modal = document.createElement('div');
+  modal.id = 'editCategoryModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>✏️ Edytuj kategorię</h2>
+        <button class="modal-close" onclick="closeModal('editCategoryModal')">✕</button>
+      </div>
+      
+      <p style="margin-bottom: 20px; color: var(--gray);">
+        Edytujesz kategorię: <strong id="editCategoryCurrentName"></strong>
+      </p>
+      
+      <form id="editCategoryForm" onsubmit="handleEditCategory(event)">
+        <input type="hidden" id="editCategoryId">
+        
+        <div class="form-group">
+          <label>Nowa nazwa kategorii</label>
+          <input type="text" id="editCategoryName" required minlength="2" maxlength="50">
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editCategoryModal')">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Zapisz</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  return modal;
+}
+
+window.handleEditCategory = async (e) => {
+  e.preventDefault();
+  
+  const categoryId = document.getElementById('editCategoryId').value;
+  const newName = document.getElementById('editCategoryName').value.trim();
+  
+  if (!validateCategoryName(newName)) {
+    showErrorMessage('Nazwa kategorii musi mieć od 2 do 50 znaków');
+    return;
+  }
+  
+  const categories = getCategories();
+  const currentCategory = categories.find(c => c.id === categoryId);
+  
+  if (!currentCategory) {
+    showErrorMessage('Kategoria nie istnieje');
+    return;
+  }
+  
+  const oldName = currentCategory.name;
+  
+  if (categories.some(c => c.id !== categoryId && c.name.toLowerCase() === newName.toLowerCase())) {
+    showErrorMessage('Kategoria o tej nazwie już istnieje');
+    return;
+  }
+  
+  const updatedCategories = categories.map(c => 
+    c.id === categoryId ? { ...c, name: newName } : c
+  );
+  
+  const expenses = getExpenses();
+  const updatedExpenses = expenses.map(e => 
+    e.category === oldName ? { ...e, category: newName } : e
+  );
+  
+  try {
+    await saveCategories(updatedCategories);
+    await saveExpenses(updatedExpenses);
+    
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+    
+    await log('CATEGORY_EDIT', {
+      oldName,
+      newName,
+      budgetUser: displayName
+    });
+    
+    closeModal('editCategoryModal');
+    showSuccessMessage('Kategoria zaktualizowana');
+  } catch (error) {
+    console.error('❌ Błąd edycji kategorii:', error);
+    showErrorMessage('Nie udało się zaktualizować kategorii');
   }
 };
 
