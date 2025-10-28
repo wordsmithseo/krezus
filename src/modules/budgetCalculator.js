@@ -129,42 +129,52 @@ export function calculateCurrentLimits() {
     };
 }
 
-export function calculateForecastLimits() {
-    const { sumIncome, sumExpense } = calculateRealisedTotals();
+export function calculatePlannedTransactionsTotals() {
     const incomes = getIncomes();
     const expenses = getExpenses();
     const today = getWarsawDateString();
+    const { date1, date2 } = calculateSpendingPeriods();
     
-    let futureIncome = 0;
-    let futureExpense = 0;
+    let futureIncome1 = 0;
+    let futureExpense1 = 0;
+    let futureIncome2 = 0;
+    let futureExpense2 = 0;
     
-    incomes.forEach(inc => {
-        if (inc.type === 'planned' && inc.date >= today) {
-            futureIncome += inc.amount || 0;
-        }
-    });
+    // Planowane transakcje do daty 1
+    if (date1 && date1.trim() !== '') {
+        incomes.forEach(inc => {
+            if (inc.type === 'planned' && inc.date >= today && inc.date <= date1) {
+                futureIncome1 += inc.amount || 0;
+            }
+        });
+        
+        expenses.forEach(exp => {
+            if (exp.type === 'planned' && exp.date >= today && exp.date <= date1) {
+                futureExpense1 += exp.amount || 0;
+            }
+        });
+    }
     
-    expenses.forEach(exp => {
-        if (exp.type === 'planned' && exp.date >= today) {
-            futureExpense += exp.amount || 0;
-        }
-    });
-    
-    const projectedAvailable = (sumIncome + futureIncome) - (sumExpense + futureExpense);
-    const savingGoal = getSavingGoal();
-    const projectedToSpend = projectedAvailable - savingGoal;
-    
-    const { daysLeft1, daysLeft2 } = calculateSpendingPeriods();
-    
-    const projectedLimit1 = daysLeft1 > 0 ? projectedToSpend / daysLeft1 : 0;
-    const projectedLimit2 = daysLeft2 > 0 ? projectedToSpend / daysLeft2 : 0;
+    // Planowane transakcje do daty 2
+    if (date2 && date2.trim() !== '') {
+        incomes.forEach(inc => {
+            if (inc.type === 'planned' && inc.date >= today && inc.date <= date2) {
+                futureIncome2 += inc.amount || 0;
+            }
+        });
+        
+        expenses.forEach(exp => {
+            if (exp.type === 'planned' && exp.date >= today && exp.date <= date2) {
+                futureExpense2 += exp.amount || 0;
+            }
+        });
+    }
     
     return {
-        projectedAvailable,
-        projectedLimit1,
-        projectedLimit2,
-        futureIncome,
-        futureExpense
+        futureIncome1,
+        futureExpense1,
+        futureIncome2,
+        futureExpense2
     };
 }
 

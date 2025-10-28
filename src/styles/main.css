@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v1.8.0 */
+/* src/styles/main.css - Krezus v2.0.0 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -49,6 +49,13 @@ button:focus {
   display: none !important;
 }
 
+.prognosis-text {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-style: italic;
+}
+
 /* ==================== LOADER ==================== */
 
 .app-loader {
@@ -85,6 +92,230 @@ button:focus {
   font-size: 1.2rem;
   margin-top: 20px;
   font-weight: 600;
+}
+
+/* ==================== SEKCJA LOGOWANIA - NOWE UI ==================== */
+
+.auth-container {
+  max-width: 100%;
+  margin: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  display: grid;
+  grid-template-columns: 1fr 500px;
+  min-height: 100vh;
+}
+
+.auth-hero {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.auth-hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.auth-logo {
+  font-size: 4rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.auth-tagline {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 20px;
+  opacity: 0.95;
+}
+
+.auth-description {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin-bottom: 40px;
+  opacity: 0.9;
+}
+
+.auth-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.feature-item {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 25px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+}
+
+.feature-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-5px);
+}
+
+.feature-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.feature-item h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.feature-item p {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+.auth-benefits {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.auth-benefits h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  font-weight: 700;
+}
+
+.auth-benefits ul {
+  list-style: none;
+  padding: 0;
+}
+
+.auth-benefits li {
+  font-size: 1.1rem;
+  padding: 10px 0;
+  opacity: 0.95;
+  line-height: 1.6;
+}
+
+.auth-form-container {
+  background: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 40px;
+  overflow-y: auto;
+}
+
+.auth-form-box {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 20px;
+}
+
+.auth-form-title {
+  text-align: center;
+  color: var(--dark);
+  font-size: 1.8rem;
+  margin-bottom: 30px;
+  font-weight: 700;
+}
+
+.auth-footer {
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 30px 40px;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.auth-footer-content p {
+  margin: 8px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.auth-footer-content strong {
+  font-weight: 700;
+}
+
+.auth-footer-content a {
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  padding-bottom: 2px;
+}
+
+.auth-footer-content a:hover {
+  border-bottom-color: white;
+  opacity: 0.9;
+}
+
+.footer-rights {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: 12px;
+}
+
+@media (max-width: 1024px) {
+  .auth-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  
+  .auth-hero {
+    padding: 40px 20px;
+    order: 2;
+  }
+  
+  .auth-form-container {
+    order: 1;
+    padding: 30px 20px;
+    min-height: auto;
+    justify-content: center;
+  }
+  
+  .auth-footer {
+    order: 3;
+  }
+  
+  .auth-logo {
+    font-size: 3rem;
+  }
+  
+  .auth-tagline {
+    font-size: 1.5rem;
+  }
+  
+  .auth-features {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-form-container {
+    padding: 25px 15px;
+  }
+  
+  .auth-form-box {
+    margin-top: 10px;
+  }
+  
+  .auth-hero {
+    padding: 30px 15px;
+  }
 }
 
 /* ==================== NAGŁÓWEK APLIKACJI ==================== */
@@ -1134,16 +1365,7 @@ tr.correction {
   font-style: italic;
 }
 
-/* ==================== SEKCJA LOGOWANIA ==================== */
-
-.auth-container {
-  max-width: 500px;
-  margin: 50px auto;
-  background: white;
-  border-radius: 12px;
-  padding: 40px;
-  box-shadow: var(--shadow-lg);
-}
+/* ==================== TABS ==================== */
 
 .auth-tabs {
   display: flex;

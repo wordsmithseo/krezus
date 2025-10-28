@@ -36,7 +36,6 @@ import {
   calculateSpendingPeriods,
   calculateAvailableFunds,
   calculateCurrentLimits,
-  calculateForecastLimits,
   computeSourcesRemaining,
   checkAnomalies,
   getGlobalMedian30d,
@@ -50,7 +49,8 @@ import {
   calculateSpendingDynamics,
   getTodayExpenses,
   getWeekExpenses,
-  getMonthExpenses
+  getMonthExpenses,
+  calculatePlannedTransactionsTotals
 } from './modules/budgetCalculator.js';
 
 import {
@@ -106,8 +106,9 @@ let editingExpenseId = null;
 let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
+let isLoadingData = false;
 
-const APP_VERSION = '1.9.3';
+const APP_VERSION = '1.9.6';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -152,10 +153,18 @@ function updatePaginationVisibility(tableId, totalItems) {
 }
 
 async function loadAllData() {
+  if (isLoadingData) {
+    console.log('⏳ Ładowanie danych już w toku, pomijam...');
+    return;
+  }
+  
+  isLoadingData = true;
+  
   try {
     const userId = getCurrentUser()?.uid;
     if (!userId) {
       console.error('❌ Brak zalogowanego użytkownika');
+      isLoadingData = false;
       return;
     }
 
@@ -202,9 +211,13 @@ async function loadAllData() {
       }
     });
     
+    console.log('✅ Dane załadowane pomyślnie');
+    
   } catch (error) {
     console.error('❌ Błąd ładowania danych:', error);
     showErrorMessage('Nie udało się załadować danych. Spróbuj odświeżyć stronę.');
+  } finally {
+    isLoadingData = false;
   }
 }
 
@@ -270,7 +283,7 @@ function renderSummary() {
   const { available, savingGoal } = calculateAvailableFunds();
   const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
   const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
-  const { projectedAvailable, projectedLimit1, projectedLimit2, futureIncome, futureExpense } = calculateForecastLimits();
+  const { futureIncome1, futureExpense1, futureIncome2, futureExpense2 } = calculatePlannedTransactionsTotals();
   
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
@@ -287,33 +300,42 @@ function renderSummary() {
   document.getElementById('currentDaysLeft1').textContent = daysLeft1;
   document.getElementById('currentLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
   
+  // Prognoza dla okresu 1
+  const projectedLimit1 = daysLeft1 > 0 ? (available - savingGoal + futureIncome1 - futureExpense1) / daysLeft1 : 0;
+  const prognosis1El = document.getElementById('prognosis1');
+  if (prognosis1El) {
+    if (futureIncome1 > 0 || futureExpense1 > 0) {
+      prognosis1El.textContent = `z planowanymi: ${projectedLimit1.toFixed(2)} zł/dzień`;
+      prognosis1El.style.display = 'block';
+    } else {
+      prognosis1El.style.display = 'none';
+    }
+  }
+  
   const currentLimit2Section = document.getElementById('currentLimit2Section');
   if (date2 && date2.trim() !== '') {
     currentLimit2Section.style.display = 'block';
     document.getElementById('currentLimit2').textContent = currentLimit2.toFixed(2);
     document.getElementById('currentDaysLeft2').textContent = daysLeft2;
     document.getElementById('currentLimitDate2').textContent = formatDateLabel(date2);
+    
+    // Prognoza dla okresu 2
+    const projectedLimit2 = daysLeft2 > 0 ? (available - savingGoal + futureIncome2 - futureExpense2) / daysLeft2 : 0;
+    const prognosis2El = document.getElementById('prognosis2');
+    if (prognosis2El) {
+      if (futureIncome2 > 0 || futureExpense2 > 0) {
+        prognosis2El.textContent = `z planowanymi: ${projectedLimit2.toFixed(2)} zł/dzień`;
+        prognosis2El.style.display = 'block';
+      } else {
+        prognosis2El.style.display = 'none';
+      }
+    }
   } else {
     currentLimit2Section.style.display = 'none';
   }
 
-  document.getElementById('projectedAvailable').textContent = projectedAvailable.toFixed(2);
-  document.getElementById('projectedLimit1').textContent = projectedLimit1.toFixed(2);
-  document.getElementById('daysLeft1').textContent = daysLeft1;
-  document.getElementById('projectedLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
-  
-  const projectedLimit2Section = document.getElementById('projectedLimit2Section');
-  if (date2 && date2.trim() !== '') {
-    projectedLimit2Section.style.display = 'block';
-    document.getElementById('projectedLimit2').textContent = projectedLimit2.toFixed(2);
-    document.getElementById('daysLeft2').textContent = daysLeft2;
-    document.getElementById('projectedLimitDate2').textContent = formatDateLabel(date2);
-  } else {
-    projectedLimit2Section.style.display = 'none';
-  }
-
-  document.getElementById('futureIncome').textContent = futureIncome.toFixed(2);
-  document.getElementById('futureExpense').textContent = futureExpense.toFixed(2);
+  document.getElementById('futureIncome').textContent = (futureIncome1 + futureIncome2).toFixed(2);
+  document.getElementById('futureExpense').textContent = (futureExpense1 + futureExpense2).toFixed(2);
   
   renderSpendingDynamics();
 }
@@ -781,8 +803,8 @@ function renderCategories() {
 
 function setupExpenseTypeToggle() {
   const expenseTypeSelect = document.getElementById('expenseType');
-  const expenseDateGroup = document.querySelector('#expenseDate').closest('.form-group');
-  const expenseTimeGroup = document.querySelector('#expenseTime').closest('.form-group');
+  const expenseDateGroup = document.querySelector('#expenseDate')?.closest('.form-group');
+  const expenseTimeGroup = document.querySelector('#expenseTime')?.closest('.form-group');
   
   if (!expenseTypeSelect || !expenseDateGroup || !expenseTimeGroup) return;
   
@@ -798,14 +820,15 @@ function setupExpenseTypeToggle() {
     }
   };
   
+  expenseTypeSelect.removeEventListener('change', toggleDateTimeFields);
   expenseTypeSelect.addEventListener('change', toggleDateTimeFields);
   toggleDateTimeFields();
 }
 
 function setupIncomeTypeToggle() {
   const incomeTypeSelect = document.getElementById('incomeType');
-  const incomeDateGroup = document.querySelector('#incomeDate').closest('.form-group');
-  const incomeTimeGroup = document.querySelector('#incomeTime').closest('.form-group');
+  const incomeDateGroup = document.querySelector('#incomeDate')?.closest('.form-group');
+  const incomeTimeGroup = document.querySelector('#incomeTime')?.closest('.form-group');
   
   if (!incomeTypeSelect || !incomeDateGroup || !incomeTimeGroup) return;
   
@@ -821,6 +844,7 @@ function setupIncomeTypeToggle() {
     }
   };
   
+  incomeTypeSelect.removeEventListener('change', toggleDateTimeFields);
   incomeTypeSelect.addEventListener('change', toggleDateTimeFields);
   toggleDateTimeFields();
 }
@@ -1871,24 +1895,24 @@ window.handleLogin = async (e) => {
   e.preventDefault();
   
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = 'Zaloguj się';
   const email = form.loginEmail.value.trim();
   const password = form.loginPassword.value;
 
+  console.log('🔐 Rozpoczęcie logowania...');
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Logowanie...';
+  
   try {
-    await loginUser(email, password);
-    
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-    
-    await log('USER_LOGIN', { 
-      email,
-      budgetUser: displayName
-    });
-    
-    form.reset();
+    const user = await loginUser(email, password);
+    console.log('✅ loginUser zakończone, użytkownik:', user);
   } catch (error) {
-    console.error('❌ Błąd logowania:', error);
+    console.error('❌ Błąd w loginUser:', error);
     showErrorMessage(error.message || 'Nie udało się zalogować');
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
   }
 };
 
@@ -1896,6 +1920,8 @@ window.handleRegister = async (e) => {
   e.preventDefault();
   
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = 'Zarejestruj się';
   const email = form.registerEmail.value.trim();
   const password = form.registerPassword.value;
   const displayName = form.registerDisplayName.value.trim();
@@ -1910,17 +1936,19 @@ window.handleRegister = async (e) => {
     return;
   }
 
+  console.log('📝 Rozpoczęcie rejestracji...');
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Rejestracja...';
+  
   try {
-    await registerUser(email, password, displayName);
-    await log('USER_REGISTER', { 
-      email, 
-      displayName,
-      budgetUser: displayName
-    });
-    form.reset();
+    const user = await registerUser(email, password, displayName);
+    console.log('✅ registerUser zakończone, użytkownik:', user);
   } catch (error) {
-    console.error('❌ Błąd rejestracji:', error);
+    console.error('❌ Błąd w registerUser:', error);
     showErrorMessage(error.message || 'Nie udało się zarejestrować');
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
   }
 };
 
@@ -1949,9 +1977,30 @@ window.handleLogout = async () => {
 };
 
 onAuthChange(async (user) => {
+  console.log('🔄 onAuthChange wywołane, user:', user ? user.email : 'null');
+  
   const authSection = document.getElementById('authSection');
   const appSection = document.getElementById('appSection');
   const appVersionSpan = document.getElementById('appVersion');
+  
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  
+  if (loginForm) {
+    const loginBtn = loginForm.querySelector('button[type="submit"]');
+    if (loginBtn) {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Zaloguj się';
+    }
+  }
+  
+  if (registerForm) {
+    const registerBtn = registerForm.querySelector('button[type="submit"]');
+    if (registerBtn) {
+      registerBtn.disabled = false;
+      registerBtn.textContent = 'Zarejestruj się';
+    }
+  }
 
   if (user) {
     console.log('✅ Użytkownik zalogowany:', user.displayName || user.email);
@@ -1974,8 +2023,8 @@ onAuthChange(async (user) => {
       }
     });
 
+    console.log('📥 Rozpoczęcie ładowania danych...');
     await loadAllData();
-    
     hideLoader();
 
   } else {
@@ -1989,6 +2038,14 @@ onAuthChange(async (user) => {
     
     authSection.classList.remove('hidden');
     appSection.classList.add('hidden');
+    
+    if (loginForm) {
+      loginForm.reset();
+    }
+    
+    if (registerForm) {
+      registerForm.reset();
+    }
     
     hideLoader();
   }

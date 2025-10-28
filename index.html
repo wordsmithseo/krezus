@@ -15,44 +15,114 @@
 
     <!-- SEKCJA LOGOWANIA -->
     <div id="authSection" class="auth-container hidden">
-        <h1 class="text-center" style="color: var(--primary); margin-bottom: 30px;">Krezus 💰</h1>
-        
-        <div class="auth-tabs">
-            <button class="tab-btn active" onclick="showAuthTab('login')">Logowanie</button>
-            <button class="tab-btn" onclick="showAuthTab('register')">Rejestracja</button>
+        <div class="auth-hero">
+            <div class="auth-hero-content">
+                <h1 class="auth-logo">Krezus 💰</h1>
+                <p class="auth-tagline">Inteligentny Budżet Osobisty</p>
+                <p class="auth-description">
+                    Zaawansowane narzędzie do zarządzania finansami domowymi z funkcją inteligentnej koperty dnia, 
+                    planowaniem transakcji i szczegółową analityką wydatków.
+                </p>
+                
+                <div class="auth-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">📊</div>
+                        <h3>Pełna kontrola</h3>
+                        <p>Śledź swoje wydatki i przychody w czasie rzeczywistym</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💡</div>
+                        <h3>Inteligentna koperta</h3>
+                        <p>Algorytm oparty na historii Twoich wydatków</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📅</div>
+                        <h3>Planowanie</h3>
+                        <p>Zaplanuj przyszłe transakcje i automatyzuj budżet</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📈</div>
+                        <h3>Zaawansowana analityka</h3>
+                        <p>Wykresy, statystyki i wykrywanie anomalii</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">👥</div>
+                        <h3>Wielu użytkowników</h3>
+                        <p>Zarządzaj budżetem całej rodziny w jednym miejscu</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔒</div>
+                        <h3>Bezpieczeństwo</h3>
+                        <p>Twoje dane są bezpiecznie przechowywane i szyfrowane</p>
+                    </div>
+                </div>
+
+                <div class="auth-benefits">
+                    <h2>Zalety Krezusa</h2>
+                    <ul>
+                        <li>✅ Prosty i intuicyjny interfejs</li>
+                        <li>✅ Dostęp z każdego urządzenia</li>
+                        <li>✅ Synchronizacja w czasie rzeczywistym</li>
+                        <li>✅ Inteligentne limity dzienne</li>
+                        <li>✅ Kategorie i tagi transakcji</li>
+                        <li>✅ Eksport danych i raporty</li>
+                        <li>✅ Powiadomienia o anomaliach</li>
+                        <li>✅ Historia zmian i logi</li>
+                    </ul>
+                </div>
+            </div>
         </div>
 
-        <div id="loginTab" class="tab-content active">
-            <form onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="loginEmail" required>
+        <div class="auth-form-container">
+            <div class="auth-form-box">
+                <h2 class="auth-form-title">Witaj ponownie! 👋</h2>
+                
+                <div class="auth-tabs">
+                    <button class="tab-btn active" onclick="showAuthTab('login')">Logowanie</button>
+                    <button class="tab-btn" onclick="showAuthTab('register')">Rejestracja</button>
                 </div>
-                <div class="form-group">
-                    <label>Hasło</label>
-                    <input type="password" name="loginPassword" required>
+
+                <div id="loginTab" class="tab-content active">
+                    <form id="loginForm" onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="loginEmail" required placeholder="twoj@email.pl">
+                        </div>
+                        <div class="form-group">
+                            <label>Hasło</label>
+                            <input type="password" name="loginPassword" required placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Zaloguj się</button>
+                    </form>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Zaloguj się</button>
-            </form>
+
+                <div id="registerTab" class="tab-content">
+                    <form id="registerForm" onsubmit="handleRegister(event)">
+                        <div class="form-group">
+                            <label>Nazwa użytkownika</label>
+                            <input type="text" name="registerDisplayName" required minlength="2" placeholder="Jan Kowalski">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="registerEmail" required placeholder="twoj@email.pl">
+                        </div>
+                        <div class="form-group">
+                            <label>Hasło (min. 6 znaków)</label>
+                            <input type="password" name="registerPassword" required minlength="6" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-success" style="width: 100%;">Zarejestruj się</button>
+                    </form>
+                </div>
+            </div>
         </div>
 
-        <div id="registerTab" class="tab-content">
-            <form onsubmit="handleRegister(event)">
-                <div class="form-group">
-                    <label>Nazwa użytkownika</label>
-                    <input type="text" name="registerDisplayName" required minlength="2">
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="registerEmail" required>
-                </div>
-                <div class="form-group">
-                    <label>Hasło (min. 6 znaków)</label>
-                    <input type="password" name="registerPassword" required minlength="6">
-                </div>
-                <button type="submit" class="btn btn-success" style="width: 100%;">Zarejestruj się</button>
-            </form>
-        </div>
+        <footer class="auth-footer">
+            <div class="auth-footer-content">
+                <p>&copy; 2025 <strong>Krezus</strong> - Inteligentny Budżet Osobisty</p>
+                <p>Stworzone przez <a href="https://wordsmithseo.pl" target="_blank" rel="noopener noreferrer">Sławomir Sprawski - WordsmithSEO.pl</a></p>
+                <p class="footer-rights">Wszelkie prawa zastrzeżone.</p>
+            </div>
+        </footer>
     </div>
 
     <div id="appSection" class="hidden">
@@ -117,37 +187,22 @@
                         </div>
                     </div>
                     
-                    <h3>📊 Limity bieżące (bez planowanych)</h3>
+                    <h3>📊 Limity dzienne</h3>
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Limit dzienny (do <span id="currentLimitDate1">-</span>)</div>
                             <div class="stat-value"><span id="currentLimit1">0.00</span><span class="stat-unit">zł/dzień</span></div>
                             <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft1">0</span> dni</div>
+                            <div id="prognosis1" class="prognosis-text" style="display: none;"></div>
                         </div>
                         <div id="currentLimit2Section" class="stat-card" style="display: none;">
                             <div class="stat-label">Limit dzienny (do <span id="currentLimitDate2">-</span>)</div>
                             <div class="stat-value"><span id="currentLimit2">0.00</span><span class="stat-unit">zł/dzień</span></div>
                             <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft2">0</span> dni</div>
+                            <div id="prognosis2" class="prognosis-text" style="display: none;"></div>
                         </div>
                     </div>
                     
-                    <h3>🔮 Prognozy (z planowanymi)</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Prognozowane dostępne środki</div>
-                            <div class="stat-value"><span id="projectedAvailable">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Prognozowany limit (do <span id="projectedLimitDate1">-</span>)</div>
-                            <div class="stat-value"><span id="projectedLimit1">0.00</span><span class="stat-unit">zł/dzień</span></div>
-                            <div class="stat-label mt-10">Pozostało <span id="daysLeft1">0</span> dni</div>
-                        </div>
-                        <div id="projectedLimit2Section" class="stat-card" style="display: none;">
-                            <div class="stat-label">Prognozowany limit (do <span id="projectedLimitDate2">-</span>)</div>
-                            <div class="stat-value"><span id="projectedLimit2">0.00</span><span class="stat-unit">zł/dzień</span></div>
-                            <div class="stat-label mt-10">Pozostało <span id="daysLeft2">0</span> dni</div>
-                        </div>
-                    </div>
                     <h3>📊 Planowane transakcje</h3>
                     <div class="stats-grid">
                         <div class="stat-card success">
@@ -476,7 +531,6 @@
                 <p class="footer-rights">Wszelkie prawa zastrzeżone.</p>
             </div>
         </footer>
-    </div>
     </div>
 
     <script type="module" src="src/app.js"></script>
