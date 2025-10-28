@@ -272,7 +272,6 @@ async function renderAll() {
   renderDailyEnvelope();
   renderAnalytics();
   renderLogs();
-  loadSettings();
   setupCategorySuggestions();
   setupSourceSuggestions();
   setupExpenseTypeToggle();
