@@ -337,8 +337,11 @@ function renderSummary() {
     currentLimit2Section.style.display = 'none';
   }
 
- document.getElementById('futureIncome').textContent = futureIncome1.toFixed(2);
-document.getElementById('futureExpense').textContent = futureExpense1.toFixed(2);
+const displayIncome = (date2 && date2.trim() !== '') ? futureIncome2 : futureIncome1;
+const displayExpense = (date2 && date2.trim() !== '') ? futureExpense2 : futureExpense1;
+
+document.getElementById('futureIncome').textContent = displayIncome.toFixed(2);
+document.getElementById('futureExpense').textContent = displayExpense.toFixed(2);
   
   renderSpendingDynamics();
 }
