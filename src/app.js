@@ -28,7 +28,10 @@ import {
   autoRealiseDueTransactions,
   subscribeToRealtimeUpdates,
   clearAllListeners,
-  clearCache
+  clearCache,
+  loadIncomes,  
+  loadExpenses 
+
 } from './modules/dataManager.js';
 
 import {
@@ -272,6 +275,7 @@ async function renderAll() {
   renderDailyEnvelope();
   renderAnalytics();
   renderLogs();
+  loadSettings();
   setupCategorySuggestions();
   setupSourceSuggestions();
   setupExpenseTypeToggle();
@@ -1520,6 +1524,8 @@ window.deleteExpense = async (expenseId) => {
   
   try {
     await saveExpenses(updated);
+
+    await loadExpenses();
     
     if (expense && expense.type === 'normal' && expense.date === getWarsawDateString()) {
       await updateDailyEnvelope();
@@ -1652,6 +1658,8 @@ window.deleteIncome = async (incomeId) => {
   
   try {
     await saveIncomes(updated);
+
+    await loadIncomes(); 
     
     if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
       await updateDailyEnvelope();
