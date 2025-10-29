@@ -480,33 +480,31 @@ button:focus {
   justify-content: space-around;
   width: 36px;
   height: 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: transparent;
   border: none;
   cursor: pointer;
   padding: 6px;
   z-index: 1001;
-  margin-right: 15px;
+  margin-right: 0;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
 }
 
 .nav-hamburger:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .nav-hamburger span {
   width: 100%;
   height: 3px;
-  background: white;
+  background: var(--gray);
   border-radius: 3px;
   transition: all 0.3s ease;
   transform-origin: center;
 }
 
-.nav-hamburger.active {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+.nav-hamburger.active span {
+  background: var(--primary);
 }
 
 .nav-hamburger.active span:nth-child(1) {
@@ -533,14 +531,20 @@ button:focus {
   z-index: 998;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .mobile-nav-overlay.active {
   display: block;
   opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {
+  .nav-container {
+    padding: 10px 15px;
+  }
+
   .nav-hamburger {
     display: flex;
   }
@@ -553,7 +557,7 @@ button:focus {
     height: 100vh;
     background: white;
     flex-direction: column;
-    padding: 100px 20px 20px 20px;
+    padding: 80px 20px 20px 20px;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
     transition: left 0.3s ease;
     overflow-y: auto;
@@ -581,6 +585,10 @@ button:focus {
   .nav-btn.active {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+  }
+  
+  .app-nav {
+    top: 68px;
   }
 }
 
@@ -1649,10 +1657,6 @@ tr.correction {
   .category-quick-btn {
     font-size: 0.85rem;
     padding: 6px 12px;
-  }
-  
-  .app-nav {
-    top: 70px;
   }
 }
 
