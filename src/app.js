@@ -53,7 +53,9 @@ import {
   getTodayExpenses,
   getWeekExpenses,
   getMonthExpenses,
-  calculatePlannedTransactionsTotals
+  calculatePlannedTransactionsTotals,
+  getWeekDateRange,
+  getMonthName
 } from './modules/budgetCalculator.js';
 
 import {
@@ -72,7 +74,8 @@ import {
 import { 
   showProfileModal,
   showPasswordModal,
-  showEditCategoryModal
+  showEditCategoryModal,
+  showEditExpenseModal
 } from './components/modals.js';
 
 import {
@@ -111,7 +114,7 @@ let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 
-const APP_VERSION = '1.9.6';
+const APP_VERSION = '1.9.7';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -291,19 +294,36 @@ function renderSummary() {
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
   const monthExpenses = getMonthExpenses();
+  
+  const weekRange = getWeekDateRange();
+  const monthName = getMonthName();
+  const todayDate = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
 
   document.getElementById('availableFunds').textContent = available.toFixed(2);
   document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
   
+  const todayLabel = document.querySelector('#todayExpenses').closest('.stat-card').querySelector('.stat-label');
+  if (todayLabel) {
+    todayLabel.innerHTML = `Wydano dziś<br><small style="font-size: 0.75rem; opacity: 0.8;">(${todayDate})</small>`;
+  }
   document.getElementById('todayExpenses').textContent = todayExpenses.toFixed(2);
+  
+  const weekLabel = document.querySelector('#weekExpenses').closest('.stat-card').querySelector('.stat-label');
+  if (weekLabel) {
+    weekLabel.innerHTML = `Wydano w tym tygodniu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${weekRange.start} - ${weekRange.end})</small>`;
+  }
   document.getElementById('weekExpenses').textContent = weekExpenses.toFixed(2);
+  
+  const monthLabel = document.querySelector('#monthExpenses').closest('.stat-card').querySelector('.stat-label');
+  if (monthLabel) {
+    monthLabel.innerHTML = `Wydano w tym miesiącu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${monthName})</small>`;
+  }
   document.getElementById('monthExpenses').textContent = monthExpenses.toFixed(2);
 
   document.getElementById('currentLimit1').textContent = currentLimit1.toFixed(2);
   document.getElementById('currentDaysLeft1').textContent = daysLeft1;
   document.getElementById('currentLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
   
-  // Prognoza dla okresu 1
   const projectedLimit1 = daysLeft1 > 0 ? (available - savingGoal + futureIncome1 - futureExpense1) / daysLeft1 : 0;
   const prognosis1El = document.getElementById('prognosis1');
   if (prognosis1El) {
@@ -322,7 +342,6 @@ function renderSummary() {
     document.getElementById('currentDaysLeft2').textContent = daysLeft2;
     document.getElementById('currentLimitDate2').textContent = formatDateLabel(date2);
     
-    // Prognoza dla okresu 2
     const projectedLimit2 = daysLeft2 > 0 ? (available - savingGoal + futureIncome2 - futureExpense2) / daysLeft2 : 0;
     const prognosis2El = document.getElementById('prognosis2');
     if (prognosis2El) {
@@ -337,11 +356,11 @@ function renderSummary() {
     currentLimit2Section.style.display = 'none';
   }
 
-const displayIncome = (date2 && date2.trim() !== '') ? futureIncome2 : futureIncome1;
-const displayExpense = (date2 && date2.trim() !== '') ? futureExpense2 : futureExpense1;
+  const displayIncome = (date2 && date2.trim() !== '') ? futureIncome2 : futureIncome1;
+  const displayExpense = (date2 && date2.trim() !== '') ? futureExpense2 : futureExpense1;
 
-document.getElementById('futureIncome').textContent = displayIncome.toFixed(2);
-document.getElementById('futureExpense').textContent = displayExpense.toFixed(2);
+  document.getElementById('futureIncome').textContent = displayIncome.toFixed(2);
+  document.getElementById('futureExpense').textContent = displayExpense.toFixed(2);
   
   renderSpendingDynamics();
 }
@@ -1221,10 +1240,7 @@ function renderSources() {
       </td>
       <td class="actions">
         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-        ${!isCorrection ? `
-          <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
-          <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
-        ` : '<span style="color: #6b7280;">Korekta</span>'}
+        ${isCorrection ? '<span style="color: #6b7280;">Niemodyfikowalny</span>' : ''}
       </td>
     </tr>
   `}).join('');
@@ -1495,22 +1511,34 @@ window.addExpense = async (e) => {
 window.editExpense = (expenseId) => {
   const expense = getExpenses().find(e => e.id === expenseId);
   if (!expense) return;
-
-  const form = document.getElementById('expenseForm');
-  form.expenseAmount.value = expense.amount;
-  form.expenseDate.value = expense.date;
-  form.expenseType.value = expense.type || 'normal';
-  form.expenseTime.value = expense.time || '';
-  form.expenseUser.value = expense.userId || '';
-  form.expenseCategory.value = expense.category;
-  form.expenseDescription.value = expense.description;
-
-  editingExpenseId = expenseId;
-  document.getElementById('expenseFormTitle').textContent = '✏️ Edytuj wydatek';
   
-  setupExpenseTypeToggle();
-  
-  form.scrollIntoView({ behavior: 'smooth' });
+  showEditExpenseModal(expense, budgetUsersCache, async (updatedExpense) => {
+    const expenses = getExpenses();
+    const updated = expenses.map(e => e.id === expenseId ? updatedExpense : e);
+    
+    try {
+      await saveExpenses(updated);
+      
+      if (updatedExpense.type === 'normal' && updatedExpense.date === getWarsawDateString()) {
+        await updateDailyEnvelope();
+      }
+      
+      const budgetUserName = getBudgetUserName(updatedExpense.userId);
+      
+      await log('EXPENSE_EDIT', {
+        amount: updatedExpense.amount,
+        category: updatedExpense.category,
+        description: updatedExpense.description,
+        type: updatedExpense.type,
+        budgetUser: budgetUserName
+      });
+      
+      showSuccessMessage('Wydatek zaktualizowany');
+    } catch (error) {
+      console.error('❌ Błąd aktualizacji wydatku:', error);
+      showErrorMessage('Nie udało się zaktualizować wydatku');
+    }
+  });
 };
 
 window.deleteExpense = async (expenseId) => {
@@ -1624,62 +1652,6 @@ window.addIncome = async (e) => {
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
     showErrorMessage('Nie udało się zapisać przychodu');
-  }
-};
-
-window.editIncome = (incomeId) => {
-  const income = getIncomes().find(i => i.id === incomeId);
-  if (!income) return;
-
-  const form = document.getElementById('incomeForm');
-  form.incomeAmount.value = income.amount;
-  form.incomeDate.value = income.date;
-  form.incomeType.value = income.type || 'normal';
-  form.incomeTime.value = income.time || '';
-  form.incomeUser.value = income.userId || '';
-  form.incomeSource.value = income.source;
-
-  editingIncomeId = incomeId;
-  document.getElementById('incomeFormTitle').textContent = '✏️ Edytuj przychód';
-  
-  setupIncomeTypeToggle();
-  
-  form.scrollIntoView({ behavior: 'smooth' });
-};
-
-window.deleteIncome = async (incomeId) => {
-  const confirmed = await showPasswordModal(
-    'Usuwanie przychodu',
-    'Czy na pewno chcesz usunąć ten przychód? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
-  );
-  
-  if (!confirmed) return;
-
-  const incomes = getIncomes();
-  const income = incomes.find(i => i.id === incomeId);
-  const updated = incomes.filter(i => i.id !== incomeId);
-  
-  try {
-    await saveIncomes(updated);
-
-    await loadIncomes(); 
-    
-    if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
-      await updateDailyEnvelope();
-    }
-    
-    const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
-    
-    await log('INCOME_DELETE', {
-      amount: income?.amount,
-      source: income?.source,
-      budgetUser: budgetUserName
-    });
-    
-    showSuccessMessage('Przychód usunięty');
-  } catch (error) {
-    console.error('❌ Błąd usuwania przychodu:', error);
-    showErrorMessage('Nie udało się usunąć przychodu');
   }
 };
 

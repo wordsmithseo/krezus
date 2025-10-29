@@ -26,12 +26,18 @@ import {
 } from '../utils/errorHandler.js';
 
 import {
-  validateCategoryName
+  validateCategoryName,
+  validateAmount
 } from '../utils/validators.js';
 
 import {
   log
 } from '../modules/logger.js';
+
+import {
+  getWarsawDateString,
+  getCurrentTimeString
+} from '../utils/dateHelpers.js';
 
 let budgetUsersUnsubscribe = null;
 
@@ -320,6 +326,161 @@ window.handleEditCategory = async (e) => {
   } catch (error) {
     console.error('❌ Błąd edycji kategorii:', error);
     showErrorMessage('Nie udało się zaktualizować kategorii');
+  }
+};
+
+// ==================== MODAL EDYCJI WYDATKU ====================
+
+export function showEditExpenseModal(expense, budgetUsers, onSave) {
+  const modal = document.getElementById('editExpenseModal') || createEditExpenseModal();
+  
+  document.getElementById('editExpenseAmount').value = expense.amount;
+  document.getElementById('editExpenseDate').value = expense.date;
+  document.getElementById('editExpenseType').value = expense.type || 'normal';
+  document.getElementById('editExpenseTime').value = expense.time || '';
+  document.getElementById('editExpenseCategory').value = expense.category;
+  document.getElementById('editExpenseDescription').value = expense.description;
+  
+  const userSelect = document.getElementById('editExpenseUser');
+  userSelect.innerHTML = '<option value="">Wybierz użytkownika</option>' +
+    budgetUsers.map(user => 
+      `<option value="${user.id}" ${user.id === expense.userId ? 'selected' : ''}>${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
+    ).join('');
+  
+  const categoriesDatalist = document.getElementById('editExpenseCategoriesDatalist');
+  const categories = getCategories();
+  categoriesDatalist.innerHTML = categories.map(cat => `<option value="${cat.name}">`).join('');
+  
+  toggleEditExpenseTypeFields();
+  
+  const form = document.getElementById('editExpenseForm');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const amount = parseFloat(document.getElementById('editExpenseAmount').value);
+    const type = document.getElementById('editExpenseType').value;
+    const userId = document.getElementById('editExpenseUser').value;
+    const category = document.getElementById('editExpenseCategory').value.trim();
+    const description = document.getElementById('editExpenseDescription').value.trim();
+    
+    if (!validateAmount(amount)) {
+      showErrorMessage('Kwota musi być większa od 0');
+      return;
+    }
+
+    if (!userId) {
+      showErrorMessage('Wybierz użytkownika');
+      return;
+    }
+    
+    if (!category) {
+      showErrorMessage('Podaj kategorię');
+      return;
+    }
+    
+    if (!description) {
+      showErrorMessage('Podaj opis');
+      return;
+    }
+
+    const updatedExpense = {
+      ...expense,
+      amount,
+      type,
+      userId,
+      category,
+      description,
+      date: type === 'normal' ? expense.date : document.getElementById('editExpenseDate').value,
+      time: type === 'normal' ? expense.time : (document.getElementById('editExpenseTime').value || '')
+    };
+    
+    closeModal('editExpenseModal');
+    await onSave(updatedExpense);
+  };
+  
+  modal.classList.add('active');
+  document.getElementById('editExpenseAmount').focus();
+}
+
+function createEditExpenseModal() {
+  const modal = document.createElement('div');
+  modal.id = 'editExpenseModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>✏️ Edytuj wydatek</h2>
+        <button class="modal-close" onclick="closeModal('editExpenseModal')">✕</button>
+      </div>
+      
+      <form id="editExpenseForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kwota (zł)</label>
+            <input type="number" id="editExpenseAmount" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Typ transakcji</label>
+            <select id="editExpenseType" required onchange="toggleEditExpenseTypeFields()">
+              <option value="normal">Zwykły</option>
+              <option value="planned">Planowany</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group" id="editExpenseDateGroup">
+            <label>Data</label>
+            <input type="date" id="editExpenseDate" required>
+          </div>
+          <div class="form-group" id="editExpenseTimeGroup">
+            <label>Godzina (opcjonalnie)</label>
+            <input type="time" id="editExpenseTime">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Użytkownik</label>
+            <select id="editExpenseUser" required>
+              <option value="">Wybierz użytkownika</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Kategoria</label>
+            <input type="text" id="editExpenseCategory" list="editExpenseCategoriesDatalist" required autocomplete="off">
+            <datalist id="editExpenseCategoriesDatalist"></datalist>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Opis</label>
+          <input type="text" id="editExpenseDescription" required autocomplete="off">
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editExpenseModal')">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  return modal;
+}
+
+window.toggleEditExpenseTypeFields = function() {
+  const type = document.getElementById('editExpenseType').value;
+  const dateGroup = document.getElementById('editExpenseDateGroup');
+  const timeGroup = document.getElementById('editExpenseTimeGroup');
+  
+  if (type === 'normal') {
+    dateGroup.style.display = 'none';
+    timeGroup.style.display = 'none';
+  } else {
+    dateGroup.style.display = 'block';
+    timeGroup.style.display = 'block';
   }
 };
 

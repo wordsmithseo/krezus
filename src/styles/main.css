@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v2.0.0 */
+/* src/styles/main.css - Krezus v1.9.7 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -416,7 +416,7 @@ button:focus {
   background: white;
   box-shadow: var(--shadow);
   position: sticky;
-  top: 80px;
+  top: 78px;
   z-index: 999;
 }
 
@@ -1529,6 +1529,10 @@ tr.correction {
   .category-quick-btn {
     font-size: 0.85rem;
     padding: 6px 12px;
+  }
+  
+  .app-nav {
+    top: 70px;
   }
 }
 
