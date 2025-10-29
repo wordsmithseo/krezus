@@ -145,11 +145,6 @@
 
         <nav class="app-nav">
             <div class="nav-container">
-                <button class="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
                 <div class="nav-menu" id="navMenu">
                     <button class="nav-btn active" onclick="showSection('summarySection')">📊 Podsumowanie</button>
                     <button class="nav-btn" onclick="showSection('envelopeSection')">📩 Koperta dnia</button>
@@ -161,8 +156,6 @@
                 </div>
             </div>
         </nav>
-
-        <div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="closeMobileNav()"></div>
 
         <div class="container">
             <section id="summarySection" class="section active">
@@ -562,33 +555,6 @@
                 fundsDisplay.textContent = availableFunds.textContent;
             }
         }, 1000);
-
-        function toggleMobileNav() {
-            const navMenu = document.getElementById('navMenu');
-            const hamburger = document.querySelector('.nav-hamburger');
-            const overlay = document.getElementById('mobileNavOverlay');
-            
-            navMenu.classList.toggle('active');
-            hamburger.classList.toggle('active');
-            overlay.classList.toggle('active');
-            
-            if (navMenu.classList.contains('active')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        }
-
-        function closeMobileNav() {
-            const navMenu = document.getElementById('navMenu');
-            const hamburger = document.querySelector('.nav-hamburger');
-            const overlay = document.getElementById('mobileNavOverlay');
-            
-            navMenu.classList.remove('active');
-            hamburger.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
     </script>
 </body>
 </html>
