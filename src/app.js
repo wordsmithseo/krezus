@@ -75,7 +75,8 @@ import {
   showProfileModal,
   showPasswordModal,
   showEditCategoryModal,
-  showEditExpenseModal
+  showEditExpenseModal,
+  showEditIncomeModal
 } from './components/modals.js';
 
 import {
@@ -108,6 +109,7 @@ import {
 
 let currentExpensePage = 1;
 let currentIncomePage = 1;
+let currentLogPage = 1;
 let editingExpenseId = null;
 let editingIncomeId = null;
 let budgetUsersCache = [];
@@ -115,6 +117,7 @@ let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 
 const APP_VERSION = '1.9.8';
+const LOGS_PER_PAGE = 20;
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -1240,6 +1243,7 @@ function renderSources() {
       </td>
       <td class="actions">
         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
+        ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
       </td>
     </tr>
   `}).join('');
@@ -1319,6 +1323,38 @@ window.realiseIncome = async (incomeId) => {
     console.error('❌ Błąd realizacji przychodu:', error);
     showErrorMessage('Nie udało się zrealizować przychodu');
   }
+};
+
+window.editIncome = (incomeId) => {
+  const income = getIncomes().find(i => i.id === incomeId);
+  if (!income) return;
+  
+  showEditIncomeModal(income, budgetUsersCache, async (updatedIncome) => {
+    const incomes = getIncomes();
+    const updated = incomes.map(i => i.id === incomeId ? updatedIncome : i);
+    
+    try {
+      await saveIncomes(updated);
+      
+      if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
+        await updateDailyEnvelope();
+      }
+      
+      const budgetUserName = getBudgetUserName(updatedIncome.userId);
+      
+      await log('INCOME_EDIT', {
+        amount: updatedIncome.amount,
+        source: updatedIncome.source,
+        type: updatedIncome.type,
+        budgetUser: budgetUserName
+      });
+      
+      showSuccessMessage('Przychód zaktualizowany');
+    } catch (error) {
+      console.error('❌ Błąd aktualizacji przychodu:', error);
+      showErrorMessage('Nie udało się zaktualizować przychodu');
+    }
+  });
 };
 
 window.addCategory = async () => {
@@ -1779,11 +1815,14 @@ async function renderLogs() {
       return;
     }
     
-    const recentLogs = logs.slice(0, 50);
+    const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
+    const startIdx = (currentLogPage - 1) * LOGS_PER_PAGE;
+    const endIdx = startIdx + LOGS_PER_PAGE;
+    const paginatedLogs = logs.slice(startIdx, endIdx);
     
-    const html = recentLogs.map((logEntry, index) => {
+    const html = paginatedLogs.map((logEntry, index) => {
       const formatted = formatLogEntry(logEntry);
-      const logNumber = index + 1;
+      const logNumber = startIdx + index + 1;
       return `
         <div class="log-entry">
           <div class="log-header">
@@ -1808,11 +1847,74 @@ async function renderLogs() {
     }).join('');
     
     logsList.innerHTML = html;
+    
+    if (totalPages > 1) {
+      renderLogsPagination(totalPages);
+    } else {
+      const paginationContainer = logsList.nextElementSibling;
+      if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
+        paginationContainer.innerHTML = '';
+      } else {
+        const newPagination = document.createElement('div');
+        newPagination.className = 'pagination-container';
+        logsList.parentNode.insertBefore(newPagination, logsList.nextSibling);
+      }
+    }
   } catch (error) {
     console.error('❌ Błąd renderowania logów:', error);
     document.getElementById('logsList').innerHTML = '<p class="empty-state">Błąd ładowania logów</p>';
   }
 }
+
+function renderLogsPagination(totalPages) {
+  const logsList = document.getElementById('logsList');
+  let paginationContainer = logsList.nextElementSibling;
+  
+  if (!paginationContainer || !paginationContainer.classList.contains('pagination-container')) {
+    paginationContainer = document.createElement('div');
+    paginationContainer.className = 'pagination-container';
+    logsList.parentNode.insertBefore(paginationContainer, logsList.nextSibling);
+  }
+
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  html += `<button class="pagination-btn" ${currentLogPage === 1 ? 'disabled' : ''} onclick="window.changeLogPage(${currentLogPage - 1})">◀</button>`;
+  
+  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
+  let startPage = Math.max(1, currentLogPage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+  
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="pagination-btn ${i === currentLogPage ? 'active' : ''}" onclick="window.changeLogPage(${i})">${i}</button>`;
+  }
+  
+  html += `<button class="pagination-btn" ${currentLogPage === totalPages ? 'disabled' : ''} onclick="window.changeLogPage(${currentLogPage + 1})">▶</button>`;
+  
+  paginationContainer.innerHTML = html;
+}
+
+window.changeLogPage = async (page) => {
+  const logs = await getLogs();
+  const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
+  
+  if (page < 1 || page > totalPages) return;
+  
+  currentLogPage = page;
+  await renderLogs();
+  
+  const logsList = document.getElementById('logsList');
+  if (logsList) {
+    logsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
 
 window.clearLogs = async () => {
   const confirmed = await showPasswordModal(
@@ -1824,6 +1926,7 @@ window.clearLogs = async () => {
   
   try {
     await clearAllLogs('System');
+    currentLogPage = 1;
     await renderLogs();
     showSuccessMessage('Logi wyczyszczone');
   } catch (error) {
@@ -1861,6 +1964,7 @@ window.showSection = (sectionId) => {
   }
   
   if (sectionId === 'settingsSection') {
+    currentLogPage = 1;
     renderLogs();
   }
   

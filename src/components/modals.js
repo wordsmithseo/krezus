@@ -484,6 +484,140 @@ window.toggleEditExpenseTypeFields = function() {
   }
 };
 
+// ==================== MODAL EDYCJI PRZYCHODU ====================
+
+export function showEditIncomeModal(income, budgetUsers, onSave) {
+  const modal = document.getElementById('editIncomeModal') || createEditIncomeModal();
+  
+  document.getElementById('editIncomeAmount').value = income.amount;
+  document.getElementById('editIncomeDate').value = income.date;
+  document.getElementById('editIncomeType').value = income.type || 'normal';
+  document.getElementById('editIncomeTime').value = income.time || '';
+  document.getElementById('editIncomeSource').value = income.source || '';
+  
+  const userSelect = document.getElementById('editIncomeUser');
+  userSelect.innerHTML = '<option value="">Wybierz użytkownika</option>' +
+    budgetUsers.map(user => 
+      `<option value="${user.id}" ${user.id === income.userId ? 'selected' : ''}>${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
+    ).join('');
+  
+  toggleEditIncomeTypeFields();
+  
+  const form = document.getElementById('editIncomeForm');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const amount = parseFloat(document.getElementById('editIncomeAmount').value);
+    const type = document.getElementById('editIncomeType').value;
+    const userId = document.getElementById('editIncomeUser').value;
+    const source = document.getElementById('editIncomeSource').value.trim();
+    
+    if (!validateAmount(amount)) {
+      showErrorMessage('Kwota musi być większa od 0');
+      return;
+    }
+
+    if (!userId) {
+      showErrorMessage('Wybierz użytkownika');
+      return;
+    }
+
+    const updatedIncome = {
+      ...income,
+      amount,
+      type,
+      userId,
+      source,
+      date: document.getElementById('editIncomeDate').value,
+      time: document.getElementById('editIncomeTime').value || ''
+    };
+    
+    closeModal('editIncomeModal');
+    await onSave(updatedIncome);
+  };
+  
+  modal.classList.add('active');
+  document.getElementById('editIncomeAmount').focus();
+}
+
+function createEditIncomeModal() {
+  const modal = document.createElement('div');
+  modal.id = 'editIncomeModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>✏️ Edytuj przychód</h2>
+        <button class="modal-close" onclick="closeModal('editIncomeModal')">✕</button>
+      </div>
+      
+      <form id="editIncomeForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kwota (zł)</label>
+            <input type="number" id="editIncomeAmount" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Typ transakcji</label>
+            <select id="editIncomeType" required onchange="toggleEditIncomeTypeFields()">
+              <option value="normal">Zwykły</option>
+              <option value="planned">Planowany</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="editIncomeDate" required>
+          </div>
+          <div class="form-group">
+            <label>Godzina (opcjonalnie)</label>
+            <input type="time" id="editIncomeTime">
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Użytkownik</label>
+            <select id="editIncomeUser" required>
+              <option value="">Wybierz użytkownika</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Źródło</label>
+            <input type="text" id="editIncomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('editIncomeModal')">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  return modal;
+}
+
+window.toggleEditIncomeTypeFields = function() {
+  const type = document.getElementById('editIncomeType').value;
+  const dateGroup = document.querySelector('#editIncomeDate')?.closest('.form-group');
+  const timeGroup = document.querySelector('#editIncomeTime')?.closest('.form-group');
+  
+  if (!dateGroup || !timeGroup) return;
+  
+  if (type === 'normal') {
+    dateGroup.style.display = 'none';
+    timeGroup.style.display = 'none';
+  } else {
+    dateGroup.style.display = 'block';
+    timeGroup.style.display = 'block';
+  }
+};
+
 // ==================== MODAL HASŁA ====================
 
 export async function showPasswordModal(title, message) {

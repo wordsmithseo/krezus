@@ -1,4 +1,4 @@
-/* src/styles/main.css - Krezus v1.9.7 */
+/* src/styles/main.css - Krezus v1.9.8 */
 
 /* ==================== GLOBALNE STYLE ==================== */
 
@@ -424,6 +424,8 @@ button:focus {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 20px;
+  display: flex;
+  align-items: center;
 }
 
 .nav-menu {
@@ -431,6 +433,7 @@ button:focus {
   gap: 5px;
   overflow-x: auto;
   padding: 10px 0;
+  flex: 1;
 }
 
 .nav-menu::-webkit-scrollbar {
@@ -445,16 +448,17 @@ button:focus {
 .nav-btn {
   background: transparent;
   border: none;
-  padding: 10px 20px;
+  padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   color: var(--gray);
   transition: all 0.3s;
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  font-weight: 500;
 }
 
 .nav-btn:hover {
@@ -466,6 +470,76 @@ button:focus {
   background: var(--primary);
   color: white;
   font-weight: 600;
+}
+
+/* ==================== NAWIGACJA MOBILNA ==================== */
+
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 32px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+  margin-right: 15px;
+}
+
+.nav-hamburger span {
+  width: 100%;
+  height: 4px;
+  background: var(--dark);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.nav-hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(8px, 8px);
+}
+
+.nav-hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.nav-hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(8px, -8px);
+}
+
+@media (max-width: 768px) {
+  .nav-hamburger {
+    display: flex;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 78px;
+    left: -100%;
+    width: 280px;
+    height: calc(100vh - 78px);
+    background: white;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    z-index: 999;
+  }
+
+  .nav-menu.active {
+    left: 0;
+  }
+
+  .nav-btn {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    padding: 14px 20px;
+  }
 }
 
 /* ==================== CONTAINER ==================== */
@@ -1310,12 +1384,20 @@ tr.correction {
 
 .log-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 8px;
 }
 
+.log-number {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.9rem;
+  min-width: 40px;
+}
+
 .log-action {
+  flex: 1;
   font-weight: 600;
   color: var(--dark);
 }
@@ -1482,10 +1564,6 @@ tr.correction {
 
   .app-title h1 {
     font-size: 2rem;
-  }
-
-  .nav-menu {
-    flex-wrap: wrap;
   }
 
   .form-row {
@@ -1658,127 +1736,4 @@ tr.correction {
 
 .text-bold {
   font-weight: 700;
-}
-
-/* Dodaj na końcu pliku src/styles/main.css */
-
-/* ==================== NAWIGACJA MOBILNA ==================== */
-
-.nav-hamburger {
-  display: none;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 30px;
-  height: 25px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  z-index: 10;
-}
-
-.nav-hamburger span {
-  width: 100%;
-  height: 3px;
-  background: var(--dark);
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  transform-origin: center;
-}
-
-.nav-hamburger.active span:nth-child(1) {
-  transform: rotate(45deg) translate(7px, 7px);
-}
-
-.nav-hamburger.active span:nth-child(2) {
-  opacity: 0;
-}
-
-.nav-hamburger.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -7px);
-}
-
-@media (max-width: 768px) {
-  .nav-hamburger {
-    display: flex;
-    margin-left: 10px;
-  }
-
-  .nav-menu {
-    position: fixed;
-    top: 78px;
-    left: -100%;
-    width: 250px;
-    height: calc(100vh - 78px);
-    background: white;
-    flex-direction: column;
-    padding: 20px;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-    transition: left 0.3s ease;
-    overflow-y: auto;
-    z-index: 999;
-  }
-
-  .nav-menu.active {
-    left: 0;
-  }
-
-  .nav-btn {
-    width: 100%;
-    text-align: left;
-    margin-bottom: 10px;
-  }
-
-  .nav-container {
-    display: flex;
-    align-items: center;
-  }
-}
-
-/* ==================== POPRAWKI NAGŁÓWKA I NAWIGACJI ==================== */
-
-.app-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1001;
-}
-
-.app-nav {
-  position: fixed;
-  top: 78px;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-}
-
-.container {
-  margin-top: 140px;
-}
-
-@media (max-width: 768px) {
-  .container {
-    margin-top: 130px;
-  }
-}
-
-/* ==================== LOGI - NUMERACJA ==================== */
-
-.log-number {
-  font-weight: 700;
-  color: var(--primary);
-  margin-right: 10px;
-  font-size: 0.9rem;
-}
-
-.log-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.log-action {
-  flex: 1;
 }
