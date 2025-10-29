@@ -543,6 +543,7 @@ button:focus {
 @media (max-width: 768px) {
   .nav-container {
     padding: 10px 15px;
+    background: white;
   }
 
   .nav-hamburger {
