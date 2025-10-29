@@ -114,7 +114,7 @@ let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 
-const APP_VERSION = '1.9.7';
+const APP_VERSION = '1.9.8';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -1240,7 +1240,6 @@ function renderSources() {
       </td>
       <td class="actions">
         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-        ${isCorrection ? '<span style="color: #6b7280;">Niemodyfikowalny</span>' : ''}
       </td>
     </tr>
   `}).join('');
@@ -1689,7 +1688,7 @@ window.addCorrection = async (e) => {
     date: getWarsawDateString(),
     time: getCurrentTimeString(),
     type: 'normal',
-    userId: user.uid,
+    userId: 'system',
     source: 'KOREKTA',
     correctionReason: reason,
     correctionType: correctionType,
@@ -1705,15 +1704,13 @@ window.addCorrection = async (e) => {
     await saveIncomes(updated);
     await updateDailyEnvelope();
     
-    const displayName = await getDisplayName(user.uid);
-    
     await log('CORRECTION_ADD', {
       difference: difference,
       correctionType: correctionType,
       previousAmount: available,
       newAmount: newTotalAmount,
       reason: reason,
-      budgetUser: displayName
+      budgetUser: 'System'
     });
     
     form.reset();
@@ -1784,11 +1781,13 @@ async function renderLogs() {
     
     const recentLogs = logs.slice(0, 50);
     
-    const html = recentLogs.map(logEntry => {
+    const html = recentLogs.map((logEntry, index) => {
       const formatted = formatLogEntry(logEntry);
+      const logNumber = index + 1;
       return `
         <div class="log-entry">
           <div class="log-header">
+            <span class="log-number">#${logNumber}</span>
             <span class="log-action">${formatted.label}</span>
             <span class="log-timestamp">${formatted.timestamp}</span>
           </div>
@@ -1824,10 +1823,7 @@ window.clearLogs = async () => {
   if (!confirmed) return;
   
   try {
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-    
-    await clearAllLogs(displayName);
+    await clearAllLogs('System');
     await renderLogs();
     showSuccessMessage('Logi wyczyszczone');
   } catch (error) {
@@ -1853,6 +1849,15 @@ window.showSection = (sectionId) => {
   const activeBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
   if (activeBtn) {
     activeBtn.classList.add('active');
+  }
+  
+  if (window.innerWidth <= 768) {
+    const navMenu = document.getElementById('navMenu');
+    const hamburger = document.querySelector('.nav-hamburger');
+    if (navMenu && navMenu.classList.contains('active')) {
+      navMenu.classList.remove('active');
+      hamburger.classList.remove('active');
+    }
   }
   
   if (sectionId === 'settingsSection') {

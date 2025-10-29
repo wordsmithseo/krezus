@@ -1,16 +1,15 @@
-// src/modules/logger.js - System logowania akcji użytkownika v1.2.0
+// src/modules/logger.js
 import { ref, get, set, push, remove } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 
-/**
- * Zapisz wpis w logach
- */
 export async function log(action, details = {}) {
   try {
     const userId = getUserId();
     if (!userId) return;
+    
+    const budgetUser = details.budgetUser || 'System';
     
     const logEntry = {
       timestamp: new Date().toISOString(),
@@ -19,8 +18,8 @@ export async function log(action, details = {}) {
       action,
       details,
       userId,
-      budgetUser: details.budgetUser || null,
-      isSystemAction: details.isSystemAction || false
+      budgetUser: budgetUser,
+      isSystemAction: budgetUser === 'System'
     };
     
     const logsRef = ref(db, `users/${userId}/logs`);
@@ -32,9 +31,6 @@ export async function log(action, details = {}) {
   }
 }
 
-/**
- * Pobierz wszystkie logi
- */
 export async function getLogs() {
   try {
     const userId = getUserId();
@@ -55,7 +51,6 @@ export async function getLogs() {
       });
     });
     
-    // Sortuj od najnowszych
     logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     return logs;
@@ -65,10 +60,7 @@ export async function getLogs() {
   }
 }
 
-/**
- * Wyczyść wszystkie logi
- */
-export async function clearAllLogs(budgetUserName = null) {
+export async function clearAllLogs(budgetUserName = 'System') {
   try {
     const userId = getUserId();
     if (!userId) return;
@@ -78,7 +70,6 @@ export async function clearAllLogs(budgetUserName = null) {
     
     console.log('✅ Logi wyczyszczone');
     
-    // Dodaj wpis o wyczyszczeniu logów
     await log('LOGS_CLEARED', { 
       message: 'Wszystkie logi zostały wyczyszczone',
       budgetUser: budgetUserName
@@ -89,18 +80,12 @@ export async function clearAllLogs(budgetUserName = null) {
   }
 }
 
-/**
- * Oblicz rozmiar logów w KB
- */
 export function calculateLogsSize(logs) {
   const jsonString = JSON.stringify(logs);
   const bytes = new Blob([jsonString]).size;
   return (bytes / 1024).toFixed(2);
 }
 
-/**
- * Formatuj wpis logu do wyświetlenia
- */
 export function formatLogEntry(logEntry) {
   const actionLabels = {
     'USER_LOGIN': '🔐 Logowanie',
@@ -117,6 +102,7 @@ export function formatLogEntry(logEntry) {
     'CORRECTION_ADD': '🔧 Korekta środków',
     'CATEGORY_ADD': '🏷️ Dodanie kategorii',
     'CATEGORY_DELETE': '🗑️ Usunięcie kategorii',
+    'CATEGORY_EDIT': '✏️ Edycja kategorii',
     'SETTINGS_UPDATE': '⚙️ Aktualizacja ustawień',
     'BUDGET_USER_ADD': '👤 Dodanie użytkownika budżetu',
     'BUDGET_USER_EDIT': '✏️ Edycja użytkownika budżetu',
@@ -127,19 +113,16 @@ export function formatLogEntry(logEntry) {
     'AUTO_REALISE': '🤖 Automatyczna realizacja transakcji'
   };
   
-  // Określ nazwę użytkownika
   let userName = null;
   
-  if (logEntry.isSystemAction) {
-    userName = 'Akcja systemowa';
+  if (logEntry.isSystemAction || logEntry.budgetUser === 'System') {
+    userName = 'System';
   } else if (logEntry.budgetUser) {
     userName = logEntry.budgetUser;
   }
   
-  // Przetwórz szczegóły
   const processedDetails = { ...logEntry.details };
   
-  // Usuń budgetUser i isSystemAction z details aby nie duplikować
   delete processedDetails.budgetUser;
   delete processedDetails.isSystemAction;
   

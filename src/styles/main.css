@@ -1659,3 +1659,126 @@ tr.correction {
 .text-bold {
   font-weight: 700;
 }
+
+/* Dodaj na końcu pliku src/styles/main.css */
+
+/* ==================== NAWIGACJA MOBILNA ==================== */
+
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-around;
+  width: 30px;
+  height: 25px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 10;
+}
+
+.nav-hamburger span {
+  width: 100%;
+  height: 3px;
+  background: var(--dark);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.nav-hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(7px, 7px);
+}
+
+.nav-hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.nav-hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+@media (max-width: 768px) {
+  .nav-hamburger {
+    display: flex;
+    margin-left: 10px;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 78px;
+    left: -100%;
+    width: 250px;
+    height: calc(100vh - 78px);
+    background: white;
+    flex-direction: column;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    z-index: 999;
+  }
+
+  .nav-menu.active {
+    left: 0;
+  }
+
+  .nav-btn {
+    width: 100%;
+    text-align: left;
+    margin-bottom: 10px;
+  }
+
+  .nav-container {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* ==================== POPRAWKI NAGŁÓWKA I NAWIGACJI ==================== */
+
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+}
+
+.app-nav {
+  position: fixed;
+  top: 78px;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.container {
+  margin-top: 140px;
+}
+
+@media (max-width: 768px) {
+  .container {
+    margin-top: 130px;
+  }
+}
+
+/* ==================== LOGI - NUMERACJA ==================== */
+
+.log-number {
+  font-weight: 700;
+  color: var(--primary);
+  margin-right: 10px;
+  font-size: 0.9rem;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.log-action {
+  flex: 1;
+}

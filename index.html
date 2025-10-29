@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -144,7 +145,12 @@
 
         <nav class="app-nav">
             <div class="nav-container">
-                <div class="nav-menu">
+                <button class="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="nav-menu" id="navMenu">
                     <button class="nav-btn active" onclick="showSection('summarySection')">📊 Podsumowanie</button>
                     <button class="nav-btn" onclick="showSection('envelopeSection')">📩 Koperta dnia</button>
                     <button class="nav-btn" onclick="showSection('sourcesSection')">💰 Przychody</button>
@@ -518,7 +524,7 @@
                     </div>
                     <button class="btn btn-danger mt-20" onclick="clearLogs()">🗑️ Wyczyść logi</button>
                     <div class="mt-20">
-                        <h3>📋 Ostatnie wpisy (maksymalnie 50)</h3>
+                        <h3>📋 Ostatnie wpisy</h3>
                         <div id="logsList" class="logs-list"></div>
                     </div>
                 </div>
@@ -554,6 +560,13 @@
                 fundsDisplay.textContent = availableFunds.textContent;
             }
         }, 1000);
+
+        function toggleMobileNav() {
+            const navMenu = document.getElementById('navMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            navMenu.classList.toggle('active');
+            hamburger.classList.toggle('active');
+        }
     </script>
 </body>
 </html>
