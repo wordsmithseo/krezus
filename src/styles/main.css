@@ -478,35 +478,66 @@ button:focus {
   display: none;
   flex-direction: column;
   justify-content: space-around;
-  width: 32px;
-  height: 28px;
-  background: transparent;
+  width: 36px;
+  height: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   cursor: pointer;
-  padding: 0;
-  z-index: 10;
+  padding: 6px;
+  z-index: 1001;
   margin-right: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.nav-hamburger:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .nav-hamburger span {
   width: 100%;
-  height: 4px;
-  background: var(--dark);
-  border-radius: 10px;
+  height: 3px;
+  background: white;
+  border-radius: 3px;
   transition: all 0.3s ease;
   transform-origin: center;
 }
 
+.nav-hamburger.active {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
 .nav-hamburger.active span:nth-child(1) {
-  transform: rotate(45deg) translate(8px, 8px);
+  transform: rotate(45deg) translate(6px, 6px);
 }
 
 .nav-hamburger.active span:nth-child(2) {
   opacity: 0;
+  transform: scale(0);
 }
 
 .nav-hamburger.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(8px, -8px);
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-nav-overlay.active {
+  display: block;
+  opacity: 1;
 }
 
 @media (max-width: 768px) {
@@ -516,17 +547,17 @@ button:focus {
 
   .nav-menu {
     position: fixed;
-    top: 78px;
+    top: 0;
     left: -100%;
     width: 280px;
-    height: calc(100vh - 78px);
+    height: 100vh;
     background: white;
     flex-direction: column;
-    padding: 20px;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    padding: 100px 20px 20px 20px;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
     transition: left 0.3s ease;
     overflow-y: auto;
-    z-index: 999;
+    z-index: 1000;
   }
 
   .nav-menu.active {
@@ -536,9 +567,20 @@ button:focus {
   .nav-btn {
     width: 100%;
     text-align: left;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
     font-size: 1.1rem;
     padding: 14px 20px;
+    border-radius: 10px;
+  }
+  
+  .nav-btn:hover {
+    background: var(--light-gray);
+    transform: translateX(5px);
+  }
+  
+  .nav-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
   }
 }
 

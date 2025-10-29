@@ -1242,8 +1242,9 @@ function renderSources() {
         </span>
       </td>
       <td class="actions">
-        ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-        ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>` : ''}
       </td>
     </tr>
   `}).join('');
@@ -1355,6 +1356,42 @@ window.editIncome = (incomeId) => {
       showErrorMessage('Nie udało się zaktualizować przychodu');
     }
   });
+};
+
+window.deleteIncome = async (incomeId) => {
+  const confirmed = await showPasswordModal(
+    'Usuwanie przychodu',
+    'Czy na pewno chcesz usunąć ten przychód? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
+  );
+  
+  if (!confirmed) return;
+
+  const incomes = getIncomes();
+  const income = incomes.find(i => i.id === incomeId);
+  const updated = incomes.filter(i => i.id !== incomeId);
+  
+  try {
+    await saveIncomes(updated);
+
+    await loadIncomes();
+    
+    if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
+      await updateDailyEnvelope();
+    }
+    
+    const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
+    
+    await log('INCOME_DELETE', {
+      amount: income?.amount,
+      source: income?.source,
+      budgetUser: budgetUserName
+    });
+    
+    showSuccessMessage('Przychód usunięty');
+  } catch (error) {
+    console.error('❌ Błąd usuwania przychodu:', error);
+    showErrorMessage('Nie udało się usunąć przychodu');
+  }
 };
 
 window.addCategory = async () => {

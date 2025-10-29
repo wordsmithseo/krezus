@@ -162,6 +162,8 @@
             </div>
         </nav>
 
+        <div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="closeMobileNav()"></div>
+
         <div class="container">
             <section id="summarySection" class="section active">
                 <div class="section-card">
@@ -564,8 +566,28 @@
         function toggleMobileNav() {
             const navMenu = document.getElementById('navMenu');
             const hamburger = document.querySelector('.nav-hamburger');
+            const overlay = document.getElementById('mobileNavOverlay');
+            
             navMenu.classList.toggle('active');
             hamburger.classList.toggle('active');
+            overlay.classList.toggle('active');
+            
+            if (navMenu.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function closeMobileNav() {
+            const navMenu = document.getElementById('navMenu');
+            const hamburger = document.querySelector('.nav-hamburger');
+            const overlay = document.getElementById('mobileNavOverlay');
+            
+            navMenu.classList.remove('active');
+            hamburger.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
         }
     </script>
 </body>
