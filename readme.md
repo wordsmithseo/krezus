@@ -23,12 +23,6 @@ Krezus to zaawansowane narzędzie do zarządzania finansami domowymi, stworzone 
 - Powiadomienia o anomaliach
 - Historia zmian i logi systemowe
 
-## 🌐 Demo aplikacji
-
-👉 [Zobacz Krezusa online](https://krezus.vercel.app)
-
----
-
 ## ⚠️ Ochrona prawna i ograniczenia użycia
 
 > **Uwaga:** Ten projekt jest objęty pełnymi prawami autorskimi. Kod źródłowy udostępniony wyłącznie w celach informacyjnych.  
