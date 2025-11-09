@@ -107,6 +107,11 @@ import {
   formatLogEntry
 } from './modules/logger.js';
 
+import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
+import { showConfirmModal } from './components/confirmModal.js';
+import { renderSummary } from './ui/renderSummary.js';
+import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentLogPage = 1;
@@ -1455,7 +1460,12 @@ window.deleteCategory = async (categoryId, categoryName) => {
     const updatedExpenses = expenses.filter(e => e.category !== categoryName);
     await saveExpenses(updatedExpenses);
   } else {
-    if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
+    const confirmed = await showConfirmModal(
+      'Usuwanie kategorii',
+      'Czy na pewno chcesz usunąć tę kategorię?',
+      { type: 'warning', confirmText: 'Usuń', cancelText: 'Anuluj' }
+    );
+    if (!confirmed) return;
   }
 
   const categories = getCategories();
@@ -2081,8 +2091,14 @@ window.handleRegister = async (e) => {
 };
 
 window.handleLogout = async () => {
-  if (!confirm('Czy na pewno chcesz się wylogować?')) return;
-  
+  const confirmed = await showConfirmModal(
+    'Wylogowanie',
+    'Czy na pewno chcesz się wylogować?',
+    { type: 'info', confirmText: 'Wyloguj', cancelText: 'Anuluj' }
+  );
+
+  if (!confirmed) return;
+
   try {
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);

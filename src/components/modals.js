@@ -1,5 +1,5 @@
 // src/components/modals.js
-import { 
+import {
   getCurrentUser,
   getDisplayName,
   updateDisplayName,
@@ -20,9 +20,9 @@ import {
   saveCategories
 } from '../modules/dataManager.js';
 
-import { 
-  showErrorMessage, 
-  showSuccessMessage 
+import {
+  showErrorMessage,
+  showSuccessMessage
 } from '../utils/errorHandler.js';
 
 import {
@@ -38,6 +38,9 @@ import {
   getWarsawDateString,
   getCurrentTimeString
 } from '../utils/dateHelpers.js';
+
+import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
+import { showConfirmModal, showPromptModal } from './confirmModal.js';
 
 let budgetUsersUnsubscribe = null;
 
@@ -111,25 +114,53 @@ async function loadBudgetUsers(uid) {
       return;
     }
 
-    const html = users.map(user => {
-      const isOwner = user.isOwner;
-      return `
-        <div class="budget-user-item">
-          <div class="budget-user-info">
-            <strong>${user.name}</strong>
-            ${isOwner ? '<span class="owner-badge">Właściciel</span>' : ''}
-          </div>
-          <div class="budget-user-actions">
-            ${!isOwner ? `
-              <button class="btn-icon" onclick="handleEditBudgetUser('${user.id}', '${user.name}')" title="Edytuj">✏️</button>
-              <button class="btn-icon" onclick="handleDeleteBudgetUser('${user.id}', '${user.name}')" title="Usuń">🗑️</button>
-            ` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
+    // Czyść kontener
+    container.innerHTML = '';
 
-    container.innerHTML = html;
+    users.forEach(user => {
+      const isOwner = user.isOwner;
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'budget-user-item';
+
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'budget-user-info';
+
+      const nameStrong = document.createElement('strong');
+      nameStrong.textContent = user.name;
+      infoDiv.appendChild(nameStrong);
+
+      if (isOwner) {
+        const ownerBadge = document.createElement('span');
+        ownerBadge.className = 'owner-badge';
+        ownerBadge.textContent = 'Właściciel';
+        infoDiv.appendChild(ownerBadge);
+      }
+
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'budget-user-actions';
+
+      if (!isOwner) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-icon';
+        editBtn.title = 'Edytuj';
+        editBtn.textContent = '✏️';
+        editBtn.addEventListener('click', () => window.handleEditBudgetUser(user.id, user.name));
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-icon';
+        deleteBtn.title = 'Usuń';
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.addEventListener('click', () => window.handleDeleteBudgetUser(user.id, user.name));
+
+        actionsDiv.appendChild(editBtn);
+        actionsDiv.appendChild(deleteBtn);
+      }
+
+      itemDiv.appendChild(infoDiv);
+      itemDiv.appendChild(actionsDiv);
+      container.appendChild(itemDiv);
+    });
   });
 }
 
@@ -158,20 +189,27 @@ window.handleAddBudgetUser = async (e) => {
 };
 
 window.handleEditBudgetUser = async (userId, currentName) => {
-  const newName = prompt('Podaj nową nazwę użytkownika:', currentName);
-  
+  const newName = await showPromptModal(
+    'Edycja użytkownika budżetu',
+    'Podaj nową nazwę użytkownika:',
+    currentName,
+    {
+      placeholder: 'Nazwa użytkownika',
+      validator: (value) => {
+        if (!value || value.trim().length < 2) {
+          return 'Nazwa musi mieć minimum 2 znaki';
+        }
+        return true;
+      }
+    }
+  );
+
   if (!newName || newName.trim() === '') return;
-  
+
   const trimmed = newName.trim();
-  
-  if (trimmed.length < 2) {
-    showErrorMessage('Nazwa musi mieć minimum 2 znaki');
-    return;
-  }
-  
   const user = getCurrentUser();
   if (!user) return;
-  
+
   try {
     await updateBudgetUser(user.uid, userId, { name: trimmed });
     showSuccessMessage('Użytkownik zaktualizowany');
@@ -213,8 +251,14 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
       showErrorMessage('Nie udało się usunąć użytkownika');
     }
   } else {
-    if (!confirm(`Czy na pewno chcesz usunąć użytkownika "${userName}"?`)) return;
-    
+    const confirmed = await showConfirmModal(
+      'Usuwanie użytkownika',
+      `Czy na pewno chcesz usunąć użytkownika "${userName}"?`,
+      { type: 'danger', confirmText: 'Usuń', cancelText: 'Anuluj' }
+    );
+
+    if (!confirmed) return;
+
     try {
       await deleteBudgetUser(user.uid, userId);
       showSuccessMessage('Użytkownik usunięty');
