@@ -1805,41 +1805,34 @@ window.addCorrection = async (e) => {
 };
 
 function loadSettings() {
-  const endDates = getEndDates();
   const savingGoal = getSavingGoal();
-  
-  const endDate1Input = document.getElementById('settingsEndDate1');
-  const endDate2Input = document.getElementById('settingsEndDate2');
+
   const savingGoalInput = document.getElementById('settingsSavingGoal');
-  
-  if (endDate1Input) endDate1Input.value = endDates.primary || '';
-  if (endDate2Input) endDate2Input.value = endDates.secondary || '';
+
+  // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie ładujemy ich z ustawień
   if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
 }
 
 window.saveSettings = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
-  const endDate1 = form.endDate1.value;
-  const endDate2 = form.endDate2.value || '';
   const savingGoal = parseFloat(form.savingGoal.value) || 0;
 
   try {
-    await saveEndDates(endDate1, endDate2);
+    // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie zapisujemy ich
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
-    
+
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
-    
+
     await log('SETTINGS_UPDATE', {
-      endDate1,
-      endDate2,
       savingGoal,
-      budgetUser: displayName
+      budgetUser: displayName,
+      note: 'Daty okresów są teraz automatyczne (z planowanych przychodów)'
     });
-    
+
     showSuccessMessage('Ustawienia zapisane');
   } catch (error) {
     console.error('❌ Błąd zapisywania ustawień:', error);

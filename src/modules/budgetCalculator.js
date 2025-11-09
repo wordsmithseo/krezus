@@ -72,15 +72,39 @@ export function getMonthExpenses() {
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
-export function calculateSpendingPeriods() {
-    const endDates = getEndDates();
-    const date1 = endDates.primary || endDates.date1 || '';
-    const date2 = endDates.secondary || endDates.date2 || '';
+/**
+ * Pobiera następne daty planowanych przychodów (automatyczne wyznaczanie okresów budżetowych)
+ * Zwraca maksymalnie 2 najbliższe daty planowanych wpływów
+ */
+function getNextPlannedIncomeDates() {
+    const incomes = getIncomes();
     const today = getWarsawDateString();
-    
+
+    // Filtruj planowane przychody od dzisiaj w przyszłość
+    const plannedIncomes = incomes
+        .filter(inc => inc.type === 'planned' && inc.date >= today)
+        .map(inc => inc.date)
+        .sort(); // Sortuj chronologicznie
+
+    // Usuń duplikaty
+    const uniqueDates = [...new Set(plannedIncomes)];
+
+    console.log('📅 Znalezione daty planowanych przychodów:', uniqueDates);
+
+    return {
+        date1: uniqueDates[0] || '',
+        date2: uniqueDates[1] || ''
+    };
+}
+
+export function calculateSpendingPeriods() {
+    // ZMIANA: Używamy automatycznych dat z planowanych przychodów zamiast manualnych z ustawień
+    const { date1, date2 } = getNextPlannedIncomeDates();
+    const today = getWarsawDateString();
+
     let daysLeft1 = 0;
     let daysLeft2 = 0;
-    
+
     if (date1 && date1.trim() !== '') {
         const d1 = parseDateStr(date1);
         const td = parseDateStr(today);
@@ -88,7 +112,7 @@ export function calculateSpendingPeriods() {
             daysLeft1 = Math.max(0, Math.floor((d1 - td) / (1000*60*60*24)));
         }
     }
-    
+
     if (date2 && date2.trim() !== '') {
         const d2 = parseDateStr(date2);
         const td = parseDateStr(today);
@@ -96,7 +120,14 @@ export function calculateSpendingPeriods() {
             daysLeft2 = Math.max(0, Math.floor((d2 - td) / (1000*60*60*24)));
         }
     }
-    
+
+    console.log('📊 Okresy budżetowe (automatyczne):', {
+        date1,
+        date2,
+        daysLeft1,
+        daysLeft2
+    });
+
     return { date1, date2, daysLeft1, daysLeft2 };
 }
 

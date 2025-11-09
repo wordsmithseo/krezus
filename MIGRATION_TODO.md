@@ -1,5 +1,18 @@
 # Migration TODO - Krezus Application
 
+## ✨ Ostatnie zmiany
+
+### 2025-11-09: Automatyczne okresy budżetowe (DONE ✅)
+- [x] Zmodyfikowano `calculateSpendingPeriods()` aby automatycznie wyznaczać daty z planowanych przychodów
+- [x] Dodano funkcję `getNextPlannedIncomeDates()` która znajduje 2 najbliższe daty planowanych wpływów
+- [x] Zaktualizowano UI w ustawieniach - usunięto manualne pola dat
+- [x] Zaktualizowano `saveSettings()` i `loadSettings()` - daty nie są już zapisywane/ładowane
+- [x] Dodano informacyjny box w ustawieniach wyjaśniający automatyczne daty
+
+**Jak to działa:**
+System automatycznie używa dat zaplanowanych przychodów (type='planned') jako okresów budżetowych.
+Kafelki w sekcji podsumowania pokazują teraz te automatyczne daty.
+
 ## 🎯 Priorytet 1: Bezpieczeństwo (DONE ✅)
 
 - [x] Zainstalować DOMPurify
