@@ -604,22 +604,22 @@ function renderCategoriesChart(breakdown) {
   const container = canvas.parentElement;
   const containerWidth = container.clientWidth;
   const isMobile = containerWidth < 768;
-  
+
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 700 : 450;
+  canvas.height = isMobile ? 600 : 450;
   canvas.style.display = 'block';
-  
+
   const ctx = canvas.getContext('2d');
-  
+
   const labels = breakdown.map(b => b.category);
   const data = breakdown.map(b => b.amount);
-  
+
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - (isMobile ? 250 : 150);
+  const chartHeight = canvas.height - (isMobile ? 180 : 150);
   const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 60 : 70, (chartWidth / breakdown.length) - (isMobile ? 15 : 25));
+  const barWidth = Math.min(isMobile ? 50 : 70, (chartWidth / breakdown.length) - (isMobile ? 20 : 25));
   const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - (isMobile ? 200 : 120);
+  const startY = canvas.height - (isMobile ? 140 : 120);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -681,17 +681,17 @@ function renderCategoriesChart(breakdown) {
     ctx.fillRect(x, y, barWidth, barHeight);
     
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 45 : 25));
+    ctx.translate(x + barWidth / 2, startY + (isMobile ? 30 : 25));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 20px Arial' : 'bold 14px Arial';
+    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
     ctx.textAlign = 'right';
-    
-    const maxChars = isMobile ? 8 : 15;
-    const displayText = item.category.length > maxChars 
-      ? item.category.substring(0, maxChars) + '...' 
+
+    const maxChars = isMobile ? 12 : 15;
+    const displayText = item.category.length > maxChars
+      ? item.category.substring(0, maxChars) + '...'
       : item.category;
-    
+
     ctx.fillText(displayText, 0, 0);
     ctx.restore();
   });
@@ -1247,9 +1247,11 @@ function renderSources() {
         </span>
       </td>
       <td class="actions">
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `
+           <button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>
+           <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
+           <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
+         ` : '<span class="no-actions">-</span>'}
       </td>
     </tr>
   `}).join('');

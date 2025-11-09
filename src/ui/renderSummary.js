@@ -136,19 +136,32 @@ export function renderSpendingDynamics() {
 function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
   const { limits } = limitsData;
 
+  console.log('🎨 renderDynamicLimits - DEBUG START');
+  console.log('📊 Liczba limitów do wyrenderowania:', limits.length);
+  console.log('📊 Limity:', limits);
+
   // Znajdź kontener na kafelki limitów - szukamy h3 z tekstem "📊 Limity dzienne"
   const allH3 = Array.from(document.querySelectorAll('h3'));
   const limitsContainer = allH3.find(h3 => h3.textContent.includes('Limity dzienne'));
-  if (!limitsContainer) return;
+
+  if (!limitsContainer) {
+    console.error('❌ Nie znaleziono kontenera limitów!');
+    return;
+  }
 
   const statsGrid = limitsContainer.nextElementSibling;
-  if (!statsGrid || !statsGrid.classList.contains('stats-grid')) return;
+  if (!statsGrid || !statsGrid.classList.contains('stats-grid')) {
+    console.error('❌ Nie znaleziono stats-grid!');
+    return;
+  }
 
+  console.log('✅ Znaleziono kontener, czyszczenie...');
   // Wyczyść istniejące kafelki
   statsGrid.innerHTML = '';
 
   // Jeśli brak okresów, pokaż komunikat
   if (limits.length === 0) {
+    console.log('⚠️ Brak okresów - pokazuję komunikat');
     const noPeriodsCard = document.createElement('div');
     noPeriodsCard.className = 'stat-card';
     noPeriodsCard.innerHTML = sanitizeHTML(`
@@ -161,8 +174,11 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     return;
   }
 
+  console.log('🔄 Renderowanie', limits.length, 'kafelków...');
   // Renderuj kafelek dla każdego okresu
   limits.forEach((limit, index) => {
+    console.log(`  📌 Kafelek ${index + 1}/${limits.length}: data=${limit.date}, dni=${limit.daysLeft}, limit=${limit.currentLimit.toFixed(2)}`);
+
     const periodTotal = plannedTotals.periodTotals[index];
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
@@ -205,5 +221,9 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     }
 
     statsGrid.appendChild(card);
+    console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);
   });
+
+  console.log('✅ Wszystkie kafelki wyrenderowane. Dzieci w stats-grid:', statsGrid.children.length);
+  console.log('🎨 renderDynamicLimits - DEBUG END');
 }

@@ -2,7 +2,7 @@
 import { getExpenses, getIncomes } from './dataManager.js';
 import { getWarsawDateString, formatDateLabel } from '../utils/dateHelpers.js';
 
-let currentPeriod = 7;
+let currentPeriod = 'all'; // Domyślnie "Wszystko"
 let customDateFrom = null;
 let customDateTo = null;
 let budgetUsersCache = [];
@@ -14,6 +14,10 @@ export function setBudgetUsersCache(users) {
 export function setAnalyticsPeriod(days) {
   if (days === 'custom') {
     currentPeriod = 'custom';
+  } else if (days === 'all') {
+    currentPeriod = 'all';
+    customDateFrom = null;
+    customDateTo = null;
   } else {
     currentPeriod = parseInt(days);
     customDateFrom = null;
@@ -30,33 +34,45 @@ export function setCustomDateRange(from, to) {
 function getPeriodDates() {
   const today = getWarsawDateString();
   let dateFrom, dateTo;
-  
+
   if (currentPeriod === 'custom') {
     dateFrom = customDateFrom || today;
     dateTo = customDateTo || today;
+  } else if (currentPeriod === 'all') {
+    // Wszystko - od początku czasu (rok 2000) do dzisiaj
+    dateFrom = '2000-01-01';
+    dateTo = today;
   } else {
     dateTo = today;
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - currentPeriod);
     dateFrom = getWarsawDateString(fromDate);
   }
-  
+
   return { dateFrom, dateTo };
 }
 
 function getPreviousPeriodDates() {
+  // Dla okresu "Wszystko" nie ma sensu porównywać z poprzednim okresem
+  if (currentPeriod === 'all') {
+    return {
+      dateFrom: '2000-01-01',
+      dateTo: '2000-01-01'
+    };
+  }
+
   const { dateFrom, dateTo } = getPeriodDates();
-  
+
   const from = new Date(dateFrom);
   const to = new Date(dateTo);
   const diff = Math.floor((to - from) / (1000 * 60 * 60 * 24));
-  
+
   const prevTo = new Date(from);
   prevTo.setDate(prevTo.getDate() - 1);
-  
+
   const prevFrom = new Date(prevTo);
   prevFrom.setDate(prevFrom.getDate() - diff);
-  
+
   return {
     dateFrom: getWarsawDateString(prevFrom),
     dateTo: getWarsawDateString(prevTo)
