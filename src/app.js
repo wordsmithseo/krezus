@@ -109,8 +109,8 @@ import {
 
 import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
 import { showConfirmModal } from './components/confirmModal.js';
-import { renderSummary } from './ui/renderSummary.js';
-import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
+// renderSummary i renderDailyEnvelope są zdefiniowane lokalnie w tym pliku
+// TODO: Przenieść je do ui/ gdy będą używane w wielu miejscach
 
 let currentExpensePage = 1;
 let currentIncomePage = 1;
@@ -257,12 +257,12 @@ function updateBudgetUsersSelects() {
   const currentIncomeValue = incomeUserSelect.value;
   
   const optionsHTML = '<option value="">Wybierz użytkownika</option>' +
-    budgetUsersCache.map(user =>
-      `<option value="${escapeHTML(user.id)}">${escapeHTML(user.name)}${user.isOwner ? ' (Właściciel)' : ''}</option>`
+    budgetUsersCache.map(user => 
+      `<option value="${user.id}">${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
     ).join('');
-
-  expenseUserSelect.innerHTML = sanitizeHTML(optionsHTML);
-  incomeUserSelect.innerHTML = sanitizeHTML(optionsHTML);
+  
+  expenseUserSelect.innerHTML = optionsHTML;
+  incomeUserSelect.innerHTML = optionsHTML;
   
   if (currentExpenseValue && budgetUsersCache.some(u => u.id === currentExpenseValue)) {
     expenseUserSelect.value = currentExpenseValue;
@@ -273,9 +273,9 @@ function updateBudgetUsersSelects() {
   }
 }
 
-function getBudgetUserName(userId, usersCache = budgetUsersCache) {
-  const user = usersCache.find(u => u.id === userId);
-  return user ? escapeHTML(user.name) : 'Nieznany';
+function getBudgetUserName(userId) {
+  const user = budgetUsersCache.find(u => u.id === userId);
+  return user ? user.name : 'Nieznany';
 }
 
 async function renderAll() {
@@ -804,7 +804,7 @@ function renderCategories() {
   const categories = getCategories();
   const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
-
+  
   if (categories.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak kategorii. Dodaj pierwszą kategorię!</p>';
     return;
@@ -818,47 +818,20 @@ function renderCategories() {
     return { ...cat, count, totalAmount };
   });
 
-  // Czyść kontener
-  container.innerHTML = '';
+  const html = categoryStats.map(cat => `
+    <div class="category-item">
+      <div>
+        <span class="category-name">${cat.name}</span>
+        <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-icon" onclick="window.editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">✏️</button>
+        <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">🗑️</button>
+      </div>
+    </div>
+  `).join('');
 
-  categoryStats.forEach(cat => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'category-item';
-
-    const contentDiv = document.createElement('div');
-
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'category-name';
-    nameSpan.textContent = cat.name;
-
-    const countSpan = document.createElement('span');
-    countSpan.className = 'category-count';
-    countSpan.textContent = `(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)`;
-
-    contentDiv.appendChild(nameSpan);
-    contentDiv.appendChild(countSpan);
-
-    const actionsDiv = document.createElement('div');
-    actionsDiv.style.display = 'flex';
-    actionsDiv.style.gap = '8px';
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn-icon';
-    editBtn.textContent = '✏️';
-    editBtn.addEventListener('click', () => window.editCategory(cat.id, cat.name));
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn-icon';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.addEventListener('click', () => window.deleteCategory(cat.id, cat.name));
-
-    actionsDiv.appendChild(editBtn);
-    actionsDiv.appendChild(deleteBtn);
-
-    itemDiv.appendChild(contentDiv);
-    itemDiv.appendChild(actionsDiv);
-    container.appendChild(itemDiv);
-  });
+  container.innerHTML = html;
 }
 
 function setupExpenseTypeToggle() {
@@ -1085,14 +1058,12 @@ window.selectCategory = (categoryName) => {
     const topDescriptions = getTopDescriptionsForCategory(categoryName, 5);
     const descriptionSuggestions = document.getElementById('descriptionSuggestions');
     if (descriptionSuggestions && topDescriptions.length > 0) {
-      descriptionSuggestions.innerHTML = '';
-      topDescriptions.forEach(desc => {
-        const item = document.createElement('div');
-        item.className = 'suggestion-item';
-        item.textContent = desc.name;
-        item.addEventListener('click', () => window.selectDescription(desc.name));
-        descriptionSuggestions.appendChild(item);
-      });
+      const html = topDescriptions.map(desc => `
+        <div class="suggestion-item" onclick="selectDescription('${desc.name.replace(/'/g, "\\'")}')">
+          ${desc.name}
+        </div>
+      `).join('');
+      descriptionSuggestions.innerHTML = html;
     }
   }
 };
@@ -1139,26 +1110,26 @@ function renderExpenses() {
 
   const html = paginatedExpenses.map(exp => `
     <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
-      <td>${escapeHTML(formatDateLabel(exp.date))}</td>
-      <td>${escapeHTML(exp.time || '-')}</td>
+      <td>${formatDateLabel(exp.date)}</td>
+      <td>${exp.time || '-'}</td>
       <td>${exp.amount.toFixed(2)} zł</td>
-      <td>${exp.userId ? getBudgetUserName(exp.userId, budgetUsersCache) : '-'}</td>
-      <td>${escapeHTML(exp.category || 'Brak')}</td>
-      <td>${escapeHTML(exp.description || '-')}</td>
+      <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
+      <td>${exp.category || 'Brak'}</td>
+      <td>${exp.description || '-'}</td>
       <td>
         <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
         </span>
       </td>
       <td class="actions">
-        ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${escapeHTML(exp.id)}')" title="Zrealizuj teraz">✅</button>` : ''}
-        <button class="btn-icon" onclick="window.editExpense('${escapeHTML(exp.id)}')" title="Edytuj">✏️</button>
-        <button class="btn-icon" onclick="window.deleteExpense('${escapeHTML(exp.id)}')" title="Usuń">🗑️</button>
+        ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${exp.id}')" title="Zrealizuj teraz">✅</button>` : ''}
+        <button class="btn-icon" onclick="window.editExpense('${exp.id}')" title="Edytuj">✏️</button>
+        <button class="btn-icon" onclick="window.deleteExpense('${exp.id}')" title="Usuń">🗑️</button>
       </td>
     </tr>
   `).join('');
 
-  tbody.innerHTML = sanitizeHTML(html);
+  tbody.innerHTML = html;
   renderExpensesPagination(totalExpenses);
   updatePaginationVisibility('expensesTableBody', totalExpenses);
 }
@@ -1262,28 +1233,28 @@ function renderSources() {
   const html = paginatedIncomes.map(inc => {
     const isCorrection = inc.source === 'KOREKTA';
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
-
+    
     return `
     <tr class="${rowClass}">
-      <td>${escapeHTML(formatDateLabel(inc.date))}</td>
-      <td>${escapeHTML(inc.time || '-')}</td>
+      <td>${formatDateLabel(inc.date)}</td>
+      <td>${inc.time || '-'}</td>
       <td>${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)} zł</td>
       <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
-      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${escapeHTML(inc.correctionReason || '')}</small>` : escapeHTML(inc.source || 'Brak')}</td>
+      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (inc.source || 'Brak')}</td>
       <td>
         <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
         </span>
       </td>
       <td class="actions">
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${escapeHTML(inc.id)}')" title="Zrealizuj teraz">✅</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${escapeHTML(inc.id)}')" title="Edytuj">✏️</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.deleteIncome('${escapeHTML(inc.id)}')" title="Usuń">🗑️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>` : ''}
       </td>
     </tr>
   `}).join('');
 
-  tbody.innerHTML = sanitizeHTML(html);
+  tbody.innerHTML = html;
   renderIncomesPagination(totalIncomes);
   updatePaginationVisibility('sourcesTableBody', totalIncomes);
 }
