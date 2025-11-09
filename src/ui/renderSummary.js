@@ -17,9 +17,6 @@ import { sanitizeHTML } from '../utils/sanitizer.js';
 
 export function renderSummary() {
   const { available, savingGoal } = calculateAvailableFunds();
-  const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
-  const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
-  const { futureIncome1, futureExpense1, futureIncome2, futureExpense2 } = calculatePlannedTransactionsTotals();
 
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
@@ -60,57 +57,16 @@ export function renderSummary() {
   const monthExpensesEl = document.getElementById('monthExpenses');
   if (monthExpensesEl) monthExpensesEl.textContent = monthExpenses.toFixed(2);
 
-  // Limity
-  const currentLimit1El = document.getElementById('currentLimit1');
-  const currentDaysLeft1El = document.getElementById('currentDaysLeft1');
-  const currentLimitDate1El = document.getElementById('currentLimitDate1');
+  // NOWE: Renderuj wszystkie okresy dynamicznie
+  const limitsData = calculateCurrentLimits();
+  const plannedTotals = calculatePlannedTransactionsTotals();
 
-  if (currentLimit1El) currentLimit1El.textContent = currentLimit1.toFixed(2);
-  if (currentDaysLeft1El) currentDaysLeft1El.textContent = daysLeft1;
-  if (currentLimitDate1El) currentLimitDate1El.textContent = date1 ? formatDateLabel(date1) : '-';
+  renderDynamicLimits(limitsData, plannedTotals, available, savingGoal);
 
-  // Prognoza dla pierwszego limitu
-  const projectedLimit1 = daysLeft1 > 0 ? (available - savingGoal + futureIncome1 - futureExpense1) / daysLeft1 : 0;
-  const prognosis1El = document.getElementById('prognosis1');
-  if (prognosis1El) {
-    if (futureIncome1 > 0 || futureExpense1 > 0) {
-      prognosis1El.textContent = `z planowanymi: ${projectedLimit1.toFixed(2)} zł/dzień`;
-      prognosis1El.style.display = 'block';
-    } else {
-      prognosis1El.style.display = 'none';
-    }
-  }
-
-  // Drugi limit (opcjonalny)
-  const currentLimit2Section = document.getElementById('currentLimit2Section');
-  if (date2 && date2.trim() !== '') {
-    if (currentLimit2Section) currentLimit2Section.style.display = 'block';
-
-    const currentLimit2El = document.getElementById('currentLimit2');
-    const currentDaysLeft2El = document.getElementById('currentDaysLeft2');
-    const currentLimitDate2El = document.getElementById('currentLimitDate2');
-
-    if (currentLimit2El) currentLimit2El.textContent = currentLimit2.toFixed(2);
-    if (currentDaysLeft2El) currentDaysLeft2El.textContent = daysLeft2;
-    if (currentLimitDate2El) currentLimitDate2El.textContent = formatDateLabel(date2);
-
-    const projectedLimit2 = daysLeft2 > 0 ? (available - savingGoal + futureIncome2 - futureExpense2) / daysLeft2 : 0;
-    const prognosis2El = document.getElementById('prognosis2');
-    if (prognosis2El) {
-      if (futureIncome2 > 0 || futureExpense2 > 0) {
-        prognosis2El.textContent = `z planowanymi: ${projectedLimit2.toFixed(2)} zł/dzień`;
-        prognosis2El.style.display = 'block';
-      } else {
-        prognosis2El.style.display = 'none';
-      }
-    }
-  } else {
-    if (currentLimit2Section) currentLimit2Section.style.display = 'none';
-  }
-
-  // Planowane transakcje
-  const displayIncome = (date2 && date2.trim() !== '') ? futureIncome2 : futureIncome1;
-  const displayExpense = (date2 && date2.trim() !== '') ? futureExpense2 : futureExpense1;
+  // Planowane transakcje - używamy ostatniego okresu (najdalszego)
+  const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
+  const displayIncome = lastPeriod?.futureIncome || 0;
+  const displayExpense = lastPeriod?.futureExpense || 0;
 
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
@@ -172,4 +128,82 @@ export function renderSpendingDynamics() {
   `;
 
   container.innerHTML = sanitizeHTML(html);
+}
+
+/**
+ * Renderuje dynamicznie wszystkie kafelki limitów dla okresów budżetowych
+ */
+function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
+  const { limits } = limitsData;
+
+  // Znajdź kontener na kafelki limitów - szukamy h3 z tekstem "📊 Limity dzienne"
+  const allH3 = Array.from(document.querySelectorAll('h3'));
+  const limitsContainer = allH3.find(h3 => h3.textContent.includes('Limity dzienne'));
+  if (!limitsContainer) return;
+
+  const statsGrid = limitsContainer.nextElementSibling;
+  if (!statsGrid || !statsGrid.classList.contains('stats-grid')) return;
+
+  // Wyczyść istniejące kafelki
+  statsGrid.innerHTML = '';
+
+  // Jeśli brak okresów, pokaż komunikat
+  if (limits.length === 0) {
+    const noPeriodsCard = document.createElement('div');
+    noPeriodsCard.className = 'stat-card';
+    noPeriodsCard.innerHTML = sanitizeHTML(`
+      <div class="stat-label">Brak planowanych przychodów</div>
+      <p style="margin-top: 10px; opacity: 0.8; font-size: 0.9rem;">
+        Dodaj przychody z typem "Zaplanowany", aby zobaczyć automatyczne okresy budżetowe.
+      </p>
+    `);
+    statsGrid.appendChild(noPeriodsCard);
+    return;
+  }
+
+  // Renderuj kafelek dla każdego okresu
+  limits.forEach((limit, index) => {
+    const periodTotal = plannedTotals.periodTotals[index];
+    const futureIncome = periodTotal?.futureIncome || 0;
+    const futureExpense = periodTotal?.futureExpense || 0;
+
+    const projectedLimit = limit.daysLeft > 0
+      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
+      : 0;
+
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'stat-label';
+    labelDiv.textContent = `Limit dzienny (do ${formatDateLabel(limit.date)})`;
+
+    const valueDiv = document.createElement('div');
+    valueDiv.className = 'stat-value';
+    const valueSpan = document.createElement('span');
+    valueSpan.textContent = limit.currentLimit.toFixed(2);
+    const unitSpan = document.createElement('span');
+    unitSpan.className = 'stat-unit';
+    unitSpan.textContent = 'zł/dzień';
+    valueDiv.appendChild(valueSpan);
+    valueDiv.appendChild(unitSpan);
+
+    const daysDiv = document.createElement('div');
+    daysDiv.className = 'stat-label mt-10';
+    daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
+
+    card.appendChild(labelDiv);
+    card.appendChild(valueDiv);
+    card.appendChild(daysDiv);
+
+    // Dodaj prognozę jeśli są planowane transakcje
+    if (futureIncome > 0 || futureExpense > 0) {
+      const prognosisDiv = document.createElement('div');
+      prognosisDiv.className = 'prognosis-text';
+      prognosisDiv.textContent = `z planowanymi: ${projectedLimit.toFixed(2)} zł/dzień`;
+      card.appendChild(prognosisDiv);
+    }
+
+    statsGrid.appendChild(card);
+  });
 }

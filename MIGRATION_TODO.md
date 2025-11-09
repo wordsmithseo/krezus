@@ -2,16 +2,21 @@
 
 ## ✨ Ostatnie zmiany
 
-### 2025-11-09: Automatyczne okresy budżetowe (DONE ✅)
-- [x] Zmodyfikowano `calculateSpendingPeriods()` aby automatycznie wyznaczać daty z planowanych przychodów
-- [x] Dodano funkcję `getNextPlannedIncomeDates()` która znajduje 2 najbliższe daty planowanych wpływów
+### 2025-11-09: Nieograniczona liczba okresów budżetowych (DONE ✅)
+- [x] Zmodyfikowano `calculateSpendingPeriods()` aby zwracało WSZYSTKIE daty planowanych przychodów (bez limitu 2)
+- [x] Dodano funkcję `getNextPlannedIncomeDates()` która znajduje WSZYSTKIE daty planowanych wpływów
+- [x] Zaktualizowano `calculateCurrentLimits()` aby zwracało limity dla wszystkich okresów
+- [x] Zaktualizowano `calculatePlannedTransactionsTotals()` aby obliczało sumy dla wszystkich okresów
+- [x] Dodano funkcję `renderDynamicLimits()` która dynamicznie renderuje kafelki dla wszystkich okresów
 - [x] Zaktualizowano UI w ustawieniach - usunięto manualne pola dat
 - [x] Zaktualizowano `saveSettings()` i `loadSettings()` - daty nie są już zapisywane/ładowane
 - [x] Dodano informacyjny box w ustawieniach wyjaśniający automatyczne daty
+- [x] Zachowano backward compatibility - stare funkcje nadal zwracają date1/date2 dla zgodności
 
 **Jak to działa:**
-System automatycznie używa dat zaplanowanych przychodów (type='planned') jako okresów budżetowych.
-Kafelki w sekcji podsumowania pokazują teraz te automatyczne daty.
+System automatycznie używa WSZYSTKICH dat zaplanowanych przychodów (type='planned') jako okresów budżetowych.
+Kafelki w sekcji podsumowania pokazują się dynamicznie - tyle kafelków ile jest planowanych przychodów.
+Każdy kafelek pokazuje limit dzienny do danej daty wpływu.
 
 ## 🎯 Priorytet 1: Bezpieczeństwo (DONE ✅)
 
