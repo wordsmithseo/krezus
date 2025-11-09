@@ -791,6 +791,13 @@ tr.correction {
   justify-content: flex-end;
 }
 
+.no-actions {
+  color: var(--gray);
+  opacity: 0.5;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* ==================== PAGINACJA ==================== */
 
 .pagination-container {

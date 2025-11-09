@@ -1,6 +1,6 @@
 // src/ui/renderDailyEnvelope.js
+import { getDailyEnvelope } from '../modules/dataManager.js';
 import {
-  getDailyEnvelope,
   calculateSpendingGauge,
   getGlobalMedian30d,
   getEnvelopeCalculationInfo
