@@ -1,5 +1,5 @@
 // src/components/confirmModal.js
-import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
+import { escapeHTML } from '../utils/sanitizer.js';
 
 /**
  * Pokazuje modal potwierdzenia (zamiana dla confirm())
@@ -40,21 +40,22 @@ export function showConfirmModal(title, message, options = {}) {
     };
 
     const html = `
-      <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header" style="background-color: ${typeColors[type]}; color: white;">
-          <h2>${typeIcons[type]} ${escapeHTML(title)}</h2>
+      <div class="modal-content" style="max-width: 500px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; overflow: hidden;">
+        <div class="modal-header" style="background-color: rgba(255, 255, 255, 0.95); color: ${typeColors[type]}; padding: 25px; margin: 0; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">${typeIcons[type]} ${escapeHTML(title)}</h2>
         </div>
-        <div class="modal-body">
-          <p style="font-size: 1.1rem; line-height: 1.6;">${escapeHTML(message)}</p>
+        <div class="modal-body" style="background: rgba(255, 255, 255, 0.95); padding: 25px;">
+          <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; color: #2d3748;">${escapeHTML(message)}</p>
         </div>
-        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 20px;">
-          <button class="btn btn-secondary" data-action="cancel">${escapeHTML(cancelText)}</button>
-          <button class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}" data-action="confirm">${escapeHTML(confirmText)}</button>
+        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 20px 25px; background: rgba(255, 255, 255, 0.95); border-radius: 0 0 12px 12px;">
+          <button class="btn btn-secondary" data-action="cancel" style="padding: 10px 20px; font-size: 1rem;">${escapeHTML(cancelText)}</button>
+          <button class="btn ${type === 'danger' ? 'btn-danger' : 'btn-primary'}" data-action="confirm" style="padding: 10px 20px; font-size: 1rem;">${escapeHTML(confirmText)}</button>
         </div>
       </div>
     `;
 
-    modal.innerHTML = sanitizeHTML(html);
+    // Nie sanityzujemy - HTML jest generowany wewnętrznie, a dane użytkownika są już escaped
+    modal.innerHTML = html;
     document.body.appendChild(modal);
 
     const confirmBtn = modal.querySelector('[data-action="confirm"]');
@@ -123,30 +124,31 @@ export function showPromptModal(title, message, defaultValue = '', options = {})
     modal.style.zIndex = '10001';
 
     const html = `
-      <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header">
-          <h2>${escapeHTML(title)}</h2>
+      <div class="modal-content" style="max-width: 500px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; overflow: hidden;">
+        <div class="modal-header" style="background-color: rgba(255, 255, 255, 0.95); color: #667eea; padding: 25px; margin: 0; border-bottom: none; border-radius: 12px 12px 0 0;">
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">${escapeHTML(title)}</h2>
         </div>
-        <div class="modal-body">
-          <p style="margin-bottom: 15px;">${escapeHTML(message)}</p>
+        <div class="modal-body" style="background: rgba(255, 255, 255, 0.95); padding: 25px;">
+          <p style="margin-bottom: 15px; color: #2d3748; font-size: 1rem;">${escapeHTML(message)}</p>
           <input
             type="${inputType}"
             class="form-control"
             id="promptInput"
             value="${escapeHTML(defaultValue)}"
             placeholder="${escapeHTML(placeholder)}"
-            style="width: 100%; padding: 10px; font-size: 1rem;"
+            style="width: 100%; padding: 12px; font-size: 1rem; border: 2px solid #e2e8f0; border-radius: 8px; transition: border-color 0.2s;"
           />
-          <div id="promptError" style="color: #e74c3c; margin-top: 10px; display: none;"></div>
+          <div id="promptError" style="color: #e74c3c; margin-top: 10px; display: none; font-size: 0.9rem;"></div>
         </div>
-        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 20px;">
-          <button class="btn btn-secondary" data-action="cancel">${escapeHTML(cancelText)}</button>
-          <button class="btn btn-primary" data-action="confirm">${escapeHTML(confirmText)}</button>
+        <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; padding: 20px 25px; background: rgba(255, 255, 255, 0.95); border-radius: 0 0 12px 12px;">
+          <button class="btn btn-secondary" data-action="cancel" style="padding: 10px 20px; font-size: 1rem;">${escapeHTML(cancelText)}</button>
+          <button class="btn btn-primary" data-action="confirm" style="padding: 10px 20px; font-size: 1rem;">${escapeHTML(confirmText)}</button>
         </div>
       </div>
     `;
 
-    modal.innerHTML = sanitizeHTML(html);
+    // Nie sanityzujemy - HTML jest generowany wewnętrznie, a dane użytkownika są już escaped
+    modal.innerHTML = html;
     document.body.appendChild(modal);
 
     const input = modal.querySelector('#promptInput');
