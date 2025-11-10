@@ -183,7 +183,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
-    // Oblicz limit z planowanymi wpływami (realny limit na ten okres)
+    // Pełny wzór: (obecne - cel + wpływy - wydatki) / dni
     const projectedLimit = limit.daysLeft > 0
       ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
       : 0;
@@ -225,25 +225,26 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     card.appendChild(daysDiv);
 
     // Pokaż szczegóły obliczeń
-    if (futureIncome > 0 || futureExpense > 0) {
-      const detailsDiv = document.createElement('div');
-      detailsDiv.className = 'prognosis-text';
-      detailsDiv.style.fontSize = '0.75rem';
-      detailsDiv.style.marginTop = '6px';
-      detailsDiv.style.opacity = '0.7';
+    const detailsDiv = document.createElement('div');
+    detailsDiv.className = 'prognosis-text';
+    detailsDiv.style.fontSize = '0.75rem';
+    detailsDiv.style.marginTop = '6px';
+    detailsDiv.style.opacity = '0.7';
 
-      const parts = [];
-      parts.push(`Obecne: ${available.toFixed(2)} zł`);
-      if (futureIncome > 0) {
-        parts.push(`Wpływy: +${futureIncome.toFixed(2)} zł`);
-      }
-      if (futureExpense > 0) {
-        parts.push(`Wydatki: -${futureExpense.toFixed(2)} zł`);
-      }
+    const availableAfterGoal = available - savingGoal;
+    const totalFunds = availableAfterGoal + futureIncome - futureExpense;
 
-      detailsDiv.textContent = parts.join(' • ');
-      card.appendChild(detailsDiv);
+    // Buduj formułę pokazującą obliczenie
+    const parts = [`${availableAfterGoal.toFixed(2)} zł`];
+    if (futureIncome > 0) {
+      parts.push(`+ ${futureIncome.toFixed(2)} zł`);
     }
+    if (futureExpense > 0) {
+      parts.push(`- ${futureExpense.toFixed(2)} zł`);
+    }
+
+    detailsDiv.textContent = `${parts.join(' ')} = ${totalFunds.toFixed(2)} zł / ${limit.daysLeft} dni`;
+    card.appendChild(detailsDiv);
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);
