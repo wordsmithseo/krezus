@@ -6,17 +6,21 @@ import { getIncomes, getExpenses, getEndDates, getSavingGoal, getEnvelopePeriod,
 const LIMITS_CACHE_KEY = 'krezus_daily_limits_cache';
 
 /**
- * Zapisuje limity w cache z timestamp
+ * Zapisuje limity w cache z timestamp ustawionym na północ
  */
 function saveLimitsCache(limits, plannedTotals) {
+    const today = getWarsawDateString();
+    // Ustaw timestamp na północ dzisiejszego dnia (00:00:00)
+    const midnightTimestamp = new Date(today + 'T00:00:00+01:00').toISOString();
+
     const cache = {
         limits,
         plannedTotals,
-        calculatedAt: new Date().toISOString(),
-        calculatedDate: getWarsawDateString()
+        calculatedAt: midnightTimestamp,
+        calculatedDate: today
     };
     localStorage.setItem(LIMITS_CACHE_KEY, JSON.stringify(cache));
-    console.log('💾 Zapisano cache limitów:', cache.calculatedAt);
+    console.log('💾 Zapisano cache limitów z datą północy:', cache.calculatedAt);
 }
 
 /**
@@ -398,25 +402,51 @@ export function getGlobalMedian30d() {
 export async function updateDailyEnvelope(forDate = null) {
     const targetDate = forDate || getWarsawDateString();
     console.log('📅 Aktualizowanie inteligentnej koperty dla daty:', targetDate);
-    
-    const incomes = getIncomes();
+
     const expenses = getExpenses();
-    
+
+    // Oblicz dzisiejsze wydatki
+    const todayExpenses = expenses.filter(exp =>
+        exp.date === targetDate && exp.type === 'normal'
+    );
+    const todayExpensesSum = todayExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+    const existing = getDailyEnvelope();
+
+    // Sprawdź czy koperta została już dziś przeliczona
+    if (existing && existing.date === targetDate && existing.calculatedDate === targetDate) {
+        console.log('✅ Koperta była już dziś przeliczona - tylko aktualizuję wydatki');
+        console.log('💸 Wydano dzisiaj:', todayExpensesSum.toFixed(2), 'PLN');
+
+        const updatedEnvelope = {
+            ...existing,
+            spent: todayExpensesSum
+        };
+
+        await saveDailyEnvelope(targetDate, updatedEnvelope);
+        return updatedEnvelope;
+    }
+
+    // PEŁNE PRZELICZENIE - tylko raz dziennie
+    console.log('🔄 Pełne przeliczenie koperty dnia');
+
+    const incomes = getIncomes();
+
     let sumIncomeBeforeToday = 0;
     let sumExpenseBeforeToday = 0;
-    
+
     incomes.forEach(inc => {
         if (inc.type === 'normal' && inc.date < targetDate) {
             sumIncomeBeforeToday += inc.amount || 0;
         }
     });
-    
+
     expenses.forEach(exp => {
         if (exp.type === 'normal' && exp.date < targetDate) {
             sumExpenseBeforeToday += exp.amount || 0;
         }
     });
-    
+
     const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
     const savingGoal = getSavingGoal();
     const toSpendBeforeToday = availableBeforeToday - savingGoal;
@@ -429,11 +459,6 @@ export async function updateDailyEnvelope(forDate = null) {
         inc.date === targetDate && inc.type === 'normal'
     );
     const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
-
-    const todayExpenses = expenses.filter(exp =>
-        exp.date === targetDate && exp.type === 'normal'
-    );
-    const todayExpensesSum = todayExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
     console.log('🧠 === INTELIGENTNA KOPERTA DNIA V5 ===');
     console.log('💰 Dostępne środki PRZED dzisiejszym dniem:', availableBeforeToday.toFixed(2), 'PLN');
@@ -501,8 +526,6 @@ export async function updateDailyEnvelope(forDate = null) {
             console.log('💰 Kwota koperty:', smartLimit.toFixed(2), 'zł');
         }
     }
-    
-    const existing = getDailyEnvelope();
 
     // Informacja o okresie do zapisu
     const periodInfo = selectedPeriod ? {
@@ -511,29 +534,10 @@ export async function updateDailyEnvelope(forDate = null) {
         daysLeft: selectedPeriod.daysLeft
     } : null;
 
-    if (existing && existing.date === targetDate) {
-        console.log('ℹ️ Koperta już istnieje dla tego dnia - aktualizacja');
-
-        const updatedEnvelope = {
-            ...existing,
-            baseAmount: smartLimit,
-            additionalFunds: 0,
-            totalAmount: smartLimit,
-            spent: todayExpensesSum,
-            period: periodInfo
-        };
-
-        console.log('🔄 Aktualizacja koperty:', {
-            bazowa: smartLimit.toFixed(2),
-            wydano: todayExpensesSum.toFixed(2),
-            okres: periodInfo?.name
-        });
-
-        await saveDailyEnvelope(targetDate, updatedEnvelope);
-        return updatedEnvelope;
-    }
-
     console.log('✅ KOŃCOWA KOPERTA DNIA:', smartLimit.toFixed(2), 'zł');
+
+    // Ustaw timestamp na północ dzisiejszego dnia (00:00:00)
+    const midnightTimestamp = new Date(targetDate + 'T00:00:00+01:00').toISOString();
 
     const envelope = {
         date: targetDate,
@@ -541,10 +545,12 @@ export async function updateDailyEnvelope(forDate = null) {
         additionalFunds: 0,
         totalAmount: smartLimit,
         spent: todayExpensesSum,
-        period: periodInfo
+        period: periodInfo,
+        calculatedDate: targetDate,
+        calculatedAt: midnightTimestamp
     };
 
-    console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
+    console.log('✅ Zapisywanie inteligentnej koperty z datą północy:', envelope);
     await saveDailyEnvelope(targetDate, envelope);
 
     return envelope;

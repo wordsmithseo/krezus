@@ -59,7 +59,8 @@ import {
   getMonthExpenses,
   calculatePlannedTransactionsTotals,
   getWeekDateRange,
-  getMonthName
+  getMonthName,
+  clearLimitsCache
 } from './modules/budgetCalculator.js';
 
 import {
@@ -111,6 +112,8 @@ import {
   formatLogEntry
 } from './modules/logger.js';
 
+import { exportBudgetDataForLLM } from './utils/llmExport.js';
+
 import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
 import { showConfirmModal } from './components/confirmModal.js';
 
@@ -126,6 +129,7 @@ let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
+let mergingCategoryId = null;  // ID kategorii która ma być scalona
 
 const APP_VERSION = '1.9.8';
 const LOGS_PER_PAGE = 20;
@@ -136,6 +140,45 @@ initGlobalErrorHandler();
 window.onDisplayNameUpdate = (newName) => {
   updateDisplayNameInUI(newName);
 };
+
+// === SPRAWDZANIE PÓŁNOCY I PRZELICZANIE LIMITÓW/KOPERTY ===
+let lastKnownDate = getWarsawDateString();
+let midnightCheckInterval = null;
+
+function startMidnightChecker() {
+  // Zatrzymaj poprzedni interval jeśli istnieje
+  if (midnightCheckInterval) {
+    clearInterval(midnightCheckInterval);
+  }
+
+  console.log('🌙 Uruchomiono sprawdzanie północy');
+
+  // Sprawdzaj co minutę czy nastąpił nowy dzień
+  midnightCheckInterval = setInterval(async () => {
+    const currentDate = getWarsawDateString();
+
+    if (currentDate !== lastKnownDate) {
+      console.log('🌅 Wykryto nowy dzień!', lastKnownDate, '→', currentDate);
+      lastKnownDate = currentDate;
+
+      // Wyczyść cache limitów
+      clearLimitsCache();
+      console.log('🧹 Wyczyszczono cache limitów');
+
+      // Przelicz kopertę dnia
+      try {
+        await updateDailyEnvelope();
+        console.log('📩 Przeliczono kopertę dnia dla nowego dnia');
+
+        // Odśwież interfejs
+        renderSummary();
+        renderDailyEnvelope();
+      } catch (error) {
+        console.error('❌ Błąd przeliczania koperty po północy:', error);
+      }
+    }
+  }, 60000); // Co 60 sekund (1 minuta)
+}
 
 function hideLoader() {
   const loader = document.getElementById('appLoader');
@@ -196,7 +239,10 @@ async function loadAllData() {
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     await renderAll();
-    
+
+    // Uruchom sprawdzanie nowego dnia
+    startMidnightChecker();
+
     await subscribeToRealtimeUpdates(userId, {
       onCategoriesChange: () => {
         renderCategories();
@@ -762,7 +808,7 @@ function renderCategories() {
   const categories = getCategories();
   const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
-  
+
   if (categories.length === 0) {
     container.innerHTML = '<p class="empty-state">Brak kategorii. Dodaj pierwszą kategorię!</p>';
     return;
@@ -776,20 +822,53 @@ function renderCategories() {
     return { ...cat, count, totalAmount };
   });
 
-  const html = categoryStats.map(cat => `
-    <div class="category-item">
-      <div>
-        <span class="category-name">${cat.name}</span>
-        <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
-      </div>
-      <div style="display: flex; gap: 8px;">
-        <button class="btn-icon" onclick="window.editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">✏️</button>
-        <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+  // Jeśli jesteśmy w trybie scalania, pokaż komunikat i checkboxy
+  let headerHtml = '';
+  if (mergingCategoryId) {
+    const mergingCat = categoryStats.find(c => c.id === mergingCategoryId);
+    if (mergingCat) {
+      headerHtml = `
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+          <strong>🔀 Tryb scalania kategorii</strong>
+          <p style="margin: 8px 0;">Wybierz kategorię docelową, do której chcesz scalić kategorię <strong>${mergingCat.name}</strong>.</p>
+          <button class="btn btn-secondary" onclick="window.cancelMergeCategory()" style="margin-top: 8px;">Anuluj scalanie</button>
+        </div>
+      `;
+    }
+  }
 
-  container.innerHTML = html;
+  const html = categoryStats.map(cat => {
+    const isMergingThis = mergingCategoryId === cat.id;
+    const showCheckbox = mergingCategoryId && !isMergingThis;
+
+    return `
+      <div class="category-item" style="${isMergingThis ? 'background: #fff3cd;' : ''}">
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+          ${showCheckbox ? `
+            <input
+              type="checkbox"
+              id="merge-target-${cat.id}"
+              onchange="window.selectMergeTarget('${cat.id}')"
+              style="width: 20px; height: 20px; cursor: pointer;"
+            />
+          ` : ''}
+          <div>
+            <span class="category-name">${cat.name}</span>
+            <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          ${!mergingCategoryId ? `
+            <button class="btn-icon" onclick="window.startMergeCategory('${cat.id}')" title="Scal kategorię">🔀</button>
+            <button class="btn-icon" onclick="window.editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">✏️</button>
+            <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">🗑️</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = headerHtml + html;
 }
 
 function setupExpenseTypeToggle() {
@@ -1066,26 +1145,30 @@ function renderExpenses() {
     return;
   }
 
-  const html = paginatedExpenses.map(exp => `
-    <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
-      <td>${formatDateLabel(exp.date)}</td>
-      <td>${exp.time || '-'}</td>
-      <td>${exp.amount.toFixed(2)} zł</td>
-      <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
-      <td>${exp.category || 'Brak'}</td>
-      <td>${exp.description || '-'}</td>
-      <td>
-        <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
-          ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
-        </span>
-      </td>
-      <td class="actions">
-        ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${exp.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-        <button class="btn-icon" onclick="window.editExpense('${exp.id}')" title="Edytuj">✏️</button>
-        <button class="btn-icon" onclick="window.deleteExpense('${exp.id}')" title="Usuń">🗑️</button>
-      </td>
-    </tr>
-  `).join('');
+  const html = paginatedExpenses.map(exp => {
+    const mergedInfo = exp.mergedFrom ? `<br><small style="color: #666; font-style: italic;">🔀 przeniesione z "${exp.mergedFrom}"</small>` : '';
+
+    return `
+      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
+        <td>${formatDateLabel(exp.date)}</td>
+        <td>${exp.time || '-'}</td>
+        <td>${exp.amount.toFixed(2)} zł</td>
+        <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
+        <td>${exp.category || 'Brak'}${mergedInfo}</td>
+        <td>${exp.description || '-'}</td>
+        <td>
+          <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
+            ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
+          </span>
+        </td>
+        <td class="actions">
+          ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${exp.id}')" title="Zrealizuj teraz">✅</button>` : ''}
+          <button class="btn-icon" onclick="window.editExpense('${exp.id}')" title="Edytuj">✏️</button>
+          <button class="btn-icon" onclick="window.deleteExpense('${exp.id}')" title="Usuń">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   tbody.innerHTML = html;
   renderExpensesPagination(totalExpenses);
@@ -1447,6 +1530,84 @@ window.deleteCategory = async (categoryId, categoryName) => {
   } catch (error) {
     console.error('❌ Błąd usuwania kategorii:', error);
     showErrorMessage('Nie udało się usunąć kategorii');
+  }
+};
+
+// Rozpocznij proces scalania kategorii
+window.startMergeCategory = (categoryId) => {
+  mergingCategoryId = categoryId;
+  renderCategories();
+};
+
+// Anuluj scalanie kategorii
+window.cancelMergeCategory = () => {
+  mergingCategoryId = null;
+  renderCategories();
+};
+
+// Wybierz kategorię docelową i wykonaj scalanie
+window.selectMergeTarget = async (targetCategoryId) => {
+  if (!mergingCategoryId) return;
+
+  const categories = getCategories();
+  const sourceCategory = categories.find(c => c.id === mergingCategoryId);
+  const targetCategory = categories.find(c => c.id === targetCategoryId);
+
+  if (!sourceCategory || !targetCategory) {
+    showErrorMessage('Nie znaleziono kategorii');
+    return;
+  }
+
+  // Zapytaj o potwierdzenie
+  const expenses = getExpenses();
+  const count = expenses.filter(e => e.category === sourceCategory.name).length;
+
+  const confirmed = await showConfirmModal(
+    'Scalanie kategorii',
+    `Czy na pewno chcesz scalić kategorię "${sourceCategory.name}" z kategorią "${targetCategory.name}"?\n\nWszystkie ${count} wydatki zostaną przeniesione i oznaczone jako "przeniesione z ${sourceCategory.name}".`,
+    { type: 'warning', confirmText: 'Scal', cancelText: 'Anuluj' }
+  );
+
+  if (!confirmed) {
+    mergingCategoryId = null;
+    renderCategories();
+    return;
+  }
+
+  try {
+    // Przenieś wszystkie wydatki z kategorii źródłowej do docelowej
+    const updatedExpenses = expenses.map(exp => {
+      if (exp.category === sourceCategory.name) {
+        return {
+          ...exp,
+          category: targetCategory.name,
+          mergedFrom: sourceCategory.name  // Dodaj informację o scaleniu
+        };
+      }
+      return exp;
+    });
+
+    await saveExpenses(updatedExpenses);
+
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+
+    await log('CATEGORY_MERGE', {
+      sourceCategory: sourceCategory.name,
+      targetCategory: targetCategory.name,
+      movedExpenses: count,
+      budgetUser: displayName
+    });
+
+    mergingCategoryId = null;
+    renderExpenses();
+    renderCategories();
+    showSuccessMessage(`Scalono ${count} wydatków z kategorii "${sourceCategory.name}" do "${targetCategory.name}"`);
+  } catch (error) {
+    console.error('❌ Błąd scalania kategorii:', error);
+    showErrorMessage('Nie udało się scalić kategorii');
+    mergingCategoryId = null;
+    renderCategories();
   }
 };
 
@@ -1835,6 +1996,33 @@ window.saveSettings = async (e) => {
   }
 };
 
+// Eksport danych budżetowych do analizy LLM
+window.exportBudgetDataForLLM = async (format = 'json') => {
+  try {
+    console.log(`📊 Eksport danych w formacie: ${format}`);
+
+    const success = exportBudgetDataForLLM(format);
+
+    if (success) {
+      showSuccessMessage(`Dane wyeksportowane pomyślnie w formacie ${format.toUpperCase()}`);
+
+      const user = getCurrentUser();
+      const displayName = await getDisplayName(user.uid);
+
+      await log('DATA_EXPORT', {
+        format: format,
+        budgetUser: displayName,
+        note: 'Eksport danych budżetowych dla LLM'
+      });
+    } else {
+      showErrorMessage('Wystąpił błąd podczas eksportu danych');
+    }
+  } catch (error) {
+    console.error('❌ Błąd eksportu:', error);
+    showErrorMessage('Nie udało się wyeksportować danych');
+  }
+};
+
 async function renderLogs() {
   try {
     const logs = await getLogs();
@@ -2090,17 +2278,24 @@ window.handleLogout = async () => {
   try {
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
-    
+
+    // Zatrzymaj sprawdzanie północy
+    if (midnightCheckInterval) {
+      clearInterval(midnightCheckInterval);
+      midnightCheckInterval = null;
+      console.log('🌙 Zatrzymano sprawdzanie północy');
+    }
+
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
-    
+
     await log('USER_LOGOUT', {
       budgetUser: displayName
     });
-    
+
     await logoutUser();
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
