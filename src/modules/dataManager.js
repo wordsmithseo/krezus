@@ -443,14 +443,16 @@ export async function fetchAllData() {
     const userId = getUserId();
     console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
     
-    const [categories, expenses, incomes, endDates, savingGoal] = await Promise.all([
+    const [categories, expenses, incomes, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
       loadIncomes(),
       loadEndDates(),
-      loadSavingGoal()
+      loadSavingGoal(),
+      loadEnvelopePeriod(),
+      loadDynamicsPeriod()
     ]);
-    
+
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
     
