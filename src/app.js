@@ -112,6 +112,8 @@ import {
   formatLogEntry
 } from './modules/logger.js';
 
+import { exportBudgetDataForLLM } from './utils/llmExport.js';
+
 import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
 import { showConfirmModal } from './components/confirmModal.js';
 
@@ -1875,6 +1877,33 @@ window.saveSettings = async (e) => {
   } catch (error) {
     console.error('❌ Błąd zapisywania ustawień:', error);
     showErrorMessage('Nie udało się zapisać ustawień');
+  }
+};
+
+// Eksport danych budżetowych do analizy LLM
+window.exportBudgetDataForLLM = async (format = 'json') => {
+  try {
+    console.log(`📊 Eksport danych w formacie: ${format}`);
+
+    const success = exportBudgetDataForLLM(format);
+
+    if (success) {
+      showSuccessMessage(`Dane wyeksportowane pomyślnie w formacie ${format.toUpperCase()}`);
+
+      const user = getCurrentUser();
+      const displayName = await getDisplayName(user.uid);
+
+      await log('DATA_EXPORT', {
+        format: format,
+        budgetUser: displayName,
+        note: 'Eksport danych budżetowych dla LLM'
+      });
+    } else {
+      showErrorMessage('Wystąpił błąd podczas eksportu danych');
+    }
+  } catch (error) {
+    console.error('❌ Błąd eksportu:', error);
+    showErrorMessage('Nie udało się wyeksportować danych');
   }
 };
 
