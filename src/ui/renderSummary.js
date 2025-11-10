@@ -4,6 +4,7 @@ import {
   calculateSpendingPeriods,
   calculateCurrentLimits,
   calculatePlannedTransactionsTotals,
+  getOrCalculateLimits,
   getTodayExpenses,
   getWeekExpenses,
   getMonthExpenses,
@@ -58,10 +59,9 @@ export function renderSummary() {
   if (monthExpensesEl) monthExpensesEl.textContent = monthExpenses.toFixed(2);
 
   // NOWE: Renderuj wszystkie okresy dynamicznie
-  const limitsData = calculateCurrentLimits();
-  const plannedTotals = calculatePlannedTransactionsTotals();
+  const { limits: limitsData, plannedTotals, calculatedAt } = getOrCalculateLimits();
 
-  renderDynamicLimits(limitsData, plannedTotals, available, savingGoal);
+  renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt);
 
   // Planowane transakcje - używamy ostatniego okresu (najdalszego)
   const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
@@ -133,7 +133,7 @@ export function renderSpendingDynamics() {
 /**
  * Renderuje dynamicznie wszystkie kafelki limitów dla okresów budżetowych
  */
-function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
+function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt) {
   const { limits } = limitsData;
 
   console.log('🎨 renderDynamicLimits - DEBUG START');
@@ -149,7 +149,30 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     return;
   }
 
-  const statsGrid = limitsContainer.nextElementSibling;
+  // Dodaj info o dacie wyliczenia pod nagłówkiem
+  let dateInfo = limitsContainer.nextElementSibling;
+  if (!dateInfo || !dateInfo.classList.contains('limits-date-info')) {
+    dateInfo = document.createElement('div');
+    dateInfo.className = 'limits-date-info';
+    dateInfo.style.fontSize = '0.8rem';
+    dateInfo.style.opacity = '0.7';
+    dateInfo.style.marginBottom = '10px';
+    dateInfo.style.marginTop = '-10px';
+    limitsContainer.insertAdjacentElement('afterend', dateInfo);
+  }
+
+  // Formatuj datę wyliczenia
+  const calcDate = new Date(calculatedAt);
+  const formattedDate = calcDate.toLocaleString('pl-PL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  dateInfo.textContent = `Wyliczono: ${formattedDate}`;
+
+  const statsGrid = dateInfo.nextElementSibling;
   if (!statsGrid || !statsGrid.classList.contains('stats-grid')) {
     console.error('❌ Nie znaleziono stats-grid!');
     return;
@@ -167,7 +190,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     noPeriodsCard.innerHTML = sanitizeHTML(`
       <div class="stat-label">Brak planowanych przychodów</div>
       <p style="margin-top: 10px; opacity: 0.8; font-size: 0.9rem;">
-        Dodaj przychody z typem "Zaplanowany", aby zobaczyć automatyczne okresy budżetowe.
+        Dodaj przychody z typem "Zaplanowany", aby zobaczyć limity dzienne.
       </p>
     `);
     statsGrid.appendChild(noPeriodsCard);

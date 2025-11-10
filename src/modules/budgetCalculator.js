@@ -2,6 +2,56 @@
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
+// === CACHE LIMITÓW DZIENNYCH ===
+const LIMITS_CACHE_KEY = 'krezus_daily_limits_cache';
+
+/**
+ * Zapisuje limity w cache z timestamp
+ */
+function saveLimitsCache(limits, plannedTotals) {
+    const cache = {
+        limits,
+        plannedTotals,
+        calculatedAt: new Date().toISOString(),
+        calculatedDate: getWarsawDateString()
+    };
+    localStorage.setItem(LIMITS_CACHE_KEY, JSON.stringify(cache));
+    console.log('💾 Zapisano cache limitów:', cache.calculatedAt);
+}
+
+/**
+ * Pobiera limity z cache jeśli są aktualne (z dzisiaj)
+ */
+function getLimitsCache() {
+    try {
+        const cached = localStorage.getItem(LIMITS_CACHE_KEY);
+        if (!cached) return null;
+
+        const cache = JSON.parse(cached);
+        const today = getWarsawDateString();
+
+        // Sprawdź czy cache jest z dzisiaj
+        if (cache.calculatedDate === today) {
+            console.log('✅ Używam cache limitów z:', cache.calculatedAt);
+            return cache;
+        } else {
+            console.log('⚠️ Cache limitów nieaktualny, obliczam na nowo');
+            return null;
+        }
+    } catch (e) {
+        console.error('❌ Błąd odczytu cache limitów:', e);
+        return null;
+    }
+}
+
+/**
+ * Czyści cache limitów
+ */
+export function clearLimitsCache() {
+    localStorage.removeItem(LIMITS_CACHE_KEY);
+    console.log('🧹 Wyczyszczono cache limitów');
+}
+
 export function calculateRealisedTotals(dateStr = null) {
     const today = dateStr || getWarsawDateString();
     console.log('📊 Obliczanie zrealizowanych sum (WŁĄCZNIE z dzisiejszymi)');
@@ -235,6 +285,36 @@ export function calculatePlannedTransactionsTotals() {
         futureExpense1: periodTotals[0]?.futureExpense || 0,
         futureIncome2: periodTotals[1]?.futureIncome || 0,
         futureExpense2: periodTotals[1]?.futureExpense || 0
+    };
+}
+
+/**
+ * Pobiera lub oblicza limity z cache
+ * Limity są obliczane raz dziennie i cache'owane
+ */
+export function getOrCalculateLimits() {
+    // Sprawdź cache
+    const cached = getLimitsCache();
+    if (cached) {
+        return {
+            limits: cached.limits,
+            plannedTotals: cached.plannedTotals,
+            calculatedAt: cached.calculatedAt
+        };
+    }
+
+    // Oblicz na nowo
+    console.log('🔄 Obliczam limity na nowo...');
+    const limits = calculateCurrentLimits();
+    const plannedTotals = calculatePlannedTransactionsTotals();
+
+    // Zapisz w cache
+    saveLimitsCache(limits, plannedTotals);
+
+    return {
+        limits,
+        plannedTotals,
+        calculatedAt: new Date().toISOString()
     };
 }
 
