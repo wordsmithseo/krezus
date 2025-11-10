@@ -791,6 +791,15 @@ tr.correction {
   justify-content: flex-end;
 }
 
+.no-actions {
+  visibility: hidden;
+  opacity: 0;
+  font-size: 0.9rem;
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* ==================== PAGINACJA ==================== */
 
 .pagination-container {

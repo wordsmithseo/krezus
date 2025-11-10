@@ -107,6 +107,13 @@ import {
   formatLogEntry
 } from './modules/logger.js';
 
+import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
+import { showConfirmModal } from './components/confirmModal.js';
+
+// Import funkcji renderowania UI
+import { renderSummary } from './ui/renderSummary.js';
+import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentLogPage = 1;
@@ -288,209 +295,7 @@ async function renderAll() {
   setupIncomeTypeToggle();
 }
 
-function renderSummary() {
-  const { available, savingGoal } = calculateAvailableFunds();
-  const { daysLeft1, daysLeft2, date1, date2 } = calculateSpendingPeriods();
-  const { currentLimit1, currentLimit2 } = calculateCurrentLimits();
-  const { futureIncome1, futureExpense1, futureIncome2, futureExpense2 } = calculatePlannedTransactionsTotals();
-  
-  const todayExpenses = getTodayExpenses();
-  const weekExpenses = getWeekExpenses();
-  const monthExpenses = getMonthExpenses();
-  
-  const weekRange = getWeekDateRange();
-  const monthName = getMonthName();
-  const todayDate = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
-
-  document.getElementById('availableFunds').textContent = available.toFixed(2);
-  document.getElementById('savingGoal').textContent = savingGoal.toFixed(2);
-  
-  const todayLabel = document.querySelector('#todayExpenses').closest('.stat-card').querySelector('.stat-label');
-  if (todayLabel) {
-    todayLabel.innerHTML = `Wydano dziś<br><small style="font-size: 0.75rem; opacity: 0.8;">(${todayDate})</small>`;
-  }
-  document.getElementById('todayExpenses').textContent = todayExpenses.toFixed(2);
-  
-  const weekLabel = document.querySelector('#weekExpenses').closest('.stat-card').querySelector('.stat-label');
-  if (weekLabel) {
-    weekLabel.innerHTML = `Wydano w tym tygodniu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${weekRange.start} - ${weekRange.end})</small>`;
-  }
-  document.getElementById('weekExpenses').textContent = weekExpenses.toFixed(2);
-  
-  const monthLabel = document.querySelector('#monthExpenses').closest('.stat-card').querySelector('.stat-label');
-  if (monthLabel) {
-    monthLabel.innerHTML = `Wydano w tym miesiącu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${monthName})</small>`;
-  }
-  document.getElementById('monthExpenses').textContent = monthExpenses.toFixed(2);
-
-  document.getElementById('currentLimit1').textContent = currentLimit1.toFixed(2);
-  document.getElementById('currentDaysLeft1').textContent = daysLeft1;
-  document.getElementById('currentLimitDate1').textContent = date1 ? formatDateLabel(date1) : '-';
-  
-  const projectedLimit1 = daysLeft1 > 0 ? (available - savingGoal + futureIncome1 - futureExpense1) / daysLeft1 : 0;
-  const prognosis1El = document.getElementById('prognosis1');
-  if (prognosis1El) {
-    if (futureIncome1 > 0 || futureExpense1 > 0) {
-      prognosis1El.textContent = `z planowanymi: ${projectedLimit1.toFixed(2)} zł/dzień`;
-      prognosis1El.style.display = 'block';
-    } else {
-      prognosis1El.style.display = 'none';
-    }
-  }
-  
-  const currentLimit2Section = document.getElementById('currentLimit2Section');
-  if (date2 && date2.trim() !== '') {
-    currentLimit2Section.style.display = 'block';
-    document.getElementById('currentLimit2').textContent = currentLimit2.toFixed(2);
-    document.getElementById('currentDaysLeft2').textContent = daysLeft2;
-    document.getElementById('currentLimitDate2').textContent = formatDateLabel(date2);
-    
-    const projectedLimit2 = daysLeft2 > 0 ? (available - savingGoal + futureIncome2 - futureExpense2) / daysLeft2 : 0;
-    const prognosis2El = document.getElementById('prognosis2');
-    if (prognosis2El) {
-      if (futureIncome2 > 0 || futureExpense2 > 0) {
-        prognosis2El.textContent = `z planowanymi: ${projectedLimit2.toFixed(2)} zł/dzień`;
-        prognosis2El.style.display = 'block';
-      } else {
-        prognosis2El.style.display = 'none';
-      }
-    }
-  } else {
-    currentLimit2Section.style.display = 'none';
-  }
-
-  const displayIncome = (date2 && date2.trim() !== '') ? futureIncome2 : futureIncome1;
-  const displayExpense = (date2 && date2.trim() !== '') ? futureExpense2 : futureExpense1;
-
-  document.getElementById('futureIncome').textContent = displayIncome.toFixed(2);
-  document.getElementById('futureExpense').textContent = displayExpense.toFixed(2);
-  
-  renderSpendingDynamics();
-}
-
-function renderSpendingDynamics() {
-  const dynamics = calculateSpendingDynamics();
-  const container = document.getElementById('dynamicsInfo');
-  
-  if (!container) return;
-  
-  let statusClass = '';
-  switch(dynamics.status) {
-    case 'excellent':
-      statusClass = 'dynamics-excellent';
-      break;
-    case 'good':
-      statusClass = 'dynamics-good';
-      break;
-    case 'moderate':
-      statusClass = 'dynamics-moderate';
-      break;
-    case 'warning':
-      statusClass = 'dynamics-warning';
-      break;
-    case 'critical':
-      statusClass = 'dynamics-critical';
-      break;
-    case 'no-date':
-      statusClass = 'dynamics-no-date';
-      break;
-  }
-  
-  let html = `
-    <div class="dynamics-card ${statusClass}">
-      <h4 class="dynamics-title">${dynamics.title}</h4>
-      <p class="dynamics-summary">${dynamics.summary}</p>
-      
-      ${dynamics.details.length > 0 ? `
-        <div class="dynamics-details">
-          <strong>📊 Szczegóły:</strong>
-          <ul>
-            ${dynamics.details.map(detail => `<li>${detail}</li>`).join('')}
-          </ul>
-        </div>
-      ` : ''}
-      
-      <div class="dynamics-recommendation">
-        <strong>💡 Rekomendacja:</strong>
-        <p>${dynamics.recommendation}</p>
-      </div>
-    </div>
-  `;
-  
-  container.innerHTML = html;
-}
-
-function renderDailyEnvelope() {
-  const envelope = getDailyEnvelope();
-  const { spent, total, percentage, remaining } = calculateSpendingGauge();
-  const median = getGlobalMedian30d();
-  const calcInfo = getEnvelopeCalculationInfo();
-
-  if (!envelope) {
-    document.getElementById('envelopeAmount').textContent = '0.00';
-    document.getElementById('envelopeSpent').textContent = '0.00';
-    document.getElementById('envelopeRemaining').textContent = '0.00';
-    document.getElementById('envelopeMedian').textContent = '0.00';
-    document.getElementById('spendingGauge').style.width = '0%';
-    
-    const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
-    if (calcInfoDiv) {
-      if (calcInfo) {
-        calcInfoDiv.innerHTML = `<small style="color: white; opacity: 0.95;">${calcInfo.description}</small>`;
-      } else {
-        calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
-      }
-    }
-    
-    const overLimitDiv = document.getElementById('envelopeOverLimit');
-    if (overLimitDiv) {
-      overLimitDiv.style.display = 'none';
-    }
-    
-    return;
-  }
-
-  document.getElementById('envelopeAmount').textContent = total.toFixed(2);
-  document.getElementById('envelopeSpent').textContent = spent.toFixed(2);
-  document.getElementById('envelopeRemaining').textContent = remaining.toFixed(2);
-  document.getElementById('envelopeMedian').textContent = median.toFixed(2);
-  
-  const gauge = document.getElementById('spendingGauge');
-  gauge.style.width = `${percentage}%`;
-  
-  if (percentage < 50) {
-    gauge.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-  } else if (percentage < 80) {
-    gauge.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
-  } else {
-    gauge.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
-  }
-  
-  const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
-  if (calcInfoDiv && calcInfo) {
-    calcInfoDiv.innerHTML = `
-      <small style="color: white; font-size: 0.85rem; line-height: 1.4; opacity: 0.95;">
-        ${calcInfo.description}<br>
-        <strong>Składowe:</strong> ${calcInfo.formula}
-      </small>
-    `;
-  }
-  
-  const overLimitDiv = document.getElementById('envelopeOverLimit');
-  if (overLimitDiv) {
-    if (spent > total) {
-      const overAmount = (spent - total).toFixed(2);
-      overLimitDiv.innerHTML = `
-        <div style="color: #fee; font-weight: 600; margin-top: 10px;">
-          ⚠️ Przekroczono kopertę o ${overAmount} zł
-        </div>
-      `;
-      overLimitDiv.style.display = 'block';
-    } else {
-      overLimitDiv.style.display = 'none';
-    }
-  }
-}
+// renderSummary, renderSpendingDynamics i renderDailyEnvelope są teraz importowane z src/ui/
 
 function renderAnalytics() {
   const stats = calculatePeriodStats();
@@ -599,22 +404,22 @@ function renderCategoriesChart(breakdown) {
   const container = canvas.parentElement;
   const containerWidth = container.clientWidth;
   const isMobile = containerWidth < 768;
-  
+
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 700 : 450;
+  canvas.height = isMobile ? 600 : 450;
   canvas.style.display = 'block';
-  
+
   const ctx = canvas.getContext('2d');
-  
+
   const labels = breakdown.map(b => b.category);
   const data = breakdown.map(b => b.amount);
-  
+
   const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - (isMobile ? 250 : 150);
+  const chartHeight = canvas.height - (isMobile ? 180 : 150);
   const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 60 : 70, (chartWidth / breakdown.length) - (isMobile ? 15 : 25));
+  const barWidth = Math.min(isMobile ? 50 : 70, (chartWidth / breakdown.length) - (isMobile ? 20 : 25));
   const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - (isMobile ? 200 : 120);
+  const startY = canvas.height - (isMobile ? 140 : 120);
   
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
@@ -676,17 +481,17 @@ function renderCategoriesChart(breakdown) {
     ctx.fillRect(x, y, barWidth, barHeight);
     
     ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 45 : 25));
+    ctx.translate(x + barWidth / 2, startY + (isMobile ? 30 : 25));
     ctx.rotate(-Math.PI / 4);
     ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 20px Arial' : 'bold 14px Arial';
+    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
     ctx.textAlign = 'right';
-    
-    const maxChars = isMobile ? 8 : 15;
-    const displayText = item.category.length > maxChars 
-      ? item.category.substring(0, maxChars) + '...' 
+
+    const maxChars = isMobile ? 12 : 15;
+    const displayText = item.category.length > maxChars
+      ? item.category.substring(0, maxChars) + '...'
       : item.category;
-    
+
     ctx.fillText(displayText, 0, 0);
     ctx.restore();
   });
@@ -1242,9 +1047,11 @@ function renderSources() {
         </span>
       </td>
       <td class="actions">
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>` : ''}
-         ${!isCorrection && inc.type === 'planned' ? `<button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>` : ''}
+         ${!isCorrection && inc.type === 'planned' ? `
+           <button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>
+           <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
+           <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
+         ` : '<span class="no-actions">-</span>'}
       </td>
     </tr>
   `}).join('');
@@ -1455,7 +1262,12 @@ window.deleteCategory = async (categoryId, categoryName) => {
     const updatedExpenses = expenses.filter(e => e.category !== categoryName);
     await saveExpenses(updatedExpenses);
   } else {
-    if (!confirm('Czy na pewno chcesz usunąć tę kategorię?')) return;
+    const confirmed = await showConfirmModal(
+      'Usuwanie kategorii',
+      'Czy na pewno chcesz usunąć tę kategorię?',
+      { type: 'warning', confirmText: 'Usuń', cancelText: 'Anuluj' }
+    );
+    if (!confirmed) return;
   }
 
   const categories = getCategories();
@@ -1795,41 +1607,34 @@ window.addCorrection = async (e) => {
 };
 
 function loadSettings() {
-  const endDates = getEndDates();
   const savingGoal = getSavingGoal();
-  
-  const endDate1Input = document.getElementById('settingsEndDate1');
-  const endDate2Input = document.getElementById('settingsEndDate2');
+
   const savingGoalInput = document.getElementById('settingsSavingGoal');
-  
-  if (endDate1Input) endDate1Input.value = endDates.primary || '';
-  if (endDate2Input) endDate2Input.value = endDates.secondary || '';
+
+  // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie ładujemy ich z ustawień
   if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
 }
 
 window.saveSettings = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
-  const endDate1 = form.endDate1.value;
-  const endDate2 = form.endDate2.value || '';
   const savingGoal = parseFloat(form.savingGoal.value) || 0;
 
   try {
-    await saveEndDates(endDate1, endDate2);
+    // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie zapisujemy ich
     await saveSavingGoal(savingGoal);
     await updateDailyEnvelope();
-    
+
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
-    
+
     await log('SETTINGS_UPDATE', {
-      endDate1,
-      endDate2,
       savingGoal,
-      budgetUser: displayName
+      budgetUser: displayName,
+      note: 'Daty okresów są teraz automatyczne (z planowanych przychodów)'
     });
-    
+
     showSuccessMessage('Ustawienia zapisane');
   } catch (error) {
     console.error('❌ Błąd zapisywania ustawień:', error);
@@ -2081,8 +1886,14 @@ window.handleRegister = async (e) => {
 };
 
 window.handleLogout = async () => {
-  if (!confirm('Czy na pewno chcesz się wylogować?')) return;
-  
+  const confirmed = await showConfirmModal(
+    'Wylogowanie',
+    'Czy na pewno chcesz się wylogować?',
+    { type: 'info', confirmText: 'Wyloguj', cancelText: 'Anuluj' }
+  );
+
+  if (!confirmed) return;
+
   try {
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);

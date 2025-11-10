@@ -72,32 +72,73 @@ export function getMonthExpenses() {
         .reduce((sum, e) => sum + (e.amount || 0), 0);
 }
 
-export function calculateSpendingPeriods() {
-    const endDates = getEndDates();
-    const date1 = endDates.primary || endDates.date1 || '';
-    const date2 = endDates.secondary || endDates.date2 || '';
+/**
+ * Pobiera następne daty planowanych przychodów (automatyczne wyznaczanie okresów budżetowych)
+ * Zwraca WSZYSTKIE daty planowanych wpływów (bez limitu) wraz z nazwami
+ */
+function getNextPlannedIncomeDates() {
+    const incomes = getIncomes();
     const today = getWarsawDateString();
-    
-    let daysLeft1 = 0;
-    let daysLeft2 = 0;
-    
-    if (date1 && date1.trim() !== '') {
-        const d1 = parseDateStr(date1);
-        const td = parseDateStr(today);
-        if (d1 && td && !isNaN(d1.getTime()) && !isNaN(td.getTime())) {
-            daysLeft1 = Math.max(0, Math.floor((d1 - td) / (1000*60*60*24)));
+
+    // Filtruj planowane przychody od dzisiaj w przyszłość
+    const plannedIncomes = incomes
+        .filter(inc => inc.type === 'planned' && inc.date >= today)
+        .map(inc => ({
+            date: inc.date,
+            name: inc.source || 'Bez nazwy'
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date)); // Sortuj chronologicznie
+
+    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, weź pierwszy)
+    const uniqueIncomes = [];
+    const seenDates = new Set();
+
+    for (const income of plannedIncomes) {
+        if (!seenDates.has(income.date)) {
+            seenDates.add(income.date);
+            uniqueIncomes.push(income);
         }
     }
-    
-    if (date2 && date2.trim() !== '') {
-        const d2 = parseDateStr(date2);
-        const td = parseDateStr(today);
-        if (d2 && td && !isNaN(d2.getTime()) && !isNaN(td.getTime())) {
-            daysLeft2 = Math.max(0, Math.floor((d2 - td) / (1000*60*60*24)));
+
+    console.log('📅 Znalezione daty planowanych przychodów:', uniqueIncomes);
+
+    return uniqueIncomes;
+}
+
+export function calculateSpendingPeriods() {
+    // ZMIANA: Używamy automatycznych dat z planowanych przychodów zamiast manualnych z ustawień
+    const incomes = getNextPlannedIncomeDates();
+    const today = getWarsawDateString();
+
+    // Oblicz dni pozostałe dla każdej daty
+    const periods = incomes.map(income => {
+        let daysLeft = 0;
+
+        if (income.date && income.date.trim() !== '') {
+            const d = parseDateStr(income.date);
+            const td = parseDateStr(today);
+            if (d && td && !isNaN(d.getTime()) && !isNaN(td.getTime())) {
+                daysLeft = Math.max(0, Math.floor((d - td) / (1000*60*60*24)));
+            }
         }
-    }
-    
-    return { date1, date2, daysLeft1, daysLeft2 };
+
+        return {
+            date: income.date,
+            name: income.name,
+            daysLeft
+        };
+    });
+
+    console.log('📊 Okresy budżetowe (automatyczne):', periods);
+
+    // BACKWARD COMPATIBILITY: Zwracamy także date1/date2 dla starszego kodu
+    return {
+        periods,  // Nowa tablica okresów
+        date1: periods[0]?.date || '',
+        date2: periods[1]?.date || '',
+        daysLeft1: periods[0]?.daysLeft || 0,
+        daysLeft2: periods[1]?.daysLeft || 0
+    };
 }
 
 export function calculateAvailableFunds() {
@@ -114,14 +155,22 @@ export function calculateAvailableFunds() {
 export function calculateCurrentLimits() {
     const { available, savingGoal } = calculateAvailableFunds();
     const toSpend = available - savingGoal;
-    const { date1, date2, daysLeft1, daysLeft2 } = calculateSpendingPeriods();
-    
-    const currentLimit1 = daysLeft1 > 0 ? toSpend / daysLeft1 : 0;
-    const currentLimit2 = daysLeft2 > 0 ? toSpend / daysLeft2 : 0;
-    
+    const spendingPeriods = calculateSpendingPeriods();
+    const { periods, date1, date2, daysLeft1, daysLeft2 } = spendingPeriods;
+
+    // Oblicz limity dla wszystkich okresów
+    const limits = periods.map(period => ({
+        date: period.date,
+        name: period.name,
+        daysLeft: period.daysLeft,
+        currentLimit: period.daysLeft > 0 ? toSpend / period.daysLeft : 0
+    }));
+
+    // BACKWARD COMPATIBILITY: Zachowaj stare pola dla zgodności
     return {
-        currentLimit1,
-        currentLimit2,
+        limits,  // Nowa tablica limitów dla wszystkich okresów
+        currentLimit1: daysLeft1 > 0 ? toSpend / daysLeft1 : 0,
+        currentLimit2: daysLeft2 > 0 ? toSpend / daysLeft2 : 0,
         daysLeft1,
         daysLeft2,
         date1,
@@ -133,73 +182,59 @@ export function calculatePlannedTransactionsTotals() {
     const incomes = getIncomes();
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    const { date1, date2 } = calculateSpendingPeriods();
-    
+    const { periods, date1, date2 } = calculateSpendingPeriods();
+
     console.log('📊 === DEBUG PLANOWANYCH TRANSAKCJI ===');
     console.log('📅 Dzisiejsza data:', today);
-    console.log('📅 Data końcowa 1:', date1);
-    console.log('📅 Data końcowa 2:', date2);
+    console.log('📅 Liczba okresów:', periods.length);
     console.log('📥 Wszystkie przychody:', incomes.length);
     console.log('📤 Wszystkie wydatki:', expenses.length);
-    
+
     const plannedIncomes = incomes.filter(inc => inc.type === 'planned');
     console.log('💰 Planowane przychody (wszystkie):', plannedIncomes);
-    
-    let futureIncome1 = 0;
-    let futureExpense1 = 0;
-    let futureIncome2 = 0;
-    let futureExpense2 = 0;
-    
-    if (date1 && date1.trim() !== '') {
-        console.log('🔍 Filtrowanie dla okresu 1 (od', today, 'do', date1, ')');
-        
-        incomes.forEach(inc => {
-            if (inc.type === 'planned' && inc.date >= today && inc.date <= date1) {
-                console.log('  ✅ Dodaję przychód:', inc.amount, 'zł, data:', inc.date, 'źródło:', inc.source);
-                futureIncome1 += inc.amount || 0;
-            } else if (inc.type === 'planned') {
-                console.log('  ❌ Pomijam przychód:', inc.amount, 'zł, data:', inc.date, 'powód: date >= today:', inc.date >= today, 'date <= date1:', inc.date <= date1);
-            }
-        });
-        
-        expenses.forEach(exp => {
-            if (exp.type === 'planned' && exp.date >= today && exp.date <= date1) {
-                console.log('  ✅ Dodaję wydatek:', exp.amount, 'zł, data:', exp.date);
-                futureExpense1 += exp.amount || 0;
-            }
-        });
-    }
-    
-    if (date2 && date2.trim() !== '') {
-        console.log('🔍 Filtrowanie dla okresu 2 (od', today, 'do', date2, ')');
-        
-        incomes.forEach(inc => {
-            if (inc.type === 'planned' && inc.date >= today && inc.date <= date2) {
-                console.log('  ✅ Dodaję przychód:', inc.amount, 'zł, data:', inc.date);
-                futureIncome2 += inc.amount || 0;
-            }
-        });
-        
-        expenses.forEach(exp => {
-            if (exp.type === 'planned' && exp.date >= today && exp.date <= date2) {
-                console.log('  ✅ Dodaję wydatek:', exp.amount, 'zł, data:', exp.date);
-                futureExpense2 += exp.amount || 0;
-            }
-        });
-    }
-    
-    console.log('💰 WYNIKI:');
-    console.log('  Okres 1 - Przychody:', futureIncome1, 'zł');
-    console.log('  Okres 1 - Wydatki:', futureExpense1, 'zł');
-    console.log('  Okres 2 - Przychody:', futureIncome2, 'zł');
-    console.log('  Okres 2 - Wydatki:', futureExpense2, 'zł');
+
+    // Oblicz sumy dla wszystkich okresów
+    const periodTotals = periods.map((period, index) => {
+        let futureIncome = 0;
+        let futureExpense = 0;
+
+        if (period.date && period.date.trim() !== '') {
+            console.log(`🔍 Filtrowanie dla okresu ${index + 1} (od ${today} do ${period.date})`);
+
+            incomes.forEach(inc => {
+                if (inc.type === 'planned' && inc.date >= today && inc.date <= period.date) {
+                    console.log(`  ✅ Dodaję przychód: ${inc.amount} zł, data: ${inc.date}, źródło: ${inc.source}`);
+                    futureIncome += inc.amount || 0;
+                }
+            });
+
+            expenses.forEach(exp => {
+                if (exp.type === 'planned' && exp.date >= today && exp.date <= period.date) {
+                    console.log(`  ✅ Dodaję wydatek: ${exp.amount} zł, data: ${exp.date}`);
+                    futureExpense += exp.amount || 0;
+                }
+            });
+
+            console.log(`  💰 Okres ${index + 1} - Przychody: ${futureIncome} zł, Wydatki: ${futureExpense} zł`);
+        }
+
+        return {
+            date: period.date,
+            futureIncome,
+            futureExpense
+        };
+    });
+
+    console.log('💰 WSZYSTKIE WYNIKI:', periodTotals);
     console.log('📊 === KONIEC DEBUG ===');
-    
+
+    // BACKWARD COMPATIBILITY: Zachowaj stare pola dla zgodności
     return {
-        futureIncome1,
-        futureExpense1,
-        futureIncome2,
-        futureExpense2
+        periodTotals,  // Nowa tablica sum dla wszystkich okresów
+        futureIncome1: periodTotals[0]?.futureIncome || 0,
+        futureExpense1: periodTotals[0]?.futureExpense || 0,
+        futureIncome2: periodTotals[1]?.futureIncome || 0,
+        futureExpense2: periodTotals[1]?.futureExpense || 0
     };
 }
 
