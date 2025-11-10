@@ -391,64 +391,27 @@ let chartTooltip = null;
 function renderCategoriesChart(breakdown) {
   const canvas = document.getElementById('categoriesChart');
   if (!canvas) return;
-  
+
   if (categoriesChartInstance) {
     categoriesChartInstance.destroy();
   }
-  
+
   if (chartTooltip) {
     chartTooltip.remove();
     chartTooltip = null;
   }
-  
+
   const container = canvas.parentElement;
   const containerWidth = container.clientWidth;
   const isMobile = containerWidth < 768;
 
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 600 : 450;
+  canvas.height = isMobile ? 500 : 450;
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
-
-  const labels = breakdown.map(b => b.category);
-  const data = breakdown.map(b => b.amount);
-
-  const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - (isMobile ? 180 : 150);
-  const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 50 : 70, (chartWidth / breakdown.length) - (isMobile ? 20 : 25));
-  const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - (isMobile ? 140 : 120);
-  
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(startX, 20);
-  ctx.lineTo(startX, startY);
-  ctx.lineTo(canvas.width - 20, startY);
-  ctx.stroke();
-  
-  const numYLabels = 5;
-  for (let i = 0; i <= numYLabels; i++) {
-    const y = startY - (i / numYLabels) * chartHeight;
-    const value = (i / numYLabels) * maxAmount;
-    
-    ctx.strokeStyle = '#f3f4f6';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(canvas.width - 20, y);
-    ctx.stroke();
-    
-    ctx.fillStyle = '#6b7280';
-    ctx.font = isMobile ? '12px Arial' : '13px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${value.toFixed(0)}`, startX - (isMobile ? 5 : 10), y + 4);
-  }
-  
+
   const colors = [
     '#3b82f6',
     '#10b981',
@@ -459,43 +422,82 @@ function renderCategoriesChart(breakdown) {
     '#14b8a6',
     '#f97316'
   ];
-  
-  const barData = [];
-  
+
+  // Calculate pie chart dimensions
+  const centerX = isMobile ? canvas.width / 2 : canvas.width * 0.35;
+  const centerY = canvas.height / 2;
+  const radius = Math.min(centerX - 40, centerY - 40, isMobile ? 120 : 140);
+
+  // Draw pie slices
+  let currentAngle = -Math.PI / 2; // Start at top
+  const sliceData = [];
+
   breakdown.forEach((item, index) => {
-    const barHeight = (item.amount / maxAmount) * chartHeight;
-    const x = startX + 20 + (index * (barWidth + (isMobile ? 10 : 25)));
-    const y = startY - barHeight;
-    
-    barData.push({
-      x,
-      y,
-      width: barWidth,
-      height: barHeight,
+    const sliceAngle = (item.percentage / 100) * 2 * Math.PI;
+    const endAngle = currentAngle + sliceAngle;
+
+    // Draw slice
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, currentAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fill();
+
+    // Draw slice border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Store slice data for hover detection
+    sliceData.push({
+      startAngle: currentAngle,
+      endAngle: endAngle,
       category: item.category,
       amount: item.amount,
-      percentage: item.percentage
+      percentage: item.percentage,
+      color: colors[index % colors.length]
     });
-    
-    ctx.fillStyle = colors[index % colors.length];
-    ctx.fillRect(x, y, barWidth, barHeight);
-    
-    ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 30 : 25));
-    ctx.rotate(-Math.PI / 4);
-    ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
-    ctx.textAlign = 'right';
 
-    const maxChars = isMobile ? 12 : 15;
+    currentAngle = endAngle;
+  });
+
+  // Draw legend
+  const legendX = isMobile ? 20 : canvas.width * 0.55;
+  const legendY = isMobile ? canvas.height - 180 : 40;
+  const lineHeight = isMobile ? 28 : 32;
+  const fontSize = isMobile ? 12 : 13;
+
+  breakdown.forEach((item, index) => {
+    const y = legendY + (index * lineHeight);
+
+    // Color box
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fillRect(legendX, y, isMobile ? 14 : 16, isMobile ? 14 : 16);
+
+    // Border around color box
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(legendX, y, isMobile ? 14 : 16, isMobile ? 14 : 16);
+
+    // Category name
+    ctx.fillStyle = '#1f2937';
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'left';
+    const maxChars = isMobile ? 15 : 20;
     const displayText = item.category.length > maxChars
       ? item.category.substring(0, maxChars) + '...'
       : item.category;
+    ctx.fillText(displayText, legendX + (isMobile ? 22 : 24), y + (isMobile ? 11 : 12));
 
-    ctx.fillText(displayText, 0, 0);
-    ctx.restore();
+    // Amount and percentage
+    ctx.fillStyle = '#6b7280';
+    ctx.font = `${fontSize - 1}px Arial`;
+    const amountText = `${item.amount.toFixed(0)} zł (${item.percentage.toFixed(1)}%)`;
+    ctx.fillText(amountText, legendX + (isMobile ? 22 : 24), y + (isMobile ? 23 : 25));
   });
-  
+
+  // Create tooltip
   chartTooltip = document.createElement('div');
   chartTooltip.style.cssText = `
     position: fixed;
@@ -511,49 +513,78 @@ function renderCategoriesChart(breakdown) {
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   `;
   document.body.appendChild(chartTooltip);
-  
+
+  // Mouse interaction
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
-    let hoveredBar = null;
-    for (const bar of barData) {
-      if (mouseX >= bar.x && mouseX <= bar.x + bar.width &&
-          mouseY >= bar.y && mouseY <= bar.y + bar.height) {
-        hoveredBar = bar;
-        break;
+
+    // Calculate angle from center
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if mouse is within pie circle
+    if (distance <= radius) {
+      let angle = Math.atan2(dy, dx);
+      // Normalize angle to match our start angle (-PI/2)
+      angle = angle - (-Math.PI / 2);
+      if (angle < 0) angle += 2 * Math.PI;
+
+      // Find which slice is hovered
+      let hoveredSlice = null;
+      for (const slice of sliceData) {
+        let startAngle = slice.startAngle - (-Math.PI / 2);
+        let endAngle = slice.endAngle - (-Math.PI / 2);
+        if (startAngle < 0) startAngle += 2 * Math.PI;
+        if (endAngle < 0) endAngle += 2 * Math.PI;
+
+        if (startAngle <= endAngle) {
+          if (angle >= startAngle && angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        } else {
+          if (angle >= startAngle || angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        }
       }
-    }
-    
-    if (hoveredBar) {
-      chartTooltip.style.display = 'block';
-      chartTooltip.style.left = `${e.clientX + 15}px`;
-      chartTooltip.style.top = `${e.clientY + 15}px`;
-      chartTooltip.innerHTML = `
-        <strong>${hoveredBar.category}</strong><br>
-        Kwota: ${hoveredBar.amount.toFixed(2)} zł<br>
-        Udział: ${hoveredBar.percentage.toFixed(1)}%
-      `;
-      canvas.style.cursor = 'pointer';
+
+      if (hoveredSlice) {
+        chartTooltip.style.display = 'block';
+        chartTooltip.style.left = `${e.clientX + 15}px`;
+        chartTooltip.style.top = `${e.clientY + 15}px`;
+        chartTooltip.innerHTML = `
+          <strong>${hoveredSlice.category}</strong><br>
+          Kwota: ${hoveredSlice.amount.toFixed(2)} zł<br>
+          Udział: ${hoveredSlice.percentage.toFixed(1)}%
+        `;
+        canvas.style.cursor = 'pointer';
+      } else {
+        chartTooltip.style.display = 'none';
+        canvas.style.cursor = 'default';
+      }
     } else {
       chartTooltip.style.display = 'none';
       canvas.style.cursor = 'default';
     }
   });
-  
+
   canvas.addEventListener('mouseleave', () => {
     chartTooltip.style.display = 'none';
     canvas.style.cursor = 'default';
   });
-  
-  categoriesChartInstance = { 
+
+  categoriesChartInstance = {
     destroy: () => {
       if (chartTooltip) {
         chartTooltip.remove();
         chartTooltip = null;
       }
-    } 
+    }
   };
 }
 
