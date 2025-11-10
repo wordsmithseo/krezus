@@ -406,7 +406,7 @@ function renderCategoriesChart(breakdown) {
   const isMobile = containerWidth < 768;
 
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 500 : 450;
+  canvas.height = isMobile ? 600 : 550;
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
@@ -432,23 +432,40 @@ function renderCategoriesChart(breakdown) {
     });
   }
 
+  // Enhanced color palette - more vibrant and distinctive
   const colors = [
-    '#3b82f6',
-    '#10b981',
-    '#f59e0b',
-    '#ef4444',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#f97316'
+    '#FF6B6B', // Coral Red
+    '#4ECDC4', // Turquoise
+    '#FFE66D', // Bright Yellow
+    '#95E1D3', // Mint Green
+    '#F38181', // Light Coral
+    '#AA96DA', // Lavender Purple
+    '#FCBAD3', // Pink
+    '#A8E6CF', // Soft Green
+    '#FFD3B6', // Peach
+    '#FFAAA5', // Salmon
+    '#C7CEEA', // Periwinkle
+    '#B4F8C8', // Pastel Green
+    '#FFA07A', // Light Salmon
+    '#98D8C8', // Seafoam
+    '#F6CD61', // Golden Yellow
+    '#FE8A71'  // Coral Orange
   ];
 
-  // Calculate pie chart dimensions
-  const centerX = isMobile ? canvas.width / 2 : canvas.width * 0.35;
+  // Calculate pie chart dimensions - larger chart
+  const centerX = isMobile ? canvas.width / 2 : Math.min(canvas.width * 0.32, 250);
   const centerY = canvas.height / 2;
-  const radius = Math.max(20, Math.min(centerX - 40, centerY - 40, isMobile ? 120 : 140));
+  const maxRadius = isMobile ?
+    Math.min(canvas.width / 2 - 30, 180) :
+    Math.min(centerX - 30, canvas.height / 2 - 30, 200);
+  const radius = Math.max(30, maxRadius);
 
-  // Draw pie slices
+  // Draw pie slices with shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 3;
+
   let currentAngle = -Math.PI / 2; // Start at top
   const sliceData = [];
 
@@ -466,7 +483,7 @@ function renderCategoriesChart(breakdown) {
 
     // Draw slice border
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     ctx.stroke();
 
     // Store slice data for hover detection
@@ -483,55 +500,71 @@ function renderCategoriesChart(breakdown) {
     currentAngle = endAngle;
   });
 
+  // Reset shadow for legend
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
   // Draw legend
-  const legendX = isMobile ? 20 : canvas.width * 0.55;
-  const legendY = isMobile ? canvas.height - 180 : 40;
-  const lineHeight = isMobile ? 28 : 32;
-  const fontSize = isMobile ? 12 : 13;
+  const legendX = isMobile ? 20 : Math.min(canvas.width * 0.58, centerX * 2 + 60);
+  const legendY = isMobile ? canvas.height - Math.min(processedBreakdown.length * 35 + 20, 250) : 50;
+  const lineHeight = isMobile ? 32 : 36;
+  const fontSize = isMobile ? 13 : 14;
+  const boxSize = isMobile ? 16 : 18;
 
   processedBreakdown.forEach((item, index) => {
     const y = legendY + (index * lineHeight);
 
-    // Color box
+    // Color box with subtle shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
     ctx.fillStyle = colors[index % colors.length];
-    ctx.fillRect(legendX, y, isMobile ? 14 : 16, isMobile ? 14 : 16);
+    ctx.fillRect(legendX, y, boxSize, boxSize);
 
     // Border around color box
-    ctx.strokeStyle = '#d1d5db';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(legendX, y, isMobile ? 14 : 16, isMobile ? 14 : 16);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(legendX, y, boxSize, boxSize);
 
     // Category name
     ctx.fillStyle = '#1f2937';
-    ctx.font = `${fontSize}px Arial`;
+    ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
     ctx.textAlign = 'left';
-    const maxChars = isMobile ? 15 : 20;
+    const maxChars = isMobile ? 15 : 22;
     const displayText = item.category.length > maxChars
       ? item.category.substring(0, maxChars) + '...'
       : item.category;
-    ctx.fillText(displayText, legendX + (isMobile ? 22 : 24), y + (isMobile ? 11 : 12));
+    ctx.fillText(displayText, legendX + boxSize + 10, y + boxSize / 2 - 3);
 
     // Amount and percentage
     ctx.fillStyle = '#6b7280';
-    ctx.font = `${fontSize - 1}px Arial`;
+    ctx.font = `${fontSize - 1}px system-ui, -apple-system, sans-serif`;
     const amountText = `${item.amount.toFixed(0)} zł (${item.percentage.toFixed(1)}%)`;
-    ctx.fillText(amountText, legendX + (isMobile ? 22 : 24), y + (isMobile ? 23 : 25));
+    ctx.fillText(amountText, legendX + boxSize + 10, y + boxSize / 2 + 11);
   });
 
-  // Create tooltip
+  // Create tooltip with modern styling
   chartTooltip = document.createElement('div');
   chartTooltip.style.cssText = `
     position: fixed;
-    background: rgba(0, 0, 0, 0.9);
+    background: linear-gradient(135deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98));
     color: white;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: system-ui, -apple-system, sans-serif;
     pointer-events: none;
     z-index: 10000;
     display: none;
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
   `;
   document.body.appendChild(chartTooltip);
 
@@ -579,12 +612,29 @@ function renderCategoriesChart(breakdown) {
         chartTooltip.style.left = `${e.clientX + 15}px`;
         chartTooltip.style.top = `${e.clientY + 15}px`;
 
-        let tooltipContent = `<strong>${hoveredSlice.category}</strong><br>`;
+        let tooltipContent = `
+          <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: ${hoveredSlice.color};">
+            ${hoveredSlice.category}
+          </div>`;
+
         if (hoveredSlice.category === 'Inne' && hoveredSlice.categories) {
-          tooltipContent += `<small>${hoveredSlice.categories}</small><br>`;
+          tooltipContent += `
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 6px; font-style: italic;">
+              ${hoveredSlice.categories}
+            </div>`;
         }
-        tooltipContent += `Kwota: ${hoveredSlice.amount.toFixed(2)} zł<br>`;
-        tooltipContent += `Udział: ${hoveredSlice.percentage.toFixed(1)}%`;
+
+        tooltipContent += `
+          <div style="display: flex; gap: 12px; margin-top: 4px;">
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Kwota</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.amount.toFixed(2)} zł</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Udział</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.percentage.toFixed(1)}%</div>
+            </div>
+          </div>`;
 
         chartTooltip.innerHTML = tooltipContent;
         canvas.style.cursor = 'pointer';
