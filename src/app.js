@@ -426,7 +426,7 @@ function renderCategoriesChart(breakdown) {
   // Calculate pie chart dimensions
   const centerX = isMobile ? canvas.width / 2 : canvas.width * 0.35;
   const centerY = canvas.height / 2;
-  const radius = Math.min(centerX - 40, centerY - 40, isMobile ? 120 : 140);
+  const radius = Math.max(20, Math.min(centerX - 40, centerY - 40, isMobile ? 120 : 140));
 
   // Draw pie slices
   let currentAngle = -Math.PI / 2; // Start at top
