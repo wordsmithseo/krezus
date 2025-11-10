@@ -59,7 +59,8 @@ import {
   getMonthExpenses,
   calculatePlannedTransactionsTotals,
   getWeekDateRange,
-  getMonthName
+  getMonthName,
+  clearLimitsCache
 } from './modules/budgetCalculator.js';
 
 import {
@@ -137,6 +138,45 @@ window.onDisplayNameUpdate = (newName) => {
   updateDisplayNameInUI(newName);
 };
 
+// === SPRAWDZANIE PÓŁNOCY I PRZELICZANIE LIMITÓW/KOPERTY ===
+let lastKnownDate = getWarsawDateString();
+let midnightCheckInterval = null;
+
+function startMidnightChecker() {
+  // Zatrzymaj poprzedni interval jeśli istnieje
+  if (midnightCheckInterval) {
+    clearInterval(midnightCheckInterval);
+  }
+
+  console.log('🌙 Uruchomiono sprawdzanie północy');
+
+  // Sprawdzaj co minutę czy nastąpił nowy dzień
+  midnightCheckInterval = setInterval(async () => {
+    const currentDate = getWarsawDateString();
+
+    if (currentDate !== lastKnownDate) {
+      console.log('🌅 Wykryto nowy dzień!', lastKnownDate, '→', currentDate);
+      lastKnownDate = currentDate;
+
+      // Wyczyść cache limitów
+      clearLimitsCache();
+      console.log('🧹 Wyczyszczono cache limitów');
+
+      // Przelicz kopertę dnia
+      try {
+        await updateDailyEnvelope();
+        console.log('📩 Przeliczono kopertę dnia dla nowego dnia');
+
+        // Odśwież interfejs
+        renderSummary();
+        renderDailyEnvelope();
+      } catch (error) {
+        console.error('❌ Błąd przeliczania koperty po północy:', error);
+      }
+    }
+  }, 60000); // Co 60 sekund (1 minuta)
+}
+
 function hideLoader() {
   const loader = document.getElementById('appLoader');
   if (loader) {
@@ -196,7 +236,10 @@ async function loadAllData() {
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
     await renderAll();
-    
+
+    // Uruchom sprawdzanie nowego dnia
+    startMidnightChecker();
+
     await subscribeToRealtimeUpdates(userId, {
       onCategoriesChange: () => {
         renderCategories();
@@ -2090,17 +2133,24 @@ window.handleLogout = async () => {
   try {
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
-    
+
+    // Zatrzymaj sprawdzanie północy
+    if (midnightCheckInterval) {
+      clearInterval(midnightCheckInterval);
+      midnightCheckInterval = null;
+      console.log('🌙 Zatrzymano sprawdzanie północy');
+    }
+
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
-    
+
     await log('USER_LOGOUT', {
       budgetUser: displayName
     });
-    
+
     await logoutUser();
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);

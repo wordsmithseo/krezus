@@ -6,17 +6,21 @@ import { getIncomes, getExpenses, getEndDates, getSavingGoal, getEnvelopePeriod,
 const LIMITS_CACHE_KEY = 'krezus_daily_limits_cache';
 
 /**
- * Zapisuje limity w cache z timestamp
+ * Zapisuje limity w cache z timestamp ustawionym na północ
  */
 function saveLimitsCache(limits, plannedTotals) {
+    const today = getWarsawDateString();
+    // Ustaw timestamp na północ dzisiejszego dnia (00:00:00)
+    const midnightTimestamp = new Date(today + 'T00:00:00+01:00').toISOString();
+
     const cache = {
         limits,
         plannedTotals,
-        calculatedAt: new Date().toISOString(),
-        calculatedDate: getWarsawDateString()
+        calculatedAt: midnightTimestamp,
+        calculatedDate: today
     };
     localStorage.setItem(LIMITS_CACHE_KEY, JSON.stringify(cache));
-    console.log('💾 Zapisano cache limitów:', cache.calculatedAt);
+    console.log('💾 Zapisano cache limitów z datą północy:', cache.calculatedAt);
 }
 
 /**
@@ -532,6 +536,9 @@ export async function updateDailyEnvelope(forDate = null) {
 
     console.log('✅ KOŃCOWA KOPERTA DNIA:', smartLimit.toFixed(2), 'zł');
 
+    // Ustaw timestamp na północ dzisiejszego dnia (00:00:00)
+    const midnightTimestamp = new Date(targetDate + 'T00:00:00+01:00').toISOString();
+
     const envelope = {
         date: targetDate,
         baseAmount: smartLimit,
@@ -540,10 +547,10 @@ export async function updateDailyEnvelope(forDate = null) {
         spent: todayExpensesSum,
         period: periodInfo,
         calculatedDate: targetDate,
-        calculatedAt: new Date().toISOString()
+        calculatedAt: midnightTimestamp
     };
 
-    console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
+    console.log('✅ Zapisywanie inteligentnej koperty z datą północy:', envelope);
     await saveDailyEnvelope(targetDate, envelope);
 
     return envelope;
