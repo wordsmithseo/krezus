@@ -412,6 +412,26 @@ function renderCategoriesChart(breakdown) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Group small categories (< 5%) into "Inne"
+  const SMALL_CATEGORY_THRESHOLD = 5;
+  const mainCategories = breakdown.filter(item => item.percentage >= SMALL_CATEGORY_THRESHOLD);
+  const smallCategories = breakdown.filter(item => item.percentage < SMALL_CATEGORY_THRESHOLD);
+
+  let processedBreakdown = [...mainCategories];
+
+  if (smallCategories.length > 0) {
+    const otherAmount = smallCategories.reduce((sum, item) => sum + item.amount, 0);
+    const otherPercentage = smallCategories.reduce((sum, item) => sum + item.percentage, 0);
+
+    processedBreakdown.push({
+      category: 'Inne',
+      amount: otherAmount,
+      percentage: otherPercentage,
+      isOther: true,
+      categories: smallCategories.map(c => c.category).join(', ')
+    });
+  }
+
   const colors = [
     '#3b82f6',
     '#10b981',
@@ -432,7 +452,7 @@ function renderCategoriesChart(breakdown) {
   let currentAngle = -Math.PI / 2; // Start at top
   const sliceData = [];
 
-  breakdown.forEach((item, index) => {
+  processedBreakdown.forEach((item, index) => {
     const sliceAngle = (item.percentage / 100) * 2 * Math.PI;
     const endAngle = currentAngle + sliceAngle;
 
@@ -456,7 +476,8 @@ function renderCategoriesChart(breakdown) {
       category: item.category,
       amount: item.amount,
       percentage: item.percentage,
-      color: colors[index % colors.length]
+      color: colors[index % colors.length],
+      categories: item.categories || null
     });
 
     currentAngle = endAngle;
@@ -468,7 +489,7 @@ function renderCategoriesChart(breakdown) {
   const lineHeight = isMobile ? 28 : 32;
   const fontSize = isMobile ? 12 : 13;
 
-  breakdown.forEach((item, index) => {
+  processedBreakdown.forEach((item, index) => {
     const y = legendY + (index * lineHeight);
 
     // Color box
@@ -557,11 +578,15 @@ function renderCategoriesChart(breakdown) {
         chartTooltip.style.display = 'block';
         chartTooltip.style.left = `${e.clientX + 15}px`;
         chartTooltip.style.top = `${e.clientY + 15}px`;
-        chartTooltip.innerHTML = `
-          <strong>${hoveredSlice.category}</strong><br>
-          Kwota: ${hoveredSlice.amount.toFixed(2)} zł<br>
-          Udział: ${hoveredSlice.percentage.toFixed(1)}%
-        `;
+
+        let tooltipContent = `<strong>${hoveredSlice.category}</strong><br>`;
+        if (hoveredSlice.category === 'Inne' && hoveredSlice.categories) {
+          tooltipContent += `<small>${hoveredSlice.categories}</small><br>`;
+        }
+        tooltipContent += `Kwota: ${hoveredSlice.amount.toFixed(2)} zł<br>`;
+        tooltipContent += `Udział: ${hoveredSlice.percentage.toFixed(1)}%`;
+
+        chartTooltip.innerHTML = tooltipContent;
         canvas.style.cursor = 'pointer';
       } else {
         chartTooltip.style.display = 'none';
