@@ -183,10 +183,6 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
-    const projectedLimit = limit.daysLeft > 0
-      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
-      : 0;
-
     const card = document.createElement('div');
     card.className = 'stat-card';
 
@@ -222,11 +218,20 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     card.appendChild(valueDiv);
     card.appendChild(daysDiv);
 
-    // Dodaj prognozę jeśli są planowane transakcje
+    // Informacja o planowanych wpływach (bez zmiany limitu)
     if (futureIncome > 0 || futureExpense > 0) {
       const prognosisDiv = document.createElement('div');
       prognosisDiv.className = 'prognosis-text';
-      prognosisDiv.textContent = `z planowanymi: ${projectedLimit.toFixed(2)} zł/dzień`;
+      prognosisDiv.style.fontSize = '0.75rem';
+      prognosisDiv.style.marginTop = '6px';
+
+      if (futureIncome > 0) {
+        prognosisDiv.textContent = `Oczekiwany wpływ: +${futureIncome.toFixed(2)} zł`;
+      }
+      if (futureExpense > 0) {
+        prognosisDiv.textContent += (futureIncome > 0 ? ', ' : '') + `wydatki: -${futureExpense.toFixed(2)} zł`;
+      }
+
       card.appendChild(prognosisDiv);
     }
 
