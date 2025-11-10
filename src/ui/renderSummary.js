@@ -183,6 +183,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
+    // Limit realny (tylko obecne środki)
+    const realLimit = limit.daysLeft > 0
+      ? (available - savingGoal) / limit.daysLeft
+      : 0;
+
+    // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
     const projectedLimit = limit.daysLeft > 0
       ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
       : 0;
@@ -197,38 +203,55 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     nameDiv.style.marginBottom = '5px';
     nameDiv.textContent = limit.name || 'Planowany wpływ';
 
-    const labelDiv = document.createElement('div');
-    labelDiv.className = 'stat-label';
-    labelDiv.style.fontSize = '0.85rem';
-    labelDiv.style.opacity = '0.8';
-    labelDiv.textContent = `Limit dzienny (do ${formatDateLabel(limit.date)})`;
+    // Limit realny
+    const realLabelDiv = document.createElement('div');
+    realLabelDiv.className = 'stat-label';
+    realLabelDiv.style.fontSize = '0.85rem';
+    realLabelDiv.style.opacity = '0.8';
+    realLabelDiv.textContent = `Limit realny (do ${formatDateLabel(limit.date)})`;
 
-    const valueDiv = document.createElement('div');
-    valueDiv.className = 'stat-value';
-    const valueSpan = document.createElement('span');
-    valueSpan.textContent = limit.currentLimit.toFixed(2);
-    const unitSpan = document.createElement('span');
-    unitSpan.className = 'stat-unit';
-    unitSpan.textContent = 'zł/dzień';
-    valueDiv.appendChild(valueSpan);
-    valueDiv.appendChild(unitSpan);
+    const realValueDiv = document.createElement('div');
+    realValueDiv.className = 'stat-value';
+    realValueDiv.style.fontSize = '1.2rem';
+    realValueDiv.style.marginBottom = '10px';
+    const realValueSpan = document.createElement('span');
+    realValueSpan.textContent = realLimit.toFixed(2);
+    const realUnitSpan = document.createElement('span');
+    realUnitSpan.className = 'stat-unit';
+    realUnitSpan.textContent = 'zł/dzień';
+    realValueDiv.appendChild(realValueSpan);
+    realValueDiv.appendChild(realUnitSpan);
+
+    // Limit planowany
+    const projectedLabelDiv = document.createElement('div');
+    projectedLabelDiv.className = 'stat-label';
+    projectedLabelDiv.style.fontSize = '0.85rem';
+    projectedLabelDiv.style.opacity = '0.8';
+    projectedLabelDiv.style.color = '#10b981';
+    projectedLabelDiv.textContent = `Limit planowany`;
+
+    const projectedValueDiv = document.createElement('div');
+    projectedValueDiv.className = 'stat-value';
+    projectedValueDiv.style.fontSize = '1.5rem';
+    projectedValueDiv.style.color = '#10b981';
+    const projectedValueSpan = document.createElement('span');
+    projectedValueSpan.textContent = projectedLimit.toFixed(2);
+    const projectedUnitSpan = document.createElement('span');
+    projectedUnitSpan.className = 'stat-unit';
+    projectedUnitSpan.textContent = 'zł/dzień';
+    projectedValueDiv.appendChild(projectedValueSpan);
+    projectedValueDiv.appendChild(projectedUnitSpan);
 
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
     card.appendChild(nameDiv);
-    card.appendChild(labelDiv);
-    card.appendChild(valueDiv);
+    card.appendChild(realLabelDiv);
+    card.appendChild(realValueDiv);
+    card.appendChild(projectedLabelDiv);
+    card.appendChild(projectedValueDiv);
     card.appendChild(daysDiv);
-
-    // Dodaj prognozę jeśli są planowane transakcje
-    if (futureIncome > 0 || futureExpense > 0) {
-      const prognosisDiv = document.createElement('div');
-      prognosisDiv.className = 'prognosis-text';
-      prognosisDiv.textContent = `z planowanymi: ${projectedLimit.toFixed(2)} zł/dzień`;
-      card.appendChild(prognosisDiv);
-    }
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);

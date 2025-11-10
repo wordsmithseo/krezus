@@ -391,169 +391,275 @@ let chartTooltip = null;
 function renderCategoriesChart(breakdown) {
   const canvas = document.getElementById('categoriesChart');
   if (!canvas) return;
-  
+
   if (categoriesChartInstance) {
     categoriesChartInstance.destroy();
   }
-  
+
   if (chartTooltip) {
     chartTooltip.remove();
     chartTooltip = null;
   }
-  
+
   const container = canvas.parentElement;
   const containerWidth = container.clientWidth;
   const isMobile = containerWidth < 768;
 
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 600 : 450;
+  canvas.height = isMobile ? 600 : 550;
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
-
-  const labels = breakdown.map(b => b.category);
-  const data = breakdown.map(b => b.amount);
-
-  const maxAmount = Math.max(...data);
-  const chartHeight = canvas.height - (isMobile ? 180 : 150);
-  const chartWidth = canvas.width - (isMobile ? 80 : 120);
-  const barWidth = Math.min(isMobile ? 50 : 70, (chartWidth / breakdown.length) - (isMobile ? 20 : 25));
-  const startX = isMobile ? 60 : 70;
-  const startY = canvas.height - (isMobile ? 140 : 120);
-  
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-  ctx.strokeStyle = '#e5e7eb';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(startX, 20);
-  ctx.lineTo(startX, startY);
-  ctx.lineTo(canvas.width - 20, startY);
-  ctx.stroke();
-  
-  const numYLabels = 5;
-  for (let i = 0; i <= numYLabels; i++) {
-    const y = startY - (i / numYLabels) * chartHeight;
-    const value = (i / numYLabels) * maxAmount;
-    
-    ctx.strokeStyle = '#f3f4f6';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(startX, y);
-    ctx.lineTo(canvas.width - 20, y);
-    ctx.stroke();
-    
-    ctx.fillStyle = '#6b7280';
-    ctx.font = isMobile ? '12px Arial' : '13px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${value.toFixed(0)}`, startX - (isMobile ? 5 : 10), y + 4);
+
+  // Group small categories (< 5%) into "Inne"
+  const SMALL_CATEGORY_THRESHOLD = 5;
+  const mainCategories = breakdown.filter(item => item.percentage >= SMALL_CATEGORY_THRESHOLD);
+  const smallCategories = breakdown.filter(item => item.percentage < SMALL_CATEGORY_THRESHOLD);
+
+  let processedBreakdown = [...mainCategories];
+
+  if (smallCategories.length > 0) {
+    const otherAmount = smallCategories.reduce((sum, item) => sum + item.amount, 0);
+    const otherPercentage = smallCategories.reduce((sum, item) => sum + item.percentage, 0);
+
+    processedBreakdown.push({
+      category: 'Inne',
+      amount: otherAmount,
+      percentage: otherPercentage,
+      isOther: true,
+      categories: smallCategories.map(c => c.category).join(', ')
+    });
   }
-  
+
+  // Enhanced color palette - more vibrant and distinctive
   const colors = [
-    '#3b82f6',
-    '#10b981',
-    '#f59e0b',
-    '#ef4444',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#f97316'
+    '#FF6B6B', // Coral Red
+    '#4ECDC4', // Turquoise
+    '#FFE66D', // Bright Yellow
+    '#95E1D3', // Mint Green
+    '#F38181', // Light Coral
+    '#AA96DA', // Lavender Purple
+    '#FCBAD3', // Pink
+    '#A8E6CF', // Soft Green
+    '#FFD3B6', // Peach
+    '#FFAAA5', // Salmon
+    '#C7CEEA', // Periwinkle
+    '#B4F8C8', // Pastel Green
+    '#FFA07A', // Light Salmon
+    '#98D8C8', // Seafoam
+    '#F6CD61', // Golden Yellow
+    '#FE8A71'  // Coral Orange
   ];
-  
-  const barData = [];
-  
-  breakdown.forEach((item, index) => {
-    const barHeight = (item.amount / maxAmount) * chartHeight;
-    const x = startX + 20 + (index * (barWidth + (isMobile ? 10 : 25)));
-    const y = startY - barHeight;
-    
-    barData.push({
-      x,
-      y,
-      width: barWidth,
-      height: barHeight,
+
+  // Calculate pie chart dimensions - larger chart
+  const centerX = isMobile ? canvas.width / 2 : Math.min(canvas.width * 0.32, 250);
+  const centerY = canvas.height / 2;
+  const maxRadius = isMobile ?
+    Math.min(canvas.width / 2 - 30, 180) :
+    Math.min(centerX - 30, canvas.height / 2 - 30, 200);
+  const radius = Math.max(30, maxRadius);
+
+  // Draw pie slices with shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+  ctx.shadowBlur = 15;
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 3;
+
+  let currentAngle = -Math.PI / 2; // Start at top
+  const sliceData = [];
+
+  processedBreakdown.forEach((item, index) => {
+    const sliceAngle = (item.percentage / 100) * 2 * Math.PI;
+    const endAngle = currentAngle + sliceAngle;
+
+    // Draw slice
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, currentAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fill();
+
+    // Draw slice border
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Store slice data for hover detection
+    sliceData.push({
+      startAngle: currentAngle,
+      endAngle: endAngle,
       category: item.category,
       amount: item.amount,
-      percentage: item.percentage
+      percentage: item.percentage,
+      color: colors[index % colors.length],
+      categories: item.categories || null
     });
-    
-    ctx.fillStyle = colors[index % colors.length];
-    ctx.fillRect(x, y, barWidth, barHeight);
-    
-    ctx.save();
-    ctx.translate(x + barWidth / 2, startY + (isMobile ? 30 : 25));
-    ctx.rotate(-Math.PI / 4);
-    ctx.fillStyle = '#1f2937';
-    ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
-    ctx.textAlign = 'right';
 
-    const maxChars = isMobile ? 12 : 15;
+    currentAngle = endAngle;
+  });
+
+  // Reset shadow for legend
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Draw legend
+  const legendX = isMobile ? 20 : Math.min(canvas.width * 0.58, centerX * 2 + 60);
+  const legendY = isMobile ? canvas.height - Math.min(processedBreakdown.length * 35 + 20, 250) : 50;
+  const lineHeight = isMobile ? 32 : 36;
+  const fontSize = isMobile ? 13 : 14;
+  const boxSize = isMobile ? 16 : 18;
+
+  processedBreakdown.forEach((item, index) => {
+    const y = legendY + (index * lineHeight);
+
+    // Color box with subtle shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+
+    ctx.fillStyle = colors[index % colors.length];
+    ctx.fillRect(legendX, y, boxSize, boxSize);
+
+    // Border around color box
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(legendX, y, boxSize, boxSize);
+
+    // Category name
+    ctx.fillStyle = '#1f2937';
+    ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'left';
+    const maxChars = isMobile ? 15 : 22;
     const displayText = item.category.length > maxChars
       ? item.category.substring(0, maxChars) + '...'
       : item.category;
+    ctx.fillText(displayText, legendX + boxSize + 10, y + boxSize / 2 - 3);
 
-    ctx.fillText(displayText, 0, 0);
-    ctx.restore();
+    // Amount and percentage
+    ctx.fillStyle = '#6b7280';
+    ctx.font = `${fontSize - 1}px system-ui, -apple-system, sans-serif`;
+    const amountText = `${item.amount.toFixed(0)} zł (${item.percentage.toFixed(1)}%)`;
+    ctx.fillText(amountText, legendX + boxSize + 10, y + boxSize / 2 + 11);
   });
-  
+
+  // Create tooltip with modern styling
   chartTooltip = document.createElement('div');
   chartTooltip.style.cssText = `
     position: fixed;
-    background: rgba(0, 0, 0, 0.9);
+    background: linear-gradient(135deg, rgba(30, 30, 40, 0.98), rgba(20, 20, 30, 0.98));
     color: white;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: system-ui, -apple-system, sans-serif;
     pointer-events: none;
     z-index: 10000;
     display: none;
     white-space: nowrap;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
   `;
   document.body.appendChild(chartTooltip);
-  
+
+  // Mouse interaction
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
-    let hoveredBar = null;
-    for (const bar of barData) {
-      if (mouseX >= bar.x && mouseX <= bar.x + bar.width &&
-          mouseY >= bar.y && mouseY <= bar.y + bar.height) {
-        hoveredBar = bar;
-        break;
+
+    // Calculate angle from center
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if mouse is within pie circle
+    if (distance <= radius) {
+      let angle = Math.atan2(dy, dx);
+      // Normalize angle to match our start angle (-PI/2)
+      angle = angle - (-Math.PI / 2);
+      if (angle < 0) angle += 2 * Math.PI;
+
+      // Find which slice is hovered
+      let hoveredSlice = null;
+      for (const slice of sliceData) {
+        let startAngle = slice.startAngle - (-Math.PI / 2);
+        let endAngle = slice.endAngle - (-Math.PI / 2);
+        if (startAngle < 0) startAngle += 2 * Math.PI;
+        if (endAngle < 0) endAngle += 2 * Math.PI;
+
+        if (startAngle <= endAngle) {
+          if (angle >= startAngle && angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        } else {
+          if (angle >= startAngle || angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        }
       }
-    }
-    
-    if (hoveredBar) {
-      chartTooltip.style.display = 'block';
-      chartTooltip.style.left = `${e.clientX + 15}px`;
-      chartTooltip.style.top = `${e.clientY + 15}px`;
-      chartTooltip.innerHTML = `
-        <strong>${hoveredBar.category}</strong><br>
-        Kwota: ${hoveredBar.amount.toFixed(2)} zł<br>
-        Udział: ${hoveredBar.percentage.toFixed(1)}%
-      `;
-      canvas.style.cursor = 'pointer';
+
+      if (hoveredSlice) {
+        chartTooltip.style.display = 'block';
+        chartTooltip.style.left = `${e.clientX + 15}px`;
+        chartTooltip.style.top = `${e.clientY + 15}px`;
+
+        let tooltipContent = `
+          <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: ${hoveredSlice.color};">
+            ${hoveredSlice.category}
+          </div>`;
+
+        if (hoveredSlice.category === 'Inne' && hoveredSlice.categories) {
+          tooltipContent += `
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 6px; font-style: italic;">
+              ${hoveredSlice.categories}
+            </div>`;
+        }
+
+        tooltipContent += `
+          <div style="display: flex; gap: 12px; margin-top: 4px;">
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Kwota</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.amount.toFixed(2)} zł</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Udział</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.percentage.toFixed(1)}%</div>
+            </div>
+          </div>`;
+
+        chartTooltip.innerHTML = tooltipContent;
+        canvas.style.cursor = 'pointer';
+      } else {
+        chartTooltip.style.display = 'none';
+        canvas.style.cursor = 'default';
+      }
     } else {
       chartTooltip.style.display = 'none';
       canvas.style.cursor = 'default';
     }
   });
-  
+
   canvas.addEventListener('mouseleave', () => {
     chartTooltip.style.display = 'none';
     canvas.style.cursor = 'default';
   });
-  
-  categoriesChartInstance = { 
+
+  categoriesChartInstance = {
     destroy: () => {
       if (chartTooltip) {
         chartTooltip.remove();
         chartTooltip = null;
       }
-    } 
+    }
   };
 }
 
