@@ -19,6 +19,7 @@ export function renderDailyEnvelope() {
   const envelopeRemainingEl = document.getElementById('envelopeRemaining');
   const envelopeMedianEl = document.getElementById('envelopeMedian');
   const spendingGaugeEl = document.getElementById('spendingGauge');
+  const envelopePeriodInfoEl = document.getElementById('envelopePeriodInfo');
 
   if (!envelope) {
     if (envelopeAmountEl) envelopeAmountEl.textContent = '0.00';
@@ -26,6 +27,10 @@ export function renderDailyEnvelope() {
     if (envelopeRemainingEl) envelopeRemainingEl.textContent = '0.00';
     if (envelopeMedianEl) envelopeMedianEl.textContent = '0.00';
     if (spendingGaugeEl) spendingGaugeEl.style.width = '0%';
+
+    if (envelopePeriodInfoEl) {
+      envelopePeriodInfoEl.innerHTML = '';
+    }
 
     const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
     if (calcInfoDiv) {
@@ -48,6 +53,14 @@ export function renderDailyEnvelope() {
   if (envelopeSpentEl) envelopeSpentEl.textContent = spent.toFixed(2);
   if (envelopeRemainingEl) envelopeRemainingEl.textContent = remaining.toFixed(2);
   if (envelopeMedianEl) envelopeMedianEl.textContent = median.toFixed(2);
+
+  // Wyświetl informację o okresie
+  if (envelopePeriodInfoEl && envelope.period) {
+    const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni)`;
+    envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
+  } else if (envelopePeriodInfoEl) {
+    envelopePeriodInfoEl.innerHTML = '';
+  }
 
   if (spendingGaugeEl) {
     spendingGaugeEl.style.width = `${percentage}%`;

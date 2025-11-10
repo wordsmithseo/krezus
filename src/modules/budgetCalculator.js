@@ -503,40 +503,50 @@ export async function updateDailyEnvelope(forDate = null) {
     }
     
     const existing = getDailyEnvelope();
-    
+
+    // Informacja o okresie do zapisu
+    const periodInfo = selectedPeriod ? {
+        name: selectedPeriod.name,
+        date: selectedPeriod.date,
+        daysLeft: selectedPeriod.daysLeft
+    } : null;
+
     if (existing && existing.date === targetDate) {
         console.log('ℹ️ Koperta już istnieje dla tego dnia - aktualizacja');
-        
+
         const updatedEnvelope = {
             ...existing,
             baseAmount: smartLimit,
             additionalFunds: 0,
             totalAmount: smartLimit,
-            spent: todayExpensesSum
+            spent: todayExpensesSum,
+            period: periodInfo
         };
-        
+
         console.log('🔄 Aktualizacja koperty:', {
             bazowa: smartLimit.toFixed(2),
-            wydano: todayExpensesSum.toFixed(2)
+            wydano: todayExpensesSum.toFixed(2),
+            okres: periodInfo?.name
         });
-        
+
         await saveDailyEnvelope(targetDate, updatedEnvelope);
         return updatedEnvelope;
     }
-    
+
     console.log('✅ KOŃCOWA KOPERTA DNIA:', smartLimit.toFixed(2), 'zł');
-    
+
     const envelope = {
         date: targetDate,
         baseAmount: smartLimit,
         additionalFunds: 0,
         totalAmount: smartLimit,
-        spent: todayExpensesSum
+        spent: todayExpensesSum,
+        period: periodInfo
     };
-    
+
     console.log('✅ Zapisywanie inteligentnej koperty:', envelope);
     await saveDailyEnvelope(targetDate, envelope);
-    
+
     return envelope;
 }
 
