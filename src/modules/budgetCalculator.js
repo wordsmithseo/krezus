@@ -542,104 +542,90 @@ export async function updateDailyEnvelope(forDate = null) {
 
 export function getEnvelopeCalculationInfo() {
     const envelope = getDailyEnvelope();
-    const { date1, date2, daysLeft1, daysLeft2 } = calculateSpendingPeriods();
-    
+    const { periods } = calculateSpendingPeriods();
+    const envelopePeriodIndex = getEnvelopePeriod();
+    const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
+
     if (!envelope) {
-        if ((!date1 || date1.trim() === '') && (!date2 || date2.trim() === '')) {
+        if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
             return {
-                description: 'Brak ustawionej daty końcowej okresu',
-                formula: 'Ustaw datę końcową w ustawieniach'
+                description: 'Brak wybranego okresu',
+                formula: 'Wybierz okres w ustawieniach'
             };
         }
         return null;
     }
-    
+
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    
+
     const incomes = getIncomes();
     let sumIncomeBeforeToday = 0;
     let sumExpenseBeforeToday = 0;
-    
+
     incomes.forEach(inc => {
         if (inc.type === 'normal' && inc.date < today) {
             sumIncomeBeforeToday += inc.amount || 0;
         }
     });
-    
+
     expenses.forEach(exp => {
         if (exp.type === 'normal' && exp.date < today) {
             sumExpenseBeforeToday += exp.amount || 0;
         }
     });
-    
+
     const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
     const savingGoal = getSavingGoal();
     const toSpendBeforeToday = availableBeforeToday - savingGoal;
-    
-    const todayIncomes = incomes.filter(inc => 
+
+    const todayIncomes = incomes.filter(inc =>
         inc.date === today && inc.type === 'normal'
     );
     const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
-    
+
     const d30 = new Date();
     d30.setDate(d30.getDate() - 30);
     const date30str = getWarsawDateString(d30);
-    
-    const historicalExpenses = expenses.filter(e => 
-        e.type === 'normal' && 
-        e.date >= date30str && 
+
+    const historicalExpenses = expenses.filter(e =>
+        e.type === 'normal' &&
+        e.date >= date30str &&
         e.date < today
     );
-    
+
     let description = '';
     let formula = '';
-    
-    if ((!date1 || date1.trim() === '' || daysLeft1 <= 0) && (!date2 || date2.trim() === '' || daysLeft2 <= 0)) {
-        description = 'Brak ustawionej daty końcowej okresu';
-        formula = 'Ustaw datę końcową w ustawieniach';
+
+    if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
+        description = 'Brak wybranego okresu';
+        formula = 'Wybierz okres w ustawieniach';
     } else {
         const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
-        
-        let lowestDailyLimit = Infinity;
-        let limitSource = '';
-        
-        if (date1 && date1.trim() !== '' && daysLeft1 > 0) {
-            const limit1 = totalAvailableToday / daysLeft1;
-            if (limit1 < lowestDailyLimit) {
-                lowestDailyLimit = limit1;
-                limitSource = `okres 1 (${daysLeft1} dni)`;
-            }
-        }
-        
-        if (date2 && date2.trim() !== '' && daysLeft2 > 0) {
-            const limit2 = totalAvailableToday / daysLeft2;
-            if (limit2 < lowestDailyLimit) {
-                lowestDailyLimit = limit2;
-                limitSource = `okres 2 (${daysLeft2} dni)`;
-            }
-        }
-        
-        if (lowestDailyLimit === Infinity || lowestDailyLimit <= 0) {
+
+        const dailyLimit = totalAvailableToday / selectedPeriod.daysLeft;
+        const limitSource = `${selectedPeriod.name} (${selectedPeriod.daysLeft} dni)`;
+
+        if (dailyLimit <= 0) {
             description = 'Brak środków do wydania';
             formula = 'Dostępne środki: 0 zł';
         } else if (historicalExpenses.length >= 5) {
             const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
             const median = amounts[Math.floor(amounts.length / 2)];
-            
-            if (median > lowestDailyLimit * 1.5) {
+
+            if (median > dailyLimit * 1.5) {
                 description = `Algorytm inteligentny - mediana zbyt wysoka (${historicalExpenses.length} transakcji)`;
-                formula = `90% najniższego limitu (${limitSource}): ${lowestDailyLimit.toFixed(2)} zł × 0.9 = ${(lowestDailyLimit * 0.9).toFixed(2)} zł`;
-            } else if (median < lowestDailyLimit * 0.3) {
+                formula = `90% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.9 = ${(dailyLimit * 0.9).toFixed(2)} zł`;
+            } else if (median < dailyLimit * 0.3) {
                 description = `Algorytm inteligentny - mediana zbyt niska (${historicalExpenses.length} transakcji)`;
-                formula = `70% najniższego limitu (${limitSource}): ${lowestDailyLimit.toFixed(2)} zł × 0.7 = ${(lowestDailyLimit * 0.7).toFixed(2)} zł`;
+                formula = `70% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.7 = ${(dailyLimit * 0.7).toFixed(2)} zł`;
             } else {
                 description = `Algorytm inteligentny (${historicalExpenses.length} transakcji z 30 dni)`;
-                formula = `40% mediany ${median.toFixed(2)} zł + 60% najniższego limitu (${limitSource}) ${lowestDailyLimit.toFixed(2)} zł, max ${lowestDailyLimit.toFixed(2)} zł`;
+                formula = `40% mediany ${median.toFixed(2)} zł + 60% limitu (${limitSource}) ${dailyLimit.toFixed(2)} zł, max ${dailyLimit.toFixed(2)} zł`;
             }
         } else {
             description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
-            formula = `80% najniższego limitu (${limitSource}): ${lowestDailyLimit.toFixed(2)} zł × 0.8 = ${(lowestDailyLimit * 0.8).toFixed(2)} zł`;
+            formula = `80% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.8 = ${(dailyLimit * 0.8).toFixed(2)} zł`;
         }
     }
     

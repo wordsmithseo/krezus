@@ -13,6 +13,7 @@ import {
   calculateSpendingDynamics
 } from '../modules/budgetCalculator.js';
 
+import { getDynamicsPeriod } from '../modules/dataManager.js';
 import { formatDateLabel } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 
@@ -84,6 +85,12 @@ export function renderSpendingDynamics() {
 
   if (!container) return;
 
+  // Pobierz informację o wybranym okresie
+  const { periods } = calculateSpendingPeriods();
+  const dynamicsPeriodIndex = getDynamicsPeriod();
+  const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
+  const periodInfo = selectedPeriod ? `${selectedPeriod.name} (${selectedPeriod.daysLeft} dni)` : 'Brak okresu';
+
   let statusClass = '';
   switch(dynamics.status) {
     case 'excellent':
@@ -119,6 +126,7 @@ export function renderSpendingDynamics() {
     <div class="dynamics-card ${statusClass}">
       <h4 class="dynamics-title">${dynamics.title}</h4>
       <p class="dynamics-summary">${dynamics.summary}</p>
+      <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
       ${detailsHTML}
       <div class="dynamics-recommendation">
         <strong>💡 Rekomendacja:</strong>
