@@ -183,9 +183,14 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
-    // Limit dzienny z obecnych środków
-    const dailyLimit = limit.daysLeft > 0
+    // Limit realny (tylko obecne środki)
+    const realLimit = limit.daysLeft > 0
       ? (available - savingGoal) / limit.daysLeft
+      : 0;
+
+    // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
+    const projectedLimit = limit.daysLeft > 0
+      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
       : 0;
 
     const card = document.createElement('div');
@@ -195,58 +200,57 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const nameDiv = document.createElement('div');
     nameDiv.className = 'stat-label';
     nameDiv.style.fontWeight = 'bold';
-    nameDiv.style.marginBottom = '10px';
-    nameDiv.style.fontSize = '1rem';
+    nameDiv.style.marginBottom = '5px';
     nameDiv.textContent = limit.name || 'Planowany wpływ';
 
-    // Limit dzienny - duży, wyraźny
-    const limitLabelDiv = document.createElement('div');
-    limitLabelDiv.className = 'stat-label';
-    limitLabelDiv.style.fontSize = '0.85rem';
-    limitLabelDiv.style.opacity = '0.8';
-    limitLabelDiv.textContent = `Limit dzienny (do ${formatDateLabel(limit.date)})`;
+    // Limit realny
+    const realLabelDiv = document.createElement('div');
+    realLabelDiv.className = 'stat-label';
+    realLabelDiv.style.fontSize = '0.85rem';
+    realLabelDiv.style.opacity = '0.8';
+    realLabelDiv.textContent = `Limit realny (do ${formatDateLabel(limit.date)})`;
 
-    const limitValueDiv = document.createElement('div');
-    limitValueDiv.className = 'stat-value';
-    limitValueDiv.style.fontSize = '1.8rem';
-    limitValueDiv.style.marginBottom = '15px';
-    limitValueDiv.style.color = '#3b82f6';
-    const limitValueSpan = document.createElement('span');
-    limitValueSpan.textContent = dailyLimit.toFixed(2);
-    const limitUnitSpan = document.createElement('span');
-    limitUnitSpan.className = 'stat-unit';
-    limitUnitSpan.textContent = 'zł/dzień';
-    limitValueDiv.appendChild(limitValueSpan);
-    limitValueDiv.appendChild(limitUnitSpan);
+    const realValueDiv = document.createElement('div');
+    realValueDiv.className = 'stat-value';
+    realValueDiv.style.fontSize = '1.2rem';
+    realValueDiv.style.marginBottom = '10px';
+    const realValueSpan = document.createElement('span');
+    realValueSpan.textContent = realLimit.toFixed(2);
+    const realUnitSpan = document.createElement('span');
+    realUnitSpan.className = 'stat-unit';
+    realUnitSpan.textContent = 'zł/dzień';
+    realValueDiv.appendChild(realValueSpan);
+    realValueDiv.appendChild(realUnitSpan);
 
-    // Informacja o przyszłym wpływie
-    const incomeInfoDiv = document.createElement('div');
-    incomeInfoDiv.style.fontSize = '0.85rem';
-    incomeInfoDiv.style.padding = '10px';
-    incomeInfoDiv.style.backgroundColor = 'rgba(16, 185, 129, 0.1)';
-    incomeInfoDiv.style.borderRadius = '6px';
-    incomeInfoDiv.style.marginBottom = '10px';
-    incomeInfoDiv.style.color = '#059669';
-    incomeInfoDiv.innerHTML = `📥 <strong>+${futureIncome.toFixed(2)} zł</strong> za ${limit.daysLeft} dni`;
+    // Limit planowany
+    const projectedLabelDiv = document.createElement('div');
+    projectedLabelDiv.className = 'stat-label';
+    projectedLabelDiv.style.fontSize = '0.85rem';
+    projectedLabelDiv.style.opacity = '0.8';
+    projectedLabelDiv.style.color = '#10b981';
+    projectedLabelDiv.textContent = `Limit planowany`;
 
-    if (futureExpense > 0) {
-      const expenseSpan = document.createElement('div');
-      expenseSpan.style.color = '#dc2626';
-      expenseSpan.style.marginTop = '4px';
-      expenseSpan.innerHTML = `📤 <strong>-${futureExpense.toFixed(2)} zł</strong> planowanych wydatków`;
-      incomeInfoDiv.appendChild(expenseSpan);
-    }
+    const projectedValueDiv = document.createElement('div');
+    projectedValueDiv.className = 'stat-value';
+    projectedValueDiv.style.fontSize = '1.5rem';
+    projectedValueDiv.style.color = '#10b981';
+    const projectedValueSpan = document.createElement('span');
+    projectedValueSpan.textContent = projectedLimit.toFixed(2);
+    const projectedUnitSpan = document.createElement('span');
+    projectedUnitSpan.className = 'stat-unit';
+    projectedUnitSpan.textContent = 'zł/dzień';
+    projectedValueDiv.appendChild(projectedValueSpan);
+    projectedValueDiv.appendChild(projectedUnitSpan);
 
     const daysDiv = document.createElement('div');
-    daysDiv.className = 'stat-label';
-    daysDiv.style.fontSize = '0.85rem';
-    daysDiv.style.opacity = '0.7';
+    daysDiv.className = 'stat-label mt-10';
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
     card.appendChild(nameDiv);
-    card.appendChild(limitLabelDiv);
-    card.appendChild(limitValueDiv);
-    card.appendChild(incomeInfoDiv);
+    card.appendChild(realLabelDiv);
+    card.appendChild(realValueDiv);
+    card.appendChild(projectedLabelDiv);
+    card.appendChild(projectedValueDiv);
     card.appendChild(daysDiv);
 
     statsGrid.appendChild(card);

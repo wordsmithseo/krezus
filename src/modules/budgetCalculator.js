@@ -202,14 +202,14 @@ export function calculatePlannedTransactionsTotals() {
             console.log(`🔍 Filtrowanie dla okresu ${index + 1} (od ${today} do ${period.date})`);
 
             incomes.forEach(inc => {
-                if (inc.type === 'planned' && inc.date >= today && inc.date <= period.date) {
+                if (inc.type === 'planned' && inc.date >= today && inc.date < period.date) {
                     console.log(`  ✅ Dodaję przychód: ${inc.amount} zł, data: ${inc.date}, źródło: ${inc.source}`);
                     futureIncome += inc.amount || 0;
                 }
             });
 
             expenses.forEach(exp => {
-                if (exp.type === 'planned' && exp.date >= today && exp.date <= period.date) {
+                if (exp.type === 'planned' && exp.date >= today && exp.date < period.date) {
                     console.log(`  ✅ Dodaję wydatek: ${exp.amount} zł, data: ${exp.date}`);
                     futureExpense += exp.amount || 0;
                 }
