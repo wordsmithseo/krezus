@@ -183,6 +183,11 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
+    // Oblicz limit z planowanymi wpływami (realny limit na ten okres)
+    const projectedLimit = limit.daysLeft > 0
+      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
+      : 0;
+
     const card = document.createElement('div');
     card.className = 'stat-card';
 
@@ -202,7 +207,8 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const valueDiv = document.createElement('div');
     valueDiv.className = 'stat-value';
     const valueSpan = document.createElement('span');
-    valueSpan.textContent = limit.currentLimit.toFixed(2);
+    // Pokaż limit z planowanymi wpływami jako główny
+    valueSpan.textContent = projectedLimit.toFixed(2);
     const unitSpan = document.createElement('span');
     unitSpan.className = 'stat-unit';
     unitSpan.textContent = 'zł/dzień';
@@ -218,21 +224,25 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     card.appendChild(valueDiv);
     card.appendChild(daysDiv);
 
-    // Informacja o planowanych wpływach (bez zmiany limitu)
+    // Pokaż szczegóły obliczeń
     if (futureIncome > 0 || futureExpense > 0) {
-      const prognosisDiv = document.createElement('div');
-      prognosisDiv.className = 'prognosis-text';
-      prognosisDiv.style.fontSize = '0.75rem';
-      prognosisDiv.style.marginTop = '6px';
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'prognosis-text';
+      detailsDiv.style.fontSize = '0.75rem';
+      detailsDiv.style.marginTop = '6px';
+      detailsDiv.style.opacity = '0.7';
 
+      const parts = [];
+      parts.push(`Obecne: ${available.toFixed(2)} zł`);
       if (futureIncome > 0) {
-        prognosisDiv.textContent = `Oczekiwany wpływ: +${futureIncome.toFixed(2)} zł`;
+        parts.push(`Wpływy: +${futureIncome.toFixed(2)} zł`);
       }
       if (futureExpense > 0) {
-        prognosisDiv.textContent += (futureIncome > 0 ? ', ' : '') + `wydatki: -${futureExpense.toFixed(2)} zł`;
+        parts.push(`Wydatki: -${futureExpense.toFixed(2)} zł`);
       }
 
-      card.appendChild(prognosisDiv);
+      detailsDiv.textContent = parts.join(' • ');
+      card.appendChild(detailsDiv);
     }
 
     statsGrid.appendChild(card);
