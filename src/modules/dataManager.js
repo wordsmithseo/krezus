@@ -78,18 +78,38 @@ export async function loadCategories() {
     const snapshot = await get(ref(db, getUserBudgetPath('categories')));
     const data = snapshot.val() || {};
     const newCategories = Object.values(data);
-    
+
     const uniqueCategories = [];
     const seenIds = new Set();
-    
+    const seenNames = new Set();
+    let needsMigration = false;
+
     newCategories.forEach(cat => {
-      if (cat && cat.id && !seenIds.has(cat.id)) {
+      if (!cat) return;
+
+      // MIGRACJA: dodaj ID jeśli kategoria go nie ma
+      if (!cat.id) {
+        cat.id = `cat_${cat.name.replace(/\s+/g, '_')}_${Date.now()}`;
+        needsMigration = true;
+        console.log(`🔄 Dodano ID do kategorii: ${cat.name} -> ${cat.id}`);
+      }
+
+      // Unikalne kategorie - sprawdzaj zarówno ID jak i nazwę
+      if (!seenIds.has(cat.id) && !seenNames.has(cat.name)) {
         seenIds.add(cat.id);
+        seenNames.add(cat.name);
         uniqueCategories.push(cat);
       }
     });
-    
+
     categoriesCache = uniqueCategories;
+
+    // Zapisz zmigrowane dane
+    if (needsMigration) {
+      console.log('💾 Zapisywanie zmigrowanych kategorii...');
+      await saveCategories(categoriesCache);
+    }
+
     console.log('✅ Załadowano kategorie:', categoriesCache.length);
     return categoriesCache;
   } catch (error) {
