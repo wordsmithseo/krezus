@@ -224,28 +224,6 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     card.appendChild(valueDiv);
     card.appendChild(daysDiv);
 
-    // Pokaż szczegóły obliczeń
-    const detailsDiv = document.createElement('div');
-    detailsDiv.className = 'prognosis-text';
-    detailsDiv.style.fontSize = '0.75rem';
-    detailsDiv.style.marginTop = '6px';
-    detailsDiv.style.opacity = '0.7';
-
-    const availableAfterGoal = available - savingGoal;
-    const totalFunds = availableAfterGoal + futureIncome - futureExpense;
-
-    // Buduj formułę pokazującą obliczenie
-    const parts = [`${availableAfterGoal.toFixed(2)} zł`];
-    if (futureIncome > 0) {
-      parts.push(`+ ${futureIncome.toFixed(2)} zł`);
-    }
-    if (futureExpense > 0) {
-      parts.push(`- ${futureExpense.toFixed(2)} zł`);
-    }
-
-    detailsDiv.textContent = `${parts.join(' ')} = ${totalFunds.toFixed(2)} zł / ${limit.daysLeft} dni`;
-    card.appendChild(detailsDiv);
-
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);
   });
