@@ -54,12 +54,25 @@ export function renderDailyEnvelope() {
   if (envelopeRemainingEl) envelopeRemainingEl.textContent = remaining.toFixed(2);
   if (envelopeMedianEl) envelopeMedianEl.textContent = median.toFixed(2);
 
-  // Wyświetl informację o okresie
-  if (envelopePeriodInfoEl && envelope.period) {
-    const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni)`;
-    envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
-  } else if (envelopePeriodInfoEl) {
-    envelopePeriodInfoEl.innerHTML = '';
+  // Wyświetl informację o okresie i dacie przeliczenia
+  if (envelopePeriodInfoEl) {
+    if (envelope.period && envelope.calculatedAt) {
+      const calcDate = new Date(envelope.calculatedAt);
+      const formattedDate = calcDate.toLocaleString('pl-PL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni) | 🕐 Wyliczono: ${formattedDate}`;
+      envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
+    } else if (envelope.period) {
+      const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni)`;
+      envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
+    } else {
+      envelopePeriodInfoEl.innerHTML = '';
+    }
   }
 
   if (spendingGaugeEl) {
