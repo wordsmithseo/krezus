@@ -227,13 +227,11 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     projectedLabelDiv.className = 'stat-label';
     projectedLabelDiv.style.fontSize = '0.85rem';
     projectedLabelDiv.style.opacity = '0.8';
-    projectedLabelDiv.style.color = '#10b981';
     projectedLabelDiv.textContent = `Limit planowany`;
 
     const projectedValueDiv = document.createElement('div');
     projectedValueDiv.className = 'stat-value';
     projectedValueDiv.style.fontSize = '1.5rem';
-    projectedValueDiv.style.color = '#10b981';
     const projectedValueSpan = document.createElement('span');
     projectedValueSpan.textContent = projectedLimit.toFixed(2);
     const projectedUnitSpan = document.createElement('span');
