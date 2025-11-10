@@ -19,18 +19,22 @@ import {
   getIncomes,
   getEndDates,
   getSavingGoal,
+  getEnvelopePeriod,
+  getDynamicsPeriod,
   getDailyEnvelope,
   saveCategories,
   saveExpenses,
   saveIncomes,
   saveEndDates,
   saveSavingGoal,
+  saveEnvelopePeriod,
+  saveDynamicsPeriod,
   autoRealiseDueTransactions,
   subscribeToRealtimeUpdates,
   clearAllListeners,
   clearCache,
-  loadIncomes,  
-  loadExpenses 
+  loadIncomes,
+  loadExpenses
 
 } from './modules/dataManager.js';
 
@@ -1762,11 +1766,40 @@ window.addCorrection = async (e) => {
 
 function loadSettings() {
   const savingGoal = getSavingGoal();
+  const envelopePeriod = getEnvelopePeriod();
+  const dynamicsPeriod = getDynamicsPeriod();
 
   const savingGoalInput = document.getElementById('settingsSavingGoal');
+  const envelopePeriodSelect = document.getElementById('settingsEnvelopePeriod');
+  const dynamicsPeriodSelect = document.getElementById('settingsDynamicsPeriod');
 
   // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie ładujemy ich z ustawień
   if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
+
+  // Wypełnij dropdowny okresami
+  const { periods } = calculateSpendingPeriods();
+
+  if (envelopePeriodSelect) {
+    envelopePeriodSelect.innerHTML = '';
+    periods.forEach((period, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
+      if (index === envelopePeriod) option.selected = true;
+      envelopePeriodSelect.appendChild(option);
+    });
+  }
+
+  if (dynamicsPeriodSelect) {
+    dynamicsPeriodSelect.innerHTML = '';
+    periods.forEach((period, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
+      if (index === dynamicsPeriod) option.selected = true;
+      dynamicsPeriodSelect.appendChild(option);
+    });
+  }
 }
 
 window.saveSettings = async (e) => {
@@ -1774,10 +1807,14 @@ window.saveSettings = async (e) => {
 
   const form = e.target;
   const savingGoal = parseFloat(form.savingGoal.value) || 0;
+  const envelopePeriod = parseInt(form.envelopePeriod.value) || 0;
+  const dynamicsPeriod = parseInt(form.dynamicsPeriod.value) || 0;
 
   try {
     // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie zapisujemy ich
     await saveSavingGoal(savingGoal);
+    await saveEnvelopePeriod(envelopePeriod);
+    await saveDynamicsPeriod(dynamicsPeriod);
     await updateDailyEnvelope();
 
     const user = getCurrentUser();
@@ -1785,8 +1822,10 @@ window.saveSettings = async (e) => {
 
     await log('SETTINGS_UPDATE', {
       savingGoal,
+      envelopePeriod,
+      dynamicsPeriod,
       budgetUser: displayName,
-      note: 'Daty okresów są teraz automatyczne (z planowanych przychodów)'
+      note: 'Ustawienia okresu koperty i dynamiki zapisane'
     });
 
     showSuccessMessage('Ustawienia zapisane');
