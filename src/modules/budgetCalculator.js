@@ -74,7 +74,7 @@ export function getMonthExpenses() {
 
 /**
  * Pobiera następne daty planowanych przychodów (automatyczne wyznaczanie okresów budżetowych)
- * Zwraca WSZYSTKIE daty planowanych wpływów (bez limitu)
+ * Zwraca WSZYSTKIE daty planowanych wpływów (bez limitu) wraz z nazwami
  */
 function getNextPlannedIncomeDates() {
     const incomes = getIncomes();
@@ -83,28 +83,39 @@ function getNextPlannedIncomeDates() {
     // Filtruj planowane przychody od dzisiaj w przyszłość
     const plannedIncomes = incomes
         .filter(inc => inc.type === 'planned' && inc.date >= today)
-        .map(inc => inc.date)
-        .sort(); // Sortuj chronologicznie
+        .map(inc => ({
+            date: inc.date,
+            name: inc.source || 'Bez nazwy'
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date)); // Sortuj chronologicznie
 
-    // Usuń duplikaty
-    const uniqueDates = [...new Set(plannedIncomes)];
+    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, weź pierwszy)
+    const uniqueIncomes = [];
+    const seenDates = new Set();
 
-    console.log('📅 Znalezione daty planowanych przychodów:', uniqueDates);
+    for (const income of plannedIncomes) {
+        if (!seenDates.has(income.date)) {
+            seenDates.add(income.date);
+            uniqueIncomes.push(income);
+        }
+    }
 
-    return uniqueDates;
+    console.log('📅 Znalezione daty planowanych przychodów:', uniqueIncomes);
+
+    return uniqueIncomes;
 }
 
 export function calculateSpendingPeriods() {
     // ZMIANA: Używamy automatycznych dat z planowanych przychodów zamiast manualnych z ustawień
-    const dates = getNextPlannedIncomeDates();
+    const incomes = getNextPlannedIncomeDates();
     const today = getWarsawDateString();
 
     // Oblicz dni pozostałe dla każdej daty
-    const periods = dates.map(date => {
+    const periods = incomes.map(income => {
         let daysLeft = 0;
 
-        if (date && date.trim() !== '') {
-            const d = parseDateStr(date);
+        if (income.date && income.date.trim() !== '') {
+            const d = parseDateStr(income.date);
             const td = parseDateStr(today);
             if (d && td && !isNaN(d.getTime()) && !isNaN(td.getTime())) {
                 daysLeft = Math.max(0, Math.floor((d - td) / (1000*60*60*24)));
@@ -112,7 +123,8 @@ export function calculateSpendingPeriods() {
         }
 
         return {
-            date,
+            date: income.date,
+            name: income.name,
             daysLeft
         };
     });
@@ -149,6 +161,7 @@ export function calculateCurrentLimits() {
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map(period => ({
         date: period.date,
+        name: period.name,
         daysLeft: period.daysLeft,
         currentLimit: period.daysLeft > 0 ? toSpend / period.daysLeft : 0
     }));

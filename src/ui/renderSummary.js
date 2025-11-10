@@ -190,8 +190,17 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     const card = document.createElement('div');
     card.className = 'stat-card';
 
+    // Nazwa wpływu na górze
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'stat-label';
+    nameDiv.style.fontWeight = 'bold';
+    nameDiv.style.marginBottom = '5px';
+    nameDiv.textContent = limit.name || 'Planowany wpływ';
+
     const labelDiv = document.createElement('div');
     labelDiv.className = 'stat-label';
+    labelDiv.style.fontSize = '0.85rem';
+    labelDiv.style.opacity = '0.8';
     labelDiv.textContent = `Limit dzienny (do ${formatDateLabel(limit.date)})`;
 
     const valueDiv = document.createElement('div');
@@ -208,6 +217,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal) {
     daysDiv.className = 'stat-label mt-10';
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
+    card.appendChild(nameDiv);
     card.appendChild(labelDiv);
     card.appendChild(valueDiv);
     card.appendChild(daysDiv);
