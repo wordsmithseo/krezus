@@ -19,18 +19,22 @@ import {
   getIncomes,
   getEndDates,
   getSavingGoal,
+  getEnvelopePeriod,
+  getDynamicsPeriod,
   getDailyEnvelope,
   saveCategories,
   saveExpenses,
   saveIncomes,
   saveEndDates,
   saveSavingGoal,
+  saveEnvelopePeriod,
+  saveDynamicsPeriod,
   autoRealiseDueTransactions,
   subscribeToRealtimeUpdates,
   clearAllListeners,
   clearCache,
-  loadIncomes,  
-  loadExpenses 
+  loadIncomes,
+  loadExpenses
 
 } from './modules/dataManager.js';
 
@@ -388,6 +392,30 @@ function renderAnalytics() {
 let categoriesChartInstance = null;
 let chartTooltip = null;
 
+// Helper function to adjust brightness of hex color
+function adjustBrightness(hex, percent) {
+  // Remove # if present
+  hex = hex.replace('#', '');
+
+  // Convert to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // Adjust brightness
+  const newR = Math.max(0, Math.min(255, r + (r * percent / 100)));
+  const newG = Math.max(0, Math.min(255, g + (g * percent / 100)));
+  const newB = Math.max(0, Math.min(255, b + (b * percent / 100)));
+
+  // Convert back to hex
+  const toHex = (n) => {
+    const hex = Math.round(n).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+
+  return '#' + toHex(newR) + toHex(newG) + toHex(newB);
+}
+
 function renderCategoriesChart(breakdown) {
   const canvas = document.getElementById('categoriesChart');
   if (!canvas) return;
@@ -432,39 +460,39 @@ function renderCategoriesChart(breakdown) {
     });
   }
 
-  // Enhanced color palette - more vibrant and distinctive
+  // Pastelowe kolory - delikatne i przyjazne dla oka
   const colors = [
-    '#FF6B6B', // Coral Red
-    '#4ECDC4', // Turquoise
-    '#FFE66D', // Bright Yellow
-    '#95E1D3', // Mint Green
-    '#F38181', // Light Coral
-    '#AA96DA', // Lavender Purple
-    '#FCBAD3', // Pink
-    '#A8E6CF', // Soft Green
-    '#FFD3B6', // Peach
-    '#FFAAA5', // Salmon
-    '#C7CEEA', // Periwinkle
-    '#B4F8C8', // Pastel Green
-    '#FFA07A', // Light Salmon
-    '#98D8C8', // Seafoam
-    '#F6CD61', // Golden Yellow
-    '#FE8A71'  // Coral Orange
+    '#FFB3BA', // Pastelowy różowy
+    '#BAFFC9', // Pastelowy zielony
+    '#BAE1FF', // Pastelowy niebieski
+    '#FFFFBA', // Pastelowy żółty
+    '#FFD9BA', // Pastelowy pomarańczowy
+    '#E0BBE4', // Pastelowy lawendowy
+    '#FEC8D8', // Pastelowy malinowy
+    '#D4F4DD', // Pastelowy miętowy
+    '#FFF5BA', // Pastelowy kremowy
+    '#FFCCF9', // Pastelowy fuksja
+    '#C7CEEA', // Pastelowy periwinkle
+    '#B5EAD7', // Pastelowy turkusowy
+    '#FFE5D9', // Pastelowy brzoskwiniowy
+    '#E2F0CB', // Pastelowy limonkowy
+    '#FFDFD3', // Pastelowy koralowy
+    '#D9F0FF'  // Pastelowy błękitny
   ];
 
-  // Calculate pie chart dimensions - larger chart
-  const centerX = isMobile ? canvas.width / 2 : Math.min(canvas.width * 0.32, 250);
-  const centerY = canvas.height / 2;
+  // Calculate pie chart dimensions - wyśrodkowany wykres
+  const centerX = isMobile ? canvas.width / 2 : canvas.width / 2;
+  const centerY = isMobile ? canvas.height * 0.35 : canvas.height / 2;
   const maxRadius = isMobile ?
-    Math.min(canvas.width / 2 - 30, 180) :
-    Math.min(centerX - 30, canvas.height / 2 - 30, 200);
+    Math.min(canvas.width / 2 - 40, 150) :
+    Math.min(canvas.width * 0.25, canvas.height * 0.35, 180);
   const radius = Math.max(30, maxRadius);
 
-  // Draw pie slices with shadow
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-  ctx.shadowBlur = 15;
-  ctx.shadowOffsetX = 3;
-  ctx.shadowOffsetY = 3;
+  // Draw pie slices with subtle shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
 
   let currentAngle = -Math.PI / 2; // Start at top
   const sliceData = [];
@@ -473,18 +501,24 @@ function renderCategoriesChart(breakdown) {
     const sliceAngle = (item.percentage / 100) * 2 * Math.PI;
     const endAngle = currentAngle + sliceAngle;
 
-    // Draw slice
+    // Draw slice z gradientem
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, radius, currentAngle, endAngle);
     ctx.closePath();
-    ctx.fillStyle = colors[index % colors.length];
-    ctx.fill();
 
-    // Draw slice border
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
+    // Gradient dla każdego slice
+    const midAngle = currentAngle + sliceAngle / 2;
+    const gradientX = centerX + Math.cos(midAngle) * radius * 0.5;
+    const gradientY = centerY + Math.sin(midAngle) * radius * 0.5;
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, gradientX, gradientY, radius);
+
+    const baseColor = colors[index % colors.length];
+    gradient.addColorStop(0, baseColor);
+    gradient.addColorStop(1, adjustBrightness(baseColor, -15));
+
+    ctx.fillStyle = gradient;
+    ctx.fill();
 
     // Store slice data for hover detection
     sliceData.push({
@@ -506,9 +540,10 @@ function renderCategoriesChart(breakdown) {
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
 
-  // Draw legend
-  const legendX = isMobile ? 20 : Math.min(canvas.width * 0.58, centerX * 2 + 60);
-  const legendY = isMobile ? canvas.height - Math.min(processedBreakdown.length * 35 + 20, 250) : 50;
+  // Draw legend - poniżej wykresu na mobile, po prawej na desktop
+  const legendX = isMobile ? 20 : 50;
+  const legendStartY = isMobile ? centerY + radius + 40 : 50;
+  const legendY = legendStartY;
   const lineHeight = isMobile ? 32 : 36;
   const fontSize = isMobile ? 13 : 14;
   const boxSize = isMobile ? 16 : 18;
@@ -516,21 +551,38 @@ function renderCategoriesChart(breakdown) {
   processedBreakdown.forEach((item, index) => {
     const y = legendY + (index * lineHeight);
 
-    // Color box with subtle shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-    ctx.shadowBlur = 4;
+    // Color box z zaokrąglonymi rogami (bez ramki)
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
 
-    ctx.fillStyle = colors[index % colors.length];
-    ctx.fillRect(legendX, y, boxSize, boxSize);
+    // Gradient w legendzie też
+    const boxGradient = ctx.createLinearGradient(legendX, y, legendX + boxSize, y + boxSize);
+    const baseColor = colors[index % colors.length];
+    boxGradient.addColorStop(0, baseColor);
+    boxGradient.addColorStop(1, adjustBrightness(baseColor, -10));
 
-    // Border around color box
+    ctx.fillStyle = boxGradient;
+
+    // Zaokrąglony kwadrat
+    ctx.beginPath();
+    const cornerRadius = 3;
+    ctx.moveTo(legendX + cornerRadius, y);
+    ctx.lineTo(legendX + boxSize - cornerRadius, y);
+    ctx.quadraticCurveTo(legendX + boxSize, y, legendX + boxSize, y + cornerRadius);
+    ctx.lineTo(legendX + boxSize, y + boxSize - cornerRadius);
+    ctx.quadraticCurveTo(legendX + boxSize, y + boxSize, legendX + boxSize - cornerRadius, y + boxSize);
+    ctx.lineTo(legendX + cornerRadius, y + boxSize);
+    ctx.quadraticCurveTo(legendX, y + boxSize, legendX, y + boxSize - cornerRadius);
+    ctx.lineTo(legendX, y + cornerRadius);
+    ctx.quadraticCurveTo(legendX, y, legendX + cornerRadius, y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Reset shadow
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(legendX, y, boxSize, boxSize);
 
     // Category name
     ctx.fillStyle = '#1f2937';
@@ -1714,11 +1766,40 @@ window.addCorrection = async (e) => {
 
 function loadSettings() {
   const savingGoal = getSavingGoal();
+  const envelopePeriod = getEnvelopePeriod();
+  const dynamicsPeriod = getDynamicsPeriod();
 
   const savingGoalInput = document.getElementById('settingsSavingGoal');
+  const envelopePeriodSelect = document.getElementById('settingsEnvelopePeriod');
+  const dynamicsPeriodSelect = document.getElementById('settingsDynamicsPeriod');
 
   // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie ładujemy ich z ustawień
   if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
+
+  // Wypełnij dropdowny okresami
+  const { periods } = calculateSpendingPeriods();
+
+  if (envelopePeriodSelect) {
+    envelopePeriodSelect.innerHTML = '';
+    periods.forEach((period, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
+      if (index === envelopePeriod) option.selected = true;
+      envelopePeriodSelect.appendChild(option);
+    });
+  }
+
+  if (dynamicsPeriodSelect) {
+    dynamicsPeriodSelect.innerHTML = '';
+    periods.forEach((period, index) => {
+      const option = document.createElement('option');
+      option.value = index;
+      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
+      if (index === dynamicsPeriod) option.selected = true;
+      dynamicsPeriodSelect.appendChild(option);
+    });
+  }
 }
 
 window.saveSettings = async (e) => {
@@ -1726,10 +1807,14 @@ window.saveSettings = async (e) => {
 
   const form = e.target;
   const savingGoal = parseFloat(form.savingGoal.value) || 0;
+  const envelopePeriod = parseInt(form.envelopePeriod.value) || 0;
+  const dynamicsPeriod = parseInt(form.dynamicsPeriod.value) || 0;
 
   try {
     // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie zapisujemy ich
     await saveSavingGoal(savingGoal);
+    await saveEnvelopePeriod(envelopePeriod);
+    await saveDynamicsPeriod(dynamicsPeriod);
     await updateDailyEnvelope();
 
     const user = getCurrentUser();
@@ -1737,8 +1822,10 @@ window.saveSettings = async (e) => {
 
     await log('SETTINGS_UPDATE', {
       savingGoal,
+      envelopePeriod,
+      dynamicsPeriod,
       budgetUser: displayName,
-      note: 'Daty okresów są teraz automatyczne (z planowanych przychodów)'
+      note: 'Ustawienia okresu koperty i dynamiki zapisane'
     });
 
     showSuccessMessage('Ustawienia zapisane');

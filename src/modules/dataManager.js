@@ -12,6 +12,8 @@ let endDate1Cache = '';
 let endDate2Cache = '';
 let savingGoalCache = 0;
 let dailyEnvelopeCache = null;
+let envelopePeriodCache = 0; // Indeks okresu dla koperty dnia
+let dynamicsPeriodCache = 0; // Indeks okresu dla dynamiki wydatków
 
 let activeListeners = {};
 let currentCachedUserId = null;
@@ -238,6 +240,36 @@ export async function loadSavingGoal() {
 }
 
 /**
+ * Załaduj okres dla koperty dnia
+ */
+export async function loadEnvelopePeriod() {
+  try {
+    const snapshot = await get(ref(db, getUserBudgetPath('envelopePeriod')));
+    const val = snapshot.val();
+    envelopePeriodCache = val !== null && val !== undefined ? parseInt(val) : 0;
+    return envelopePeriodCache;
+  } catch (error) {
+    console.error('❌ Błąd ładowania okresu koperty:', error);
+    return 0;
+  }
+}
+
+/**
+ * Załaduj okres dla dynamiki wydatków
+ */
+export async function loadDynamicsPeriod() {
+  try {
+    const snapshot = await get(ref(db, getUserBudgetPath('dynamicsPeriod')));
+    const val = snapshot.val();
+    dynamicsPeriodCache = val !== null && val !== undefined ? parseInt(val) : 0;
+    return dynamicsPeriodCache;
+  } catch (error) {
+    console.error('❌ Błąd ładowania okresu dynamiki:', error);
+    return 0;
+  }
+}
+
+/**
  * Załaduj kopertę dnia
  */
 export async function loadDailyEnvelope(dateStr) {
@@ -363,6 +395,32 @@ export async function saveSavingGoal(goal) {
 }
 
 /**
+ * Zapisz okres dla koperty dnia
+ */
+export async function saveEnvelopePeriod(periodIndex) {
+  try {
+    await set(ref(db, getUserBudgetPath('envelopePeriod')), periodIndex);
+    envelopePeriodCache = periodIndex;
+  } catch (error) {
+    console.error('❌ Błąd zapisywania okresu koperty:', error);
+    throw error;
+  }
+}
+
+/**
+ * Zapisz okres dla dynamiki wydatków
+ */
+export async function saveDynamicsPeriod(periodIndex) {
+  try {
+    await set(ref(db, getUserBudgetPath('dynamicsPeriod')), periodIndex);
+    dynamicsPeriodCache = periodIndex;
+  } catch (error) {
+    console.error('❌ Błąd zapisywania okresu dynamiki:', error);
+    throw error;
+  }
+}
+
+/**
  * Zapisz kopertę dnia
  */
 export async function saveDailyEnvelope(dateStr, envelope) {
@@ -385,14 +443,16 @@ export async function fetchAllData() {
     const userId = getUserId();
     console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
     
-    const [categories, expenses, incomes, endDates, savingGoal] = await Promise.all([
+    const [categories, expenses, incomes, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
       loadIncomes(),
       loadEndDates(),
-      loadSavingGoal()
+      loadSavingGoal(),
+      loadEnvelopePeriod(),
+      loadDynamicsPeriod()
     ]);
-    
+
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
     
@@ -669,6 +729,14 @@ export function getEndDates() {
 
 export function getSavingGoal() {
   return savingGoalCache;
+}
+
+export function getEnvelopePeriod() {
+  return envelopePeriodCache;
+}
+
+export function getDynamicsPeriod() {
+  return dynamicsPeriodCache;
 }
 
 export function getDailyEnvelope() {
