@@ -22,55 +22,41 @@
                 <h1 class="auth-logo">Krezus 💰</h1>
                 <p class="auth-tagline">Inteligentny Budżet Osobisty</p>
                 <p class="auth-description">
-                    Zaawansowane narzędzie do zarządzania finansami domowymi z funkcją inteligentnej koperty dnia, 
-                    planowaniem transakcji i szczegółową analityką wydatków.
+                    Kompleksowe narzędzie do zarządzania finansami domowymi z inteligentną kopertą dnia,
+                    budżetami celowymi, planowaniem transakcji i szczegółową analityką wydatków.
                 </p>
-                
+
                 <div class="auth-features">
                     <div class="feature-item">
                         <div class="feature-icon">📊</div>
                         <h3>Pełna kontrola</h3>
-                        <p>Śledź swoje wydatki i przychody w czasie rzeczywistym</p>
+                        <p>Śledź wydatki i przychody w czasie rzeczywistym z wieloma użytkownikami</p>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">💡</div>
-                        <h3>Inteligentna koperta</h3>
-                        <p>Algorytm oparty na historii Twoich wydatków</p>
+                        <h3>Inteligentna koperta dnia</h3>
+                        <p>Algorytm dostosowany do Twojej historii wydatków z dynamicznymi limitami</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💰</div>
+                        <h3>Budżety celowe</h3>
+                        <p>Alokuj środki na konkretne cele i śledź ich realizację</p>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">📅</div>
-                        <h3>Planowanie</h3>
-                        <p>Zaplanuj przyszłe transakcje i automatyzuj budżet</p>
+                        <h3>Planowanie transakcji</h3>
+                        <p>Zaplanuj przyszłe wpływy i wydatki z automatyczną aktualizacją budżetu</p>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">📈</div>
                         <h3>Zaawansowana analityka</h3>
-                        <p>Wykresy, statystyki i wykrywanie anomalii</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">👥</div>
-                        <h3>Wielu użytkowników</h3>
-                        <p>Zarządzaj budżetem całej rodziny w jednym miejscu</p>
+                        <p>Wykresy, statystyki, kategorie i wykrywanie anomalii w wydatkach</p>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">🔒</div>
-                        <h3>Bezpieczeństwo</h3>
-                        <p>Twoje dane są bezpiecznie przechowywane i szyfrowane</p>
+                        <h3>Bezpieczeństwo i synchronizacja</h3>
+                        <p>Szyfrowane dane z dostępem z każdego urządzenia</p>
                     </div>
-                </div>
-
-                <div class="auth-benefits">
-                    <h2>Zalety Krezusa</h2>
-                    <ul>
-                        <li>✅ Prosty i intuicyjny interfejs</li>
-                        <li>✅ Dostęp z każdego urządzenia</li>
-                        <li>✅ Synchronizacja w czasie rzeczywistym</li>
-                        <li>✅ Inteligentne limity dzienne</li>
-                        <li>✅ Kategorie i tagi transakcji</li>
-                        <li>✅ Eksport danych i raporty</li>
-                        <li>✅ Powiadomienia o anomaliach</li>
-                        <li>✅ Historia zmian i logi</li>
-                    </ul>
                 </div>
             </div>
         </div>
@@ -167,12 +153,8 @@
                             <div class="stat-label">Dostępne środki</div>
                             <div class="stat-value"><span id="availableFunds">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
-                        <div class="stat-card warning">
-                            <div class="stat-label">Cel oszczędności (rezerwa)</div>
-                            <div class="stat-value"><span id="savingGoal">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
                     </div>
-                    
+
                     <h3>📅 Wydatki w okresach</h3>
                     <div class="stats-grid">
                         <div class="stat-card danger">
@@ -188,7 +170,10 @@
                             <div class="stat-value"><span id="monthExpenses">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
                     </div>
-                    
+
+                    <h3>💰 Budżety celowe</h3>
+                    <div id="summaryPurposeBudgets"></div>
+
                     <h3>📊 Limity dzienne</h3>
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -362,6 +347,14 @@
                                 </select>
                             </div>
                             <div class="form-group">
+                                <label>Budżet celowy</label>
+                                <select id="expensePurposeBudget" name="expensePurposeBudget" required>
+                                    <option value="">Ładowanie...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Kategoria</label>
                                 <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off">
                                 <div id="categoryButtons" class="top-categories-buttons"></div>
@@ -498,12 +491,6 @@
 
                     <form id="settingsForm" onsubmit="saveSettings(event)">
                         <div class="form-group">
-                            <label>Cel oszczędności / Rezerwa (zł)</label>
-                            <input type="number" id="settingsSavingGoal" name="savingGoal" step="0.01" min="0" value="0">
-                            <small class="text-muted">Kwota która zostanie odjęta od dostępnych środków</small>
-                        </div>
-
-                        <div class="form-group">
                             <label>Okres dla Koperty Dnia</label>
                             <select id="settingsEnvelopePeriod" name="envelopePeriod" class="form-control">
                                 <option value="0">Najkrótszy okres (domyślnie)</option>
@@ -521,6 +508,15 @@
 
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
                     </form>
+                </div>
+
+                <div class="section-card">
+                    <h2>💰 Budżety celowe</h2>
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        Zarządzaj budżetami celowymi - przypisuj środki do konkretnych celów (np. wakacje, remont, prezenty).
+                    </p>
+                    <button class="btn btn-success mb-20" onclick="showPurposeBudgetModal()">➕ Dodaj budżet celowy</button>
+                    <div id="purposeBudgetsList"></div>
                 </div>
 
                 <div class="section-card">

@@ -8,6 +8,7 @@ import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.
 let categoriesCache = [];
 let incomesCache = [];
 let expensesCache = [];
+let purposeBudgetsCache = []; // Budżety celowe
 let endDate1Cache = '';
 let endDate2Cache = '';
 let savingGoalCache = 0;
@@ -63,6 +64,7 @@ function clearCacheInternal() {
   categoriesCache = [];
   incomesCache = [];
   expensesCache = [];
+  purposeBudgetsCache = [];
   endDate1Cache = '';
   endDate2Cache = '';
   savingGoalCache = 0;
@@ -290,6 +292,34 @@ export async function loadDynamicsPeriod() {
 }
 
 /**
+ * Załaduj budżety celowe z Firebase
+ */
+export async function loadPurposeBudgets() {
+  try {
+    const snapshot = await get(ref(db, getUserBudgetPath('purposeBudgets')));
+    const data = snapshot.val() || {};
+    const budgets = Object.values(data);
+
+    const uniqueBudgets = [];
+    const seenIds = new Set();
+
+    budgets.forEach(budget => {
+      if (budget && budget.id && !seenIds.has(budget.id)) {
+        seenIds.add(budget.id);
+        uniqueBudgets.push(budget);
+      }
+    });
+
+    purposeBudgetsCache = uniqueBudgets;
+    console.log('✅ Załadowano budżety celowe:', purposeBudgetsCache.length);
+    return purposeBudgetsCache;
+  } catch (error) {
+    console.error('❌ Błąd ładowania budżetów celowych:', error);
+    return [];
+  }
+}
+
+/**
  * Załaduj kopertę dnia
  */
 export async function loadDailyEnvelope(dateStr) {
@@ -441,6 +471,30 @@ export async function saveDynamicsPeriod(periodIndex) {
 }
 
 /**
+ * Zapisz budżety celowe
+ */
+export async function savePurposeBudgets(budgets) {
+  const obj = {};
+  const seenIds = new Set();
+
+  budgets.forEach(budget => {
+    if (budget && budget.id && !seenIds.has(budget.id)) {
+      seenIds.add(budget.id);
+      obj[budget.id] = budget;
+    }
+  });
+
+  try {
+    await set(ref(db, getUserBudgetPath('purposeBudgets')), obj);
+    purposeBudgetsCache = Object.values(obj);
+    console.log('✅ Zapisano budżety celowe:', purposeBudgetsCache.length);
+  } catch (error) {
+    console.error('❌ Błąd zapisywania budżetów celowych:', error);
+    throw error;
+  }
+}
+
+/**
  * Zapisz kopertę dnia
  */
 export async function saveDailyEnvelope(dateStr, envelope) {
@@ -462,11 +516,12 @@ export async function fetchAllData() {
   try {
     const userId = getUserId();
     console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
-    
-    const [categories, expenses, incomes, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
+
+    const [categories, expenses, incomes, purposeBudgets, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
       loadIncomes(),
+      loadPurposeBudgets(),
       loadEndDates(),
       loadSavingGoal(),
       loadEnvelopePeriod(),
@@ -475,18 +530,20 @@ export async function fetchAllData() {
 
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
-    
+
     console.log('✅ Załadowano wszystkie dane:', {
       categories: categories.length,
       expenses: expenses.length,
       incomes: incomes.length,
+      purposeBudgets: purposeBudgets.length,
       userId
     });
-    
+
     return {
       categories,
       expenses,
       incomes,
+      purposeBudgets,
       endDates,
       savingGoal,
       dailyEnvelope: dailyEnvelopeCache
@@ -692,7 +749,7 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
   activeListeners.savingGoal = onValue(savingGoalRef, (snapshot) => {
     const val = snapshot.val();
     const newGoal = val ? parseFloat(val) : 0;
-    
+
     if (savingGoalCache !== newGoal) {
       savingGoalCache = newGoal;
       if (callbacks.onSavingGoalChange) {
@@ -700,7 +757,31 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
       }
     }
   });
-  
+
+  // PurposeBudgets
+  const purposeBudgetsRef = ref(db, getUserBudgetPath('purposeBudgets'));
+  activeListeners.purposeBudgets = onValue(purposeBudgetsRef, (snapshot) => {
+    const data = snapshot.val() || {};
+    const newData = Object.values(data);
+
+    const uniqueData = [];
+    const seenIds = new Set();
+    newData.forEach(item => {
+      if (item && item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        uniqueData.push(item);
+      }
+    });
+
+    if (JSON.stringify(purposeBudgetsCache) !== JSON.stringify(uniqueData)) {
+      purposeBudgetsCache = uniqueData;
+      console.log('🔄 Budżety celowe zaktualizowane:', purposeBudgetsCache.length);
+      if (callbacks.onPurposeBudgetsChange) {
+        callbacks.onPurposeBudgetsChange(purposeBudgetsCache);
+      }
+    }
+  });
+
   // DailyEnvelope
   const todayStr = getWarsawDateString();
   const envelopeRef = ref(db, getUserBudgetPath(`daily_envelope/${todayStr}`));
@@ -761,4 +842,8 @@ export function getDynamicsPeriod() {
 
 export function getDailyEnvelope() {
   return dailyEnvelopeCache ? { ...dailyEnvelopeCache } : null;
+}
+
+export function getPurposeBudgets() {
+  return [...purposeBudgetsCache];
 }

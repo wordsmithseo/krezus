@@ -18,7 +18,7 @@ import { formatDateLabel } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 
 export function renderSummary() {
-  const { available, savingGoal } = calculateAvailableFunds();
+  const { available } = calculateAvailableFunds();
 
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
@@ -30,10 +30,8 @@ export function renderSummary() {
 
   // Podstawowe statystyki
   const availableFundsEl = document.getElementById('availableFunds');
-  const savingGoalEl = document.getElementById('savingGoal');
 
   if (availableFundsEl) availableFundsEl.textContent = available.toFixed(2);
-  if (savingGoalEl) savingGoalEl.textContent = savingGoal.toFixed(2);
 
   // Wydatki dzisiaj
   const todayLabel = document.querySelector('#todayExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
@@ -62,7 +60,7 @@ export function renderSummary() {
   // NOWE: Renderuj wszystkie okresy dynamicznie
   const { limits: limitsData, plannedTotals, calculatedAt } = getOrCalculateLimits();
 
-  renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt);
+  renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt);
 
   // Planowane transakcje - używamy ostatniego okresu (najdalszego)
   const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
@@ -77,6 +75,70 @@ export function renderSummary() {
 
   // Dynamika wydatków
   renderSpendingDynamics();
+
+  // Budżety celowe
+  renderPurposeBudgetsSummary();
+}
+
+function renderPurposeBudgetsSummary() {
+  const container = document.getElementById('summaryPurposeBudgets');
+  if (!container) return;
+
+  // Importuj dynamicznie funkcje z modułów
+  Promise.all([
+    import('../modules/purposeBudgetManager.js'),
+    import('../modules/budgetCalculator.js')
+  ]).then(([{ getBudgetStatistics }, { calculateAvailableFunds }]) => {
+    const allBudgets = getBudgetStatistics();
+    const { available } = calculateAvailableFunds();
+
+    // Filtruj budżety - nie pokazuj "Ogólny"
+    const budgets = allBudgets.filter(b => b.name !== 'Ogólny');
+
+    if (budgets.length === 0) {
+      container.innerHTML = sanitizeHTML(`
+        <div class="stat-card" style="text-align: center; padding: 30px;">
+          <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 10px;">💰 Brak budżetów celowych</div>
+          <p style="opacity: 0.8; margin-bottom: 15px;">Stwórz budżet celowy, aby lepiej planować swoje wydatki na konkretne cele.</p>
+          <button class="btn btn-success" onclick="showPurposeBudgetModal()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: bold;">➕ Dodaj budżet celowy</button>
+        </div>
+      `);
+      return;
+    }
+
+    const html = `
+      <div class="stats-grid">
+        ${budgets.map(budget => {
+          const percentUsed = budget.percentage.toFixed(1);
+          const percentOfTotal = available > 0 ? ((budget.amount / available) * 100).toFixed(1) : 0;
+          const barColor = budget.percentage > 90 ? '#f44336' : (budget.percentage > 75 ? '#ff9800' : '#4CAF50');
+
+          return `
+            <div class="stat-card">
+              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px;">${budget.name}</div>
+              <div class="stat-value">
+                <span>${budget.remaining.toFixed(2)}</span>
+                <span class="stat-unit">zł pozostało</span>
+              </div>
+              <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.9;">
+                <div style="margin-bottom: 5px;">Budżet: <strong>${budget.amount.toFixed(2)} zł</strong> <span style="opacity: 0.7;">(${percentOfTotal}% środków)</span></div>
+                <div style="margin-bottom: 5px;">Wydano: <strong>${budget.spent.toFixed(2)} zł</strong></div>
+                <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong></div>
+                <div style="background: #ddd; border-radius: 10px; height: 10px; overflow: hidden;">
+                  <div style="background: ${barColor}; height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s;"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    container.innerHTML = sanitizeHTML(html);
+  }).catch(error => {
+    console.error('❌ Błąd ładowania budżetów celowych:', error);
+    container.innerHTML = sanitizeHTML('<p class="text-muted">Błąd ładowania budżetów celowych.</p>');
+  });
 }
 
 export function renderSpendingDynamics() {
@@ -141,7 +203,7 @@ export function renderSpendingDynamics() {
 /**
  * Renderuje dynamicznie wszystkie kafelki limitów dla okresów budżetowych
  */
-function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt) {
+function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt) {
   const { limits } = limitsData;
 
   console.log('🎨 renderDynamicLimits - DEBUG START');
@@ -216,12 +278,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, c
 
     // Limit realny (tylko obecne środki)
     const realLimit = limit.daysLeft > 0
-      ? (available - savingGoal) / limit.daysLeft
+      ? available / limit.daysLeft
       : 0;
 
     // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
     const projectedLimit = limit.daysLeft > 0
-      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
+      ? (available + futureIncome - futureExpense) / limit.daysLeft
       : 0;
 
     const card = document.createElement('div');

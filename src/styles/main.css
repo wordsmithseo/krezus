@@ -110,7 +110,7 @@ button:focus {
 .auth-hero {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 60px 40px;
+  padding: 40px 40px 30px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -123,36 +123,36 @@ button:focus {
 }
 
 .auth-logo {
-  font-size: 4rem;
+  font-size: 3.5rem;
   font-weight: 800;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .auth-tagline {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   opacity: 0.95;
 }
 
 .auth-description {
-  font-size: 1.1rem;
-  line-height: 1.8;
-  margin-bottom: 40px;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 30px;
   opacity: 0.9;
 }
 
 .auth-features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
-  margin-bottom: 50px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 0;
 }
 
 .feature-item {
   background: rgba(255, 255, 255, 0.1);
-  padding: 25px;
+  padding: 20px;
   border-radius: 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -165,20 +165,20 @@ button:focus {
 }
 
 .feature-icon {
-  font-size: 3rem;
-  margin-bottom: 15px;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
 }
 
 .feature-item h3 {
-  font-size: 1.3rem;
-  margin-bottom: 10px;
+  font-size: 1.15rem;
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
 .feature-item p {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   opacity: 0.9;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .auth-benefits {

@@ -375,22 +375,31 @@ window.handleEditCategory = async (e) => {
 
 // ==================== MODAL EDYCJI WYDATKU ====================
 
-export function showEditExpenseModal(expense, budgetUsers, onSave) {
+export async function showEditExpenseModal(expense, budgetUsers, onSave) {
   const modal = document.getElementById('editExpenseModal') || createEditExpenseModal();
-  
+
   document.getElementById('editExpenseAmount').value = expense.amount;
   document.getElementById('editExpenseDate').value = expense.date;
   document.getElementById('editExpenseType').value = expense.type || 'normal';
   document.getElementById('editExpenseTime').value = expense.time || '';
   document.getElementById('editExpenseCategory').value = expense.category;
   document.getElementById('editExpenseDescription').value = expense.description;
-  
+
   const userSelect = document.getElementById('editExpenseUser');
   userSelect.innerHTML = '<option value="">Wybierz użytkownika</option>' +
-    budgetUsers.map(user => 
+    budgetUsers.map(user =>
       `<option value="${user.id}" ${user.id === expense.userId ? 'selected' : ''}>${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
     ).join('');
-  
+
+  // Załaduj budżety celowe
+  const { getBudgetStatistics } = await import('../modules/purposeBudgetManager.js');
+  const budgets = getBudgetStatistics();
+  const budgetSelect = document.getElementById('editExpensePurposeBudget');
+  budgetSelect.innerHTML = budgets.map(budget => {
+    const available = budget.remaining.toFixed(2);
+    return `<option value="${budget.id}" ${budget.id === expense.purposeBudgetId ? 'selected' : ''}>${budget.name} (dostępne: ${available} zł)</option>`;
+  }).join('');
+
   const categoriesDatalist = document.getElementById('editExpenseCategoriesDatalist');
   const categories = getCategories();
   categoriesDatalist.innerHTML = categories.map(cat => `<option value="${cat.name}">`).join('');
@@ -400,13 +409,14 @@ export function showEditExpenseModal(expense, budgetUsers, onSave) {
   const form = document.getElementById('editExpenseForm');
   form.onsubmit = async (e) => {
     e.preventDefault();
-    
+
     const amount = parseFloat(document.getElementById('editExpenseAmount').value);
     const type = document.getElementById('editExpenseType').value;
     const userId = document.getElementById('editExpenseUser').value;
+    const purposeBudgetId = document.getElementById('editExpensePurposeBudget').value;
     const category = document.getElementById('editExpenseCategory').value.trim();
     const description = document.getElementById('editExpenseDescription').value.trim();
-    
+
     if (!validateAmount(amount)) {
       showErrorMessage('Kwota musi być większa od 0');
       return;
@@ -416,12 +426,27 @@ export function showEditExpenseModal(expense, budgetUsers, onSave) {
       showErrorMessage('Wybierz użytkownika');
       return;
     }
-    
+
+    if (!purposeBudgetId) {
+      showErrorMessage('Wybierz budżet celowy');
+      return;
+    }
+
+    // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
+    if (type === 'normal') {
+      const { canSpendFromBudget } = await import('../modules/purposeBudgetManager.js');
+      const validation = canSpendFromBudget(purposeBudgetId, amount, expense.id);
+      if (!validation.canSpend) {
+        showErrorMessage(validation.message);
+        return;
+      }
+    }
+
     if (!category) {
       showErrorMessage('Podaj kategorię');
       return;
     }
-    
+
     if (!description) {
       showErrorMessage('Podaj opis');
       return;
@@ -432,12 +457,13 @@ export function showEditExpenseModal(expense, budgetUsers, onSave) {
       amount,
       type,
       userId,
+      purposeBudgetId,
       category,
       description,
       date: type === 'normal' ? expense.date : document.getElementById('editExpenseDate').value,
       time: type === 'normal' ? expense.time : (document.getElementById('editExpenseTime').value || '')
     };
-    
+
     closeModal('editExpenseModal');
     await onSave(updatedExpense);
   };
@@ -490,6 +516,15 @@ function createEditExpenseModal() {
               <option value="">Wybierz użytkownika</option>
             </select>
           </div>
+          <div class="form-group">
+            <label>Budżet celowy</label>
+            <select id="editExpensePurposeBudget" required>
+              <option value="">Ładowanie...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label>Kategoria</label>
             <input type="text" id="editExpenseCategory" list="editExpenseCategoriesDatalist" required autocomplete="off">
@@ -747,6 +782,172 @@ function closePasswordModal() {
   if (modal) {
     modal.classList.remove('active');
   }
+}
+
+// ==================== MODAL DODAWANIA/EDYCJI BUDŻETU CELOWEGO ====================
+
+export async function showPurposeBudgetModal(budget = null) {
+  const modal = document.getElementById('purposeBudgetModal') || createPurposeBudgetModal();
+  const isEditing = !!budget;
+
+  document.getElementById('purposeBudgetModalTitle').textContent = isEditing ? '✏️ Edytuj budżet celowy' : '➕ Dodaj budżet celowy';
+  document.getElementById('purposeBudgetName').value = isEditing ? budget.name : '';
+
+  // Wyświetl informację o dostępnych środkach
+  const { calculateAvailableFunds } = await import('../modules/budgetCalculator.js');
+  const { getPurposeBudgets } = await import('../modules/dataManager.js');
+  const { available } = calculateAvailableFunds();
+  const budgets = getPurposeBudgets();
+  const totalBudgeted = budgets
+    .filter(b => b.name !== 'Ogólny' && !(isEditing && b.id === budget.id))
+    .reduce((sum, b) => sum + b.amount, 0);
+  const availableForBudgets = available - totalBudgeted;
+
+  const infoElement = document.getElementById('purposeBudgetAvailableInfo');
+  infoElement.textContent = `Dostępne środki na budżety: ${availableForBudgets.toFixed(2)} zł`;
+  infoElement.style.color = availableForBudgets > 0 ? '#4CAF50' : '#f44336';
+
+  // Ustaw wartości formularza
+  if (isEditing) {
+    document.getElementById('purposeBudgetAmount').value = budget.amount;
+    document.getElementById('purposeBudgetPercent').value = ((budget.amount / available) * 100).toFixed(1);
+  } else {
+    document.getElementById('purposeBudgetAmount').value = '';
+    document.getElementById('purposeBudgetPercent').value = '';
+  }
+
+  // Obsługa przełączania między kwotą a procentem
+  const typeSelect = document.getElementById('purposeBudgetType');
+  const amountGroup = document.getElementById('purposeBudgetAmountGroup');
+  const percentGroup = document.getElementById('purposeBudgetPercentGroup');
+
+  typeSelect.value = 'amount';
+  amountGroup.style.display = 'block';
+  percentGroup.style.display = 'none';
+
+  typeSelect.onchange = () => {
+    if (typeSelect.value === 'amount') {
+      amountGroup.style.display = 'block';
+      percentGroup.style.display = 'none';
+      document.getElementById('purposeBudgetAmount').required = true;
+      document.getElementById('purposeBudgetPercent').required = false;
+    } else {
+      amountGroup.style.display = 'none';
+      percentGroup.style.display = 'block';
+      document.getElementById('purposeBudgetAmount').required = false;
+      document.getElementById('purposeBudgetPercent').required = true;
+    }
+  };
+
+  const form = document.getElementById('purposeBudgetForm');
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('purposeBudgetName').value.trim();
+    const type = document.getElementById('purposeBudgetType').value;
+
+    let amount;
+    if (type === 'amount') {
+      amount = parseFloat(document.getElementById('purposeBudgetAmount').value);
+    } else {
+      const percent = parseFloat(document.getElementById('purposeBudgetPercent').value);
+      if (isNaN(percent) || percent <= 0 || percent > 100) {
+        showErrorMessage('Procent musi być między 0 a 100');
+        return;
+      }
+      amount = (available * percent) / 100;
+    }
+
+    if (!name) {
+      showErrorMessage('Podaj nazwę budżetu');
+      return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      showErrorMessage('Kwota musi być większa od 0');
+      return;
+    }
+
+    try {
+      if (isEditing) {
+        const { updatePurposeBudget } = await import('../modules/purposeBudgetManager.js');
+        await updatePurposeBudget(budget.id, name, amount);
+        showSuccessMessage('Budżet celowy zaktualizowany');
+      } else {
+        const { createPurposeBudget } = await import('../modules/purposeBudgetManager.js');
+        await createPurposeBudget(name, amount);
+        showSuccessMessage('Budżet celowy utworzony');
+      }
+
+      closeModal('purposeBudgetModal');
+
+      // Odśwież widok budżetów
+      if (window.renderPurposeBudgets) {
+        window.renderPurposeBudgets();
+      }
+      if (window.renderSummary) {
+        window.renderSummary();
+      }
+      if (window.setupPurposeBudgetSelect) {
+        window.setupPurposeBudgetSelect();
+      }
+    } catch (error) {
+      console.error('❌ Błąd zapisu budżetu celowego:', error);
+      showErrorMessage(error.message || 'Nie udało się zapisać budżetu celowego');
+    }
+  };
+
+  modal.classList.add('active');
+  document.getElementById('purposeBudgetName').focus();
+}
+
+function createPurposeBudgetModal() {
+  const modal = document.createElement('div');
+  modal.id = 'purposeBudgetModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2 id="purposeBudgetModalTitle">➕ Dodaj budżet celowy</h2>
+        <button class="modal-close" onclick="closeModal('purposeBudgetModal')">✕</button>
+      </div>
+
+      <p id="purposeBudgetAvailableInfo" style="margin-bottom: 20px; font-weight: bold;"></p>
+
+      <form id="purposeBudgetForm">
+        <div class="form-group">
+          <label>Nazwa budżetu</label>
+          <input type="text" id="purposeBudgetName" required maxlength="50" placeholder="np. Wakacje, Remont, Prezenty">
+        </div>
+
+        <div class="form-group">
+          <label>Określ budżet jako</label>
+          <select id="purposeBudgetType">
+            <option value="amount">Kwota w złotych</option>
+            <option value="percent">Procent dostępnych środków</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="purposeBudgetAmountGroup">
+          <label>Kwota (zł)</label>
+          <input type="number" id="purposeBudgetAmount" step="0.01" min="0.01">
+        </div>
+
+        <div class="form-group" id="purposeBudgetPercentGroup" style="display: none;">
+          <label>Procent (%)</label>
+          <input type="number" id="purposeBudgetPercent" step="0.1" min="0.1" max="100">
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('purposeBudgetModal')">Anuluj</button>
+          <button type="submit" class="btn btn-primary">Zapisz</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  return modal;
 }
 
 // ==================== ZAMYKANIE MODALI ====================
