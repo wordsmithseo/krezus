@@ -882,6 +882,26 @@ tr.correction {
   background: linear-gradient(135deg, #ef4444, #dc2626);
 }
 
+.stat-card.beige {
+  background: linear-gradient(135deg, #f5e6d3, #e8d4b8);
+  color: #2d2d2d;
+}
+
+.stat-card.beige .stat-label {
+  color: #2d2d2d;
+  font-weight: 600;
+}
+
+.stat-card.beige .stat-value {
+  color: #1a1a1a;
+  font-size: 2.3rem;
+}
+
+.stat-card.beige .stat-unit {
+  color: #2d2d2d;
+  opacity: 0.85;
+}
+
 .stat-label {
   font-size: 0.9rem;
   opacity: 0.9;

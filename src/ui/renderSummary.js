@@ -81,6 +81,44 @@ export function renderSummary() {
   renderPurposeBudgetsSummary();
 }
 
+/**
+ * Oblicza kolor tła dla budżetu celowego na podstawie procenta pozostałych środków
+ * Płynne przejście: zielony (100%) → żółty (50%) → pomarańczowy (25%) → czerwony (0%)
+ */
+function getBudgetColor(percentRemaining) {
+  // Kolory bazowe w RGB
+  const green = { r: 16, g: 185, b: 129 };       // #10b981
+  const yellow = { r: 245, g: 158, b: 11 };      // #f59e0b
+  const orange = { r: 251, g: 146, b: 60 };      // #fb923c
+  const red = { r: 239, g: 68, b: 68 };          // #ef4444
+
+  let color1, color2, ratio;
+
+  if (percentRemaining >= 50) {
+    // Przejście od zielonego do żółtego (100% → 50%)
+    color1 = green;
+    color2 = yellow;
+    ratio = (100 - percentRemaining) / 50;  // 0 at 100%, 1 at 50%
+  } else if (percentRemaining >= 25) {
+    // Przejście od żółtego do pomarańczowego (50% → 25%)
+    color1 = yellow;
+    color2 = orange;
+    ratio = (50 - percentRemaining) / 25;   // 0 at 50%, 1 at 25%
+  } else {
+    // Przejście od pomarańczowego do czerwonego (25% → 0%)
+    color1 = orange;
+    color2 = red;
+    ratio = (25 - percentRemaining) / 25;   // 0 at 25%, 1 at 0%
+  }
+
+  // Interpolacja liniowa między kolorami
+  const r = Math.round(color1.r + (color2.r - color1.r) * ratio);
+  const g = Math.round(color1.g + (color2.g - color1.g) * ratio);
+  const b = Math.round(color1.b + (color2.b - color1.b) * ratio);
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function renderPurposeBudgetsSummary() {
   const container = document.getElementById('summaryPurposeBudgets');
   if (!container) return;
@@ -111,23 +149,27 @@ function renderPurposeBudgetsSummary() {
       <div class="stats-grid">
         ${budgets.map(budget => {
           const percentUsed = budget.percentage.toFixed(1);
+          const percentRemaining = Math.max(0, 100 - budget.percentage);
           const percentOfTotal = available > 0 ? ((budget.amount / available) * 100).toFixed(1) : 0;
-          const barColor = budget.percentage > 90 ? '#f44336' : (budget.percentage > 75 ? '#ff9800' : '#4CAF50');
+
+          // Dynamiczny kolor tła na podstawie pozostałych środków
+          const bgColor = getBudgetColor(percentRemaining);
+          const barColor = bgColor;  // Kolor paska taki sam jak tło
           const budgetIcon = getCategoryIcon(budget.name);
 
           return `
-            <div class="stat-card">
-              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px;">${budgetIcon} ${budget.name}</div>
+            <div class="stat-card" style="background: ${bgColor}; color: white;">
+              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px; color: white;">${budgetIcon} ${budget.name}</div>
               <div class="stat-value">
                 <span>${budget.remaining.toFixed(2)}</span>
                 <span class="stat-unit">zł pozostało</span>
               </div>
-              <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.9;">
-                <div style="margin-bottom: 5px;">Budżet: <strong>${budget.amount.toFixed(2)} zł</strong> <span style="opacity: 0.7;">(${percentOfTotal}% środków)</span></div>
+              <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.95;">
+                <div style="margin-bottom: 5px;">Budżet: <strong>${budget.amount.toFixed(2)} zł</strong> <span style="opacity: 0.85;">(${percentOfTotal}% środków)</span></div>
                 <div style="margin-bottom: 5px;">Wydano: <strong>${budget.spent.toFixed(2)} zł</strong></div>
-                <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong></div>
-                <div style="background: #ddd; border-radius: 10px; height: 10px; overflow: hidden;">
-                  <div style="background: ${barColor}; height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s;"></div>
+                <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong> | Pozostało: <strong>${percentRemaining.toFixed(1)}%</strong></div>
+                <div style="background: rgba(255, 255, 255, 0.3); border-radius: 10px; height: 10px; overflow: hidden;">
+                  <div style="background: rgba(255, 255, 255, 0.9); height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s, background 0.5s;"></div>
                 </div>
               </div>
             </div>
