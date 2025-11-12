@@ -460,7 +460,7 @@ function renderAnalytics() {
         <div>
           <strong>${a.description || 'Brak opisu'}</strong>
           <small>${a.category || 'Brak kategorii'} • ${formatDateLabel(a.date)}</small>
-          <div style="margin-top: 5px; color: #f28b93; font-size: 0.9rem;">
+          <div style="margin-top: 5px; color: #e85c6a; font-size: 0.9rem;">
             <strong>⚠️ ${a.anomalyReason || 'Anomalia wykryta'}</strong>
           </div>
         </div>
@@ -865,7 +865,7 @@ function renderCategories() {
     const mergingCat = categoryStats.find(c => c.id === mergingCategoryId);
     if (mergingCat) {
       headerHtml = `
-        <div style="background: #f5e5b8; border: 1px solid #f5b76d; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+        <div style="background: #e8cf8d; border: 1px solid #e89d3f; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
           <strong>🔀 Tryb scalania kategorii</strong>
           <p style="margin: 8px 0;">Wybierz kategorię docelową, do której chcesz scalić kategorię <strong>${mergingCat.name}</strong>.</p>
           <button class="btn btn-secondary" onclick="window.cancelMergeCategory()" style="margin-top: 8px;">Anuluj scalanie</button>
@@ -881,7 +881,7 @@ function renderCategories() {
     const categoryIcon = getCategoryIcon(cat.name);
 
     return `
-      <div class="category-item" style="${isMergingThis ? 'background: #f5e5b8;' : ''}">
+      <div class="category-item" style="${isMergingThis ? 'background: #e8cf8d;' : ''}">
         <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
           ${showCheckbox ? `
             <input
@@ -1387,7 +1387,7 @@ function renderPurposeBudgets() {
 
   const html = budgets.map(budget => {
     const percentUsed = budget.percentage.toFixed(1);
-    const barColor = budget.percentage > 90 ? '#f28b93' : (budget.percentage > 75 ? '#f5b76d' : '#8fd9b8');
+    const barColor = budget.percentage > 90 ? '#e85c6a' : (budget.percentage > 75 ? '#e89d3f' : '#5cb88a');
 
     return `
       <div class="purpose-budget-item" style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">

@@ -9,13 +9,13 @@
 }
 
 :root {
-  --primary: #7eb8e8;
-  --primary-dark: #5a9fd4;
-  --success: #8fd9b8;
-  --danger: #f28b93;
-  --warning: #f5b76d;
+  --primary: #4a9fd8;
+  --primary-dark: #2980b9;
+  --success: #5cb88a;
+  --danger: #e85c6a;
+  --warning: #e89d3f;
   --dark: #1f2937;
-  --gray: #8a8f97;
+  --gray: #6c717a;
   --light-gray: #f8f9fa;
   --border: #e5e7eb;
   --white: #ffffff;
@@ -25,7 +25,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   min-height: 100vh;
   color: var(--dark);
   line-height: 1.6;
@@ -64,7 +64,7 @@ button:focus {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -108,7 +108,7 @@ button:focus {
 }
 
 .auth-hero {
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   color: white;
   padding: 40px 40px 30px;
   display: flex;
@@ -321,7 +321,7 @@ button:focus {
 /* ==================== NAGŁÓWEK APLIKACJI ==================== */
 
 .app-header {
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   color: white;
   padding: 15px 0;
   box-shadow: var(--shadow-lg);
@@ -693,7 +693,7 @@ button:focus {
 }
 
 .btn-success:hover {
-  background: #6fc79f;
+  background: #4a9e75;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -704,7 +704,7 @@ button:focus {
 }
 
 .btn-danger:hover {
-  background: #ed6872;
+  background: #d63f4f;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -715,7 +715,7 @@ button:focus {
 }
 
 .btn-warning:hover {
-  background: #f09d4a;
+  background: #d6831f;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -802,12 +802,12 @@ tr.correction {
 }
 
 .status-normal {
-  background: #c4e8d4;
+  background: #a5d9b8;
   color: #065f46;
 }
 
 .status-planned {
-  background: #f5e5b8;
+  background: #e8cf8d;
   color: #92400e;
 }
 
@@ -897,39 +897,39 @@ tr.correction {
 }
 
 .stat-card.success {
-  background: linear-gradient(135deg, #8fd9b8, #6fc79f);
+  background: linear-gradient(135deg, #5cb88a, #4a9e75);
 }
 
 .stat-card.warning {
-  background: linear-gradient(135deg, #f5b76d, #f09d4a);
+  background: linear-gradient(135deg, #e89d3f, #d6831f);
 }
 
 .stat-card.danger {
-  background: linear-gradient(135deg, #f28b93, #ed6872);
+  background: linear-gradient(135deg, #e85c6a, #d63f4f);
 }
 
 .stat-card.beige {
-  background: linear-gradient(135deg, #e8d4b8, #d9c09d);
+  background: linear-gradient(135deg, #d4b896, #bfa57d);
   color: #2d2d2d;
 }
 
 .stat-card.beige .stat-label {
   color: #2d2d2d;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.1rem;
 }
 
 .stat-card.beige .stat-value {
   color: #1a1a1a;
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .stat-card.beige .stat-unit {
   color: #2d2d2d;
   opacity: 0.9;
   font-size: 1.4rem;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .stat-label {
@@ -958,7 +958,7 @@ tr.correction {
 /* ==================== KOPERTA DNIA ==================== */
 
 .envelope-container {
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   color: white;
   padding: 30px;
   border-radius: 12px;
@@ -989,7 +989,7 @@ tr.correction {
 
 .gauge-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8fd9b8, #6fc79f);
+  background: linear-gradient(90deg, #5cb88a, #4a9e75);
   border-radius: 15px;
   transition: width 0.5s ease, background 0.3s ease;
 }
@@ -1015,33 +1015,33 @@ tr.correction {
 }
 
 .dynamics-excellent {
-  border-left-color: #8fd9b8;
-  background: linear-gradient(to right, rgba(143, 217, 184, 0.25), var(--light-gray));
+  border-left-color: #5cb88a;
+  background: linear-gradient(to right, rgba(92, 184, 138, 0.3), var(--light-gray));
 }
 
 .dynamics-good {
-  border-left-color: #a5e0c4;
-  background: linear-gradient(to right, rgba(165, 224, 196, 0.25), var(--light-gray));
+  border-left-color: #7ac9a0;
+  background: linear-gradient(to right, rgba(122, 201, 160, 0.3), var(--light-gray));
 }
 
 .dynamics-moderate {
-  border-left-color: #7eb8e8;
-  background: linear-gradient(to right, rgba(126, 184, 232, 0.25), var(--light-gray));
+  border-left-color: #4a9fd8;
+  background: linear-gradient(to right, rgba(74, 159, 216, 0.3), var(--light-gray));
 }
 
 .dynamics-warning {
-  border-left-color: #f5b76d;
-  background: linear-gradient(to right, rgba(245, 183, 109, 0.25), var(--light-gray));
+  border-left-color: #e89d3f;
+  background: linear-gradient(to right, rgba(232, 157, 63, 0.3), var(--light-gray));
 }
 
 .dynamics-critical {
-  border-left-color: #f28b93;
-  background: linear-gradient(to right, rgba(242, 139, 147, 0.25), var(--light-gray));
+  border-left-color: #e85c6a;
+  background: linear-gradient(to right, rgba(232, 92, 106, 0.3), var(--light-gray));
 }
 
 .dynamics-no-date {
-  border-left-color: #8a8f97;
-  background: linear-gradient(to right, rgba(138, 143, 151, 0.25), var(--light-gray));
+  border-left-color: #6c717a;
+  background: linear-gradient(to right, rgba(108, 113, 122, 0.3), var(--light-gray));
 }
 
 .dynamics-title {
@@ -1690,7 +1690,7 @@ tr.correction {
 /* ==================== STOPKA APLIKACJI ==================== */
 
 .app-footer {
-  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
   color: white;
   padding: 30px 0;
   margin-top: 40px;
