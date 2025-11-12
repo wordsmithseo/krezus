@@ -128,6 +128,7 @@ import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 
 let currentExpensePage = 1;
 let currentIncomePage = 1;
+let currentCategoryPage = 1;
 let currentLogPage = 1;
 let editingExpenseId = null;
 let editingIncomeId = null;
@@ -136,7 +137,7 @@ let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 let mergingCategoryId = null;  // ID kategorii która ma być scalona
 
-const APP_VERSION = '1.9.8';
+const APP_VERSION = '1.9.9';
 const LOGS_PER_PAGE = 20;
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
@@ -563,8 +564,8 @@ function renderCategoriesChart(breakdown) {
     '#D9F0FF'  // Pastelowy błękitny
   ];
 
-  // Calculate pie chart dimensions - wyśrodkowany wykres
-  const centerX = isMobile ? canvas.width / 2 : canvas.width * 0.35;
+  // Calculate pie chart dimensions
+  const centerX = canvas.width / 2;
   const centerY = isMobile ? canvas.height * 0.3 : canvas.height / 2;
   const maxRadius = isMobile ?
     Math.min(canvas.width / 2 - 40, 150) :
@@ -859,6 +860,13 @@ function renderCategories() {
     return { ...cat, count, totalAmount };
   });
 
+  // Paginacja
+  const itemsPerPage = PAGINATION.CATEGORIES_PER_PAGE;
+  const totalPages = Math.ceil(categoryStats.length / itemsPerPage);
+  const startIndex = (currentCategoryPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCategories = categoryStats.slice(startIndex, endIndex);
+
   // Jeśli jesteśmy w trybie scalania, pokaż komunikat i checkboxy
   let headerHtml = '';
   if (mergingCategoryId) {
@@ -874,7 +882,7 @@ function renderCategories() {
     }
   }
 
-  const html = categoryStats.map(cat => {
+  const html = paginatedCategories.map(cat => {
     const isMergingThis = mergingCategoryId === cat.id;
     const showCheckbox = mergingCategoryId && !isMergingThis;
     // ZAWSZE używaj inteligentnego dopasowania dla najlepszych wyników
@@ -908,7 +916,62 @@ function renderCategories() {
   }).join('');
 
   container.innerHTML = headerHtml + html;
+
+  // Renderuj paginację jeśli jest więcej niż jedna strona
+  if (totalPages > 1) {
+    renderCategoriesPagination(totalPages);
+  } else {
+    const paginationContainer = container.nextElementSibling;
+    if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
+      paginationContainer.innerHTML = '';
+    }
+  }
 }
+
+function renderCategoriesPagination(totalPages) {
+  const categoriesList = document.getElementById('categoriesList');
+  let paginationContainer = categoriesList.nextElementSibling;
+
+  if (!paginationContainer || !paginationContainer.classList.contains('pagination-container')) {
+    paginationContainer = document.createElement('div');
+    paginationContainer.className = 'pagination-container';
+    categoriesList.parentNode.insertBefore(paginationContainer, categoriesList.nextSibling);
+  }
+
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  html += `<button class="pagination-btn" ${currentCategoryPage === 1 ? 'disabled' : ''} onclick="window.changeCategoryPage(${currentCategoryPage - 1})">◀</button>`;
+
+  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
+  let startPage = Math.max(1, currentCategoryPage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="pagination-btn ${i === currentCategoryPage ? 'active' : ''}" onclick="window.changeCategoryPage(${i})">${i}</button>`;
+  }
+
+  html += `<button class="pagination-btn" ${currentCategoryPage === totalPages ? 'disabled' : ''} onclick="window.changeCategoryPage(${currentCategoryPage + 1})">▶</button>`;
+
+  paginationContainer.innerHTML = html;
+}
+
+window.changeCategoryPage = (page) => {
+  const total = getCategories().length;
+  const totalPages = Math.ceil(total / PAGINATION.CATEGORIES_PER_PAGE);
+
+  if (page < 1 || page > totalPages) return;
+
+  currentCategoryPage = page;
+  renderCategories();
+};
 
 function setupExpenseTypeToggle() {
   const expenseTypeSelect = document.getElementById('expenseType');

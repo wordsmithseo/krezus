@@ -52,8 +52,9 @@ export async function getLogs() {
     });
     
     logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    return logs;
+
+    // Ogranicz do 50 ostatnich wpisów
+    return logs.slice(0, 50);
   } catch (error) {
     console.error('❌ Błąd pobierania logów:', error);
     return [];
