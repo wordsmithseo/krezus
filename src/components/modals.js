@@ -792,7 +792,6 @@ export async function showPurposeBudgetModal(budget = null) {
 
   document.getElementById('purposeBudgetModalTitle').textContent = isEditing ? '✏️ Edytuj budżet celowy' : '➕ Dodaj budżet celowy';
   document.getElementById('purposeBudgetName').value = isEditing ? budget.name : '';
-  document.getElementById('purposeBudgetAmount').value = isEditing ? budget.amount : '';
 
   // Wyświetl informację o dostępnych środkach
   const { calculateAvailableFunds } = await import('../modules/budgetCalculator.js');
@@ -808,12 +807,56 @@ export async function showPurposeBudgetModal(budget = null) {
   infoElement.textContent = `Dostępne środki na budżety: ${availableForBudgets.toFixed(2)} zł`;
   infoElement.style.color = availableForBudgets > 0 ? '#4CAF50' : '#f44336';
 
+  // Ustaw wartości formularza
+  if (isEditing) {
+    document.getElementById('purposeBudgetAmount').value = budget.amount;
+    document.getElementById('purposeBudgetPercent').value = ((budget.amount / available) * 100).toFixed(1);
+  } else {
+    document.getElementById('purposeBudgetAmount').value = '';
+    document.getElementById('purposeBudgetPercent').value = '';
+  }
+
+  // Obsługa przełączania między kwotą a procentem
+  const typeSelect = document.getElementById('purposeBudgetType');
+  const amountGroup = document.getElementById('purposeBudgetAmountGroup');
+  const percentGroup = document.getElementById('purposeBudgetPercentGroup');
+
+  typeSelect.value = 'amount';
+  amountGroup.style.display = 'block';
+  percentGroup.style.display = 'none';
+
+  typeSelect.onchange = () => {
+    if (typeSelect.value === 'amount') {
+      amountGroup.style.display = 'block';
+      percentGroup.style.display = 'none';
+      document.getElementById('purposeBudgetAmount').required = true;
+      document.getElementById('purposeBudgetPercent').required = false;
+    } else {
+      amountGroup.style.display = 'none';
+      percentGroup.style.display = 'block';
+      document.getElementById('purposeBudgetAmount').required = false;
+      document.getElementById('purposeBudgetPercent').required = true;
+    }
+  };
+
   const form = document.getElementById('purposeBudgetForm');
   form.onsubmit = async (e) => {
     e.preventDefault();
 
     const name = document.getElementById('purposeBudgetName').value.trim();
-    const amount = parseFloat(document.getElementById('purposeBudgetAmount').value);
+    const type = document.getElementById('purposeBudgetType').value;
+
+    let amount;
+    if (type === 'amount') {
+      amount = parseFloat(document.getElementById('purposeBudgetAmount').value);
+    } else {
+      const percent = parseFloat(document.getElementById('purposeBudgetPercent').value);
+      if (isNaN(percent) || percent <= 0 || percent > 100) {
+        showErrorMessage('Procent musi być między 0 a 100');
+        return;
+      }
+      amount = (available * percent) / 100;
+    }
 
     if (!name) {
       showErrorMessage('Podaj nazwę budżetu');
@@ -878,8 +921,21 @@ function createPurposeBudgetModal() {
         </div>
 
         <div class="form-group">
+          <label>Określ budżet jako</label>
+          <select id="purposeBudgetType">
+            <option value="amount">Kwota w złotych</option>
+            <option value="percent">Procent dostępnych środków</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="purposeBudgetAmountGroup">
           <label>Kwota (zł)</label>
-          <input type="number" id="purposeBudgetAmount" step="0.01" min="0.01" required>
+          <input type="number" id="purposeBudgetAmount" step="0.01" min="0.01">
+        </div>
+
+        <div class="form-group" id="purposeBudgetPercentGroup" style="display: none;">
+          <label>Procent (%)</label>
+          <input type="number" id="purposeBudgetPercent" step="0.1" min="0.1" max="100">
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
