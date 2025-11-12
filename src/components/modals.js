@@ -181,6 +181,13 @@ window.handleAddBudgetUser = async (e) => {
   
   try {
     await addBudgetUser(user.uid, userName);
+
+    const displayName = await getDisplayName(user.uid);
+    await log('BUDGET_USER_ADD', {
+      userName,
+      budgetUser: displayName
+    });
+
     showSuccessMessage('Użytkownik dodany');
     input.value = '';
   } catch (error) {
@@ -213,6 +220,14 @@ window.handleEditBudgetUser = async (userId, currentName) => {
 
   try {
     await updateBudgetUser(user.uid, userId, { name: trimmed });
+
+    const displayName = await getDisplayName(user.uid);
+    await log('BUDGET_USER_EDIT', {
+      oldName: currentName,
+      newName: trimmed,
+      budgetUser: displayName
+    });
+
     showSuccessMessage('Użytkownik zaktualizowany');
   } catch (error) {
     console.error('❌ Błąd aktualizacji użytkownika:', error);
@@ -246,6 +261,14 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
       await saveExpenses(updatedExpenses);
       await saveIncomes(updatedIncomes);
       await deleteBudgetUser(user.uid, userId);
+
+      const displayName = await getDisplayName(user.uid);
+      await log('BUDGET_USER_DELETE', {
+        userName,
+        deletedTransactions: totalTransactions,
+        budgetUser: displayName
+      });
+
       showSuccessMessage('Użytkownik i wszystkie jego transakcje zostały usunięte');
     } catch (error) {
       console.error('❌ Błąd usuwania użytkownika:', error);
@@ -262,6 +285,14 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
 
     try {
       await deleteBudgetUser(user.uid, userId);
+
+      const displayName = await getDisplayName(user.uid);
+      await log('BUDGET_USER_DELETE', {
+        userName,
+        deletedTransactions: 0,
+        budgetUser: displayName
+      });
+
       showSuccessMessage('Użytkownik usunięty');
     } catch (error) {
       console.error('❌ Błąd usuwania użytkownika:', error);

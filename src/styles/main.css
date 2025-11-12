@@ -70,6 +70,8 @@ button:focus {
   justify-content: center;
   align-items: center;
   z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .loader-spinner {
@@ -372,9 +374,8 @@ button:focus {
   font-size: 0.75rem;
   opacity: 0.8;
   font-weight: 400;
-  margin-left: -10px;
-  align-self: flex-end;
-  margin-bottom: 8px;
+  align-self: flex-start;
+  margin-top: 5px;
 }
 
 .header-user {
@@ -860,7 +861,7 @@ tr.correction {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   margin: 20px 0;
   padding: 15px;
   background: white;
@@ -1655,6 +1656,21 @@ tr.correction {
 .modal-close:hover {
   color: var(--danger);
   transform: scale(1.2);
+}
+
+/* ==================== WYKRES KATEGORII ==================== */
+
+.chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  width: 100%;
+}
+
+.chart-container canvas {
+  max-width: 100%;
+  display: block;
 }
 
 /* ==================== RESPONSYWNOŚĆ ==================== */
