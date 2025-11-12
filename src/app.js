@@ -1369,7 +1369,10 @@ function renderPurposeBudgets() {
   const container = document.getElementById('purposeBudgetsList');
   if (!container) return;
 
-  const budgets = getBudgetStatistics();
+  const allBudgets = getBudgetStatistics();
+
+  // Filtruj budżety - nie pokazuj "Ogólny"
+  const budgets = allBudgets.filter(b => b.name !== 'Ogólny');
 
   if (budgets.length === 0) {
     container.innerHTML = '<p class="text-muted">Brak budżetów celowych. Dodaj pierwszy budżet używając przycisku powyżej.</p>';
@@ -1386,7 +1389,7 @@ function renderPurposeBudgets() {
           <h4 style="margin: 0;">${budget.name}</h4>
           <div>
             <button class="btn-icon" onclick="editPurposeBudget('${budget.id}')" title="Edytuj">✏️</button>
-            ${budget.name !== 'Ogólny' ? `<button class="btn-icon" onclick="deletePurposeBudget('${budget.id}')" title="Usuń">🗑️</button>` : ''}
+            <button class="btn-icon" onclick="deletePurposeBudget('${budget.id}')" title="Usuń">🗑️</button>
           </div>
         </div>
         <div style="margin-bottom: 8px;">

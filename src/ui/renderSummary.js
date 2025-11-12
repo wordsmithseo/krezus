@@ -86,10 +86,19 @@ function renderPurposeBudgetsSummary() {
 
   // Importuj dynamicznie funkcje z modułów
   import('../modules/purposeBudgetManager.js').then(({ getBudgetStatistics }) => {
-    const budgets = getBudgetStatistics();
+    const allBudgets = getBudgetStatistics();
+
+    // Filtruj budżety - nie pokazuj "Ogólny"
+    const budgets = allBudgets.filter(b => b.name !== 'Ogólny');
 
     if (budgets.length === 0) {
-      container.innerHTML = sanitizeHTML('<p class="text-muted">Brak budżetów celowych.</p>');
+      container.innerHTML = sanitizeHTML(`
+        <div class="stat-card" style="text-align: center; padding: 30px;">
+          <div class="stat-label" style="font-size: 1.1rem; margin-bottom: 10px;">💰 Brak budżetów celowych</div>
+          <p style="opacity: 0.8; margin-bottom: 15px;">Stwórz budżet celowy, aby lepiej planować swoje wydatki na konkretne cele.</p>
+          <button class="btn btn-success" onclick="showPurposeBudgetModal()">➕ Dodaj budżet celowy</button>
+        </div>
+      `);
       return;
     }
 
