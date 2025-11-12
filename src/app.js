@@ -99,6 +99,8 @@ import {
   attachValidator
 } from './utils/validators.js';
 
+import { getCategoryIcon, getSourceIcon } from './utils/iconMapper.js';
+
 import { 
   getWarsawDateString, 
   getCurrentTimeString,
@@ -875,6 +877,7 @@ function renderCategories() {
   const html = categoryStats.map(cat => {
     const isMergingThis = mergingCategoryId === cat.id;
     const showCheckbox = mergingCategoryId && !isMergingThis;
+    const categoryIcon = cat.icon || getCategoryIcon(cat.name);
 
     return `
       <div class="category-item" style="${isMergingThis ? 'background: #fff3cd;' : ''}">
@@ -888,7 +891,7 @@ function renderCategories() {
             />
           ` : ''}
           <div>
-            <span class="category-name">${cat.name}</span>
+            <span class="category-name">${categoryIcon} ${cat.name}</span>
             <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
           </div>
         </div>
@@ -1182,6 +1185,7 @@ function renderExpenses() {
 
   const html = paginatedExpenses.map(exp => {
     const mergedInfo = exp.mergedFrom ? `<br><small style="color: #666; font-style: italic;">🔀 przeniesione z "${exp.mergedFrom}"</small>` : '';
+    const categoryIcon = exp.category ? getCategoryIcon(exp.category) : '📌';
 
     return `
       <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
@@ -1189,7 +1193,7 @@ function renderExpenses() {
         <td>${exp.time || '-'}</td>
         <td>${exp.amount.toFixed(2)} zł</td>
         <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
-        <td>${exp.category || 'Brak'}${mergedInfo}</td>
+        <td>${categoryIcon} ${exp.category || 'Brak'}${mergedInfo}</td>
         <td>${exp.description || '-'}</td>
         <td>
           <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
@@ -1309,14 +1313,15 @@ function renderSources() {
   const html = paginatedIncomes.map(inc => {
     const isCorrection = inc.source === 'KOREKTA';
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
-    
+    const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
+
     return `
     <tr class="${rowClass}">
       <td>${formatDateLabel(inc.date)}</td>
       <td>${inc.time || '-'}</td>
       <td>${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)} zł</td>
       <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
-      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (inc.source || 'Brak')}</td>
+      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'))}</td>
       <td>
         <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
           ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
@@ -1591,7 +1596,8 @@ window.addCategory = async () => {
 
   const newCategory = {
     id: `cat_${Date.now()}`,
-    name: name
+    name: name,
+    icon: getCategoryIcon(name)
   };
 
   const updated = [...categories, newCategory];
@@ -1792,7 +1798,8 @@ window.addExpense = async (e) => {
   if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
     const newCategory = {
       id: `cat_${Date.now()}`,
-      name: category
+      name: category,
+      icon: getCategoryIcon(category)
     };
     const updatedCategories = [...categories, newCategory];
     await saveCategories(updatedCategories);

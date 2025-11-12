@@ -4,6 +4,7 @@ import { ref, get, set, update, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
+import { getCategoryIcon } from '../utils/iconMapper.js';
 
 let categoriesCache = [];
 let incomesCache = [];
@@ -94,6 +95,13 @@ export async function loadCategories() {
         cat.id = `cat_${cat.name.replace(/\s+/g, '_')}_${Date.now()}`;
         needsMigration = true;
         console.log(`🔄 Dodano ID do kategorii: ${cat.name} -> ${cat.id}`);
+      }
+
+      // MIGRACJA: dodaj ikonę jeśli kategoria jej nie ma
+      if (!cat.icon) {
+        cat.icon = getCategoryIcon(cat.name);
+        needsMigration = true;
+        console.log(`🎨 Przypisano ikonę do kategorii: ${cat.name} -> ${cat.icon}`);
       }
 
       // Unikalne kategorie - sprawdzaj zarówno ID jak i nazwę

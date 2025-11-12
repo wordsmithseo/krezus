@@ -41,6 +41,7 @@ import {
 
 import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
 import { showConfirmModal, showPromptModal } from './confirmModal.js';
+import { getCategoryIcon } from '../utils/iconMapper.js';
 
 let budgetUsersUnsubscribe = null;
 
@@ -273,11 +274,17 @@ window.handleDeleteBudgetUser = async (userId, userName) => {
 
 export function showEditCategoryModal(categoryId, currentName) {
   const modal = document.getElementById('editCategoryModal') || createEditCategoryModal();
-  
+
   document.getElementById('editCategoryId').value = categoryId;
   document.getElementById('editCategoryName').value = currentName;
   document.getElementById('editCategoryCurrentName').textContent = currentName;
-  
+
+  // Załaduj aktualną ikonę kategorii
+  const categories = getCategories();
+  const category = categories.find(c => c.id === categoryId);
+  const currentIcon = category?.icon || getCategoryIcon(currentName);
+  document.getElementById('editCategoryIcon').value = currentIcon;
+
   modal.classList.add('active');
   document.getElementById('editCategoryName').focus();
 }
@@ -292,19 +299,25 @@ function createEditCategoryModal() {
         <h2>✏️ Edytuj kategorię</h2>
         <button class="modal-close" onclick="closeModal('editCategoryModal')">✕</button>
       </div>
-      
+
       <p style="margin-bottom: 20px; color: var(--gray);">
         Edytujesz kategorię: <strong id="editCategoryCurrentName"></strong>
       </p>
-      
+
       <form id="editCategoryForm" onsubmit="handleEditCategory(event)">
         <input type="hidden" id="editCategoryId">
-        
-        <div class="form-group">
-          <label>Nowa nazwa kategorii</label>
-          <input type="text" id="editCategoryName" required minlength="2" maxlength="50">
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label>Nowa nazwa kategorii</label>
+            <input type="text" id="editCategoryName" required minlength="2" maxlength="50">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Ikona</label>
+            <input type="text" id="editCategoryIcon" maxlength="2" style="font-size: 1.5rem; text-align: center;" placeholder="📌">
+          </div>
         </div>
-        
+
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-secondary" onclick="closeModal('editCategoryModal')">Anuluj</button>
           <button type="submit" class="btn btn-primary">Zapisz</button>
@@ -312,59 +325,61 @@ function createEditCategoryModal() {
       </form>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
   return modal;
 }
 
 window.handleEditCategory = async (e) => {
   e.preventDefault();
-  
+
   const categoryId = document.getElementById('editCategoryId').value;
   const newName = document.getElementById('editCategoryName').value.trim();
-  
+  const newIcon = document.getElementById('editCategoryIcon').value.trim();
+
   if (!validateCategoryName(newName)) {
     showErrorMessage('Nazwa kategorii musi mieć od 2 do 50 znaków');
     return;
   }
-  
+
   const categories = getCategories();
   const currentCategory = categories.find(c => c.id === categoryId);
-  
+
   if (!currentCategory) {
     showErrorMessage('Kategoria nie istnieje');
     return;
   }
-  
+
   const oldName = currentCategory.name;
-  
+
   if (categories.some(c => c.id !== categoryId && c.name.toLowerCase() === newName.toLowerCase())) {
     showErrorMessage('Kategoria o tej nazwie już istnieje');
     return;
   }
-  
-  const updatedCategories = categories.map(c => 
-    c.id === categoryId ? { ...c, name: newName } : c
+
+  const updatedCategories = categories.map(c =>
+    c.id === categoryId ? { ...c, name: newName, icon: newIcon || getCategoryIcon(newName) } : c
   );
-  
+
   const expenses = getExpenses();
-  const updatedExpenses = expenses.map(e => 
+  const updatedExpenses = expenses.map(e =>
     e.category === oldName ? { ...e, category: newName } : e
   );
-  
+
   try {
     await saveCategories(updatedCategories);
     await saveExpenses(updatedExpenses);
-    
+
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
-    
+
     await log('CATEGORY_EDIT', {
       oldName,
       newName,
+      icon: newIcon,
       budgetUser: displayName
     });
-    
+
     closeModal('editCategoryModal');
     showSuccessMessage('Kategoria zaktualizowana');
   } catch (error) {
