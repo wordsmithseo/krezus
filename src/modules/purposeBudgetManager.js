@@ -91,18 +91,38 @@ export async function deletePurposeBudget(budgetId) {
     throw new Error('Budżet celowy nie został znaleziony');
   }
 
-  // Nie pozwól usunąć budżetu "Ogólny" jeśli są wydatki z nim powiązane
-  const expenses = getExpenses();
-  const budgetExpenses = expenses.filter(e => e.purposeBudgetId === budgetId);
-
-  if (budgetExpenses.length > 0) {
-    throw new Error('Nie można usunąć budżetu, który ma przypisane wydatki');
+  // Znajdź budżet "Ogólny"
+  const generalBudget = budgets.find(b => b.name === 'Ogólny');
+  if (!generalBudget) {
+    throw new Error('Nie znaleziono budżetu "Ogólny"');
   }
 
+  // Przenieś wszystkie wydatki z usuwanego budżetu do "Ogólny"
+  const { saveExpenses } = await import('./dataManager.js');
+  const expenses = getExpenses();
+  const updatedExpenses = expenses.map(exp => {
+    if (exp.purposeBudgetId === budgetId) {
+      return { ...exp, purposeBudgetId: generalBudget.id };
+    }
+    return exp;
+  });
+
+  // Oblicz ile zostało niewydanych środków w usuwanym budżecie
+  const spent = calculateBudgetSpent(budgetId);
+  const remaining = budget.amount - spent;
+
+  // Przenieś niewydane środki do budżetu "Ogólny"
+  generalBudget.amount += remaining;
+
+  // Usuń budżet z listy
   const filteredBudgets = budgets.filter(b => b.id !== budgetId);
+
+  // Zapisz zmiany
+  await saveExpenses(updatedExpenses);
   await savePurposeBudgets(filteredBudgets);
 
   console.log('✅ Usunięto budżet celowy:', budget.name);
+  console.log(`💰 Przeniesiono ${remaining.toFixed(2)} zł do budżetu "Ogólny"`);
   return budget;
 }
 
@@ -116,7 +136,7 @@ export function validateBudgetAmount(amount) {
   // Suma wszystkich budżetów celowych
   const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0);
 
-  // Dostępne środki na budżety celowe
+  // Dostępne środki na budżety celowe (bez odejmowania savingGoal - został usunięty)
   const availableForBudgets = available - totalBudgeted;
 
   if (amount > availableForBudgets) {

@@ -198,17 +198,15 @@ export function calculateSpendingPeriods() {
 export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
     const available = sumIncome - sumExpense;
-    const savingGoal = getSavingGoal();
-    
+
     return {
-        available,
-        savingGoal
+        available
     };
 }
 
 export function calculateCurrentLimits() {
-    const { available, savingGoal } = calculateAvailableFunds();
-    const toSpend = available - savingGoal;
+    const { available } = calculateAvailableFunds();
+    const toSpend = available;
     const spendingPeriods = calculateSpendingPeriods();
     const { periods, date1, date2, daysLeft1, daysLeft2 } = spendingPeriods;
 
@@ -448,8 +446,7 @@ export async function updateDailyEnvelope(forDate = null) {
     });
 
     const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
-    const savingGoal = getSavingGoal();
-    const toSpendBeforeToday = availableBeforeToday - savingGoal;
+    const toSpendBeforeToday = availableBeforeToday;
 
     const { periods } = calculateSpendingPeriods();
     const envelopePeriodIndex = getEnvelopePeriod();
@@ -462,7 +459,6 @@ export async function updateDailyEnvelope(forDate = null) {
 
     console.log('🧠 === INTELIGENTNA KOPERTA DNIA V5 ===');
     console.log('💰 Dostępne środki PRZED dzisiejszym dniem:', availableBeforeToday.toFixed(2), 'PLN');
-    console.log('🛡️ Rezerwa (cel oszczędności):', savingGoal.toFixed(2), 'PLN');
     console.log('💵 Do wydania PRZED dzisiejszym dniem:', toSpendBeforeToday.toFixed(2), 'PLN');
     console.log('📅 Wybrany okres koperty:', selectedPeriod?.name || 'brak');
     console.log('📅 Data końcowa wybranego okresu:', selectedPeriod?.date || 'brak');
@@ -592,8 +588,7 @@ export function getEnvelopeCalculationInfo() {
     });
 
     const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
-    const savingGoal = getSavingGoal();
-    const toSpendBeforeToday = availableBeforeToday - savingGoal;
+    const toSpendBeforeToday = availableBeforeToday;
 
     const todayIncomes = incomes.filter(inc =>
         inc.date === today && inc.type === 'normal'
@@ -807,8 +802,8 @@ export function calculateSpendingDynamics() {
     const { periods } = calculateSpendingPeriods();
     const dynamicsPeriodIndex = getDynamicsPeriod();
     const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
-    const { available, savingGoal } = calculateAvailableFunds();
-    const toSpend = available - savingGoal;
+    const { available } = calculateAvailableFunds();
+    const toSpend = available;
 
     if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
         return {

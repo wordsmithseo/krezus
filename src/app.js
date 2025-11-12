@@ -2071,16 +2071,11 @@ window.addCorrection = async (e) => {
 };
 
 function loadSettings() {
-  const savingGoal = getSavingGoal();
   const envelopePeriod = getEnvelopePeriod();
   const dynamicsPeriod = getDynamicsPeriod();
 
-  const savingGoalInput = document.getElementById('settingsSavingGoal');
   const envelopePeriodSelect = document.getElementById('settingsEnvelopePeriod');
   const dynamicsPeriodSelect = document.getElementById('settingsDynamicsPeriod');
-
-  // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie ładujemy ich z ustawień
-  if (savingGoalInput) savingGoalInput.value = savingGoal || 0;
 
   // Wypełnij dropdowny okresami
   const { periods } = calculateSpendingPeriods();
@@ -2115,13 +2110,10 @@ window.saveSettings = async (e) => {
   e.preventDefault();
 
   const form = e.target;
-  const savingGoal = parseFloat(form.savingGoal.value) || 0;
   const envelopePeriod = parseInt(form.envelopePeriod.value) || 0;
   const dynamicsPeriod = parseInt(form.dynamicsPeriod.value) || 0;
 
   try {
-    // ZMIANA: Daty są teraz automatyczne (z planowanych przychodów), więc nie zapisujemy ich
-    await saveSavingGoal(savingGoal);
     await saveEnvelopePeriod(envelopePeriod);
     await saveDynamicsPeriod(dynamicsPeriod);
     await updateDailyEnvelope();
@@ -2130,7 +2122,6 @@ window.saveSettings = async (e) => {
     const displayName = await getDisplayName(user.uid);
 
     await log('SETTINGS_UPDATE', {
-      savingGoal,
       envelopePeriod,
       dynamicsPeriod,
       budgetUser: displayName,

@@ -18,7 +18,7 @@ import { formatDateLabel } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 
 export function renderSummary() {
-  const { available, savingGoal } = calculateAvailableFunds();
+  const { available } = calculateAvailableFunds();
 
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
@@ -30,10 +30,8 @@ export function renderSummary() {
 
   // Podstawowe statystyki
   const availableFundsEl = document.getElementById('availableFunds');
-  const savingGoalEl = document.getElementById('savingGoal');
 
   if (availableFundsEl) availableFundsEl.textContent = available.toFixed(2);
-  if (savingGoalEl) savingGoalEl.textContent = savingGoal.toFixed(2);
 
   // Wydatki dzisiaj
   const todayLabel = document.querySelector('#todayExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
@@ -62,7 +60,7 @@ export function renderSummary() {
   // NOWE: Renderuj wszystkie okresy dynamicznie
   const { limits: limitsData, plannedTotals, calculatedAt } = getOrCalculateLimits();
 
-  renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt);
+  renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt);
 
   // Planowane transakcje - używamy ostatniego okresu (najdalszego)
   const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
@@ -191,7 +189,7 @@ export function renderSpendingDynamics() {
 /**
  * Renderuje dynamicznie wszystkie kafelki limitów dla okresów budżetowych
  */
-function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, calculatedAt) {
+function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt) {
   const { limits } = limitsData;
 
   console.log('🎨 renderDynamicLimits - DEBUG START');
@@ -266,12 +264,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, savingGoal, c
 
     // Limit realny (tylko obecne środki)
     const realLimit = limit.daysLeft > 0
-      ? (available - savingGoal) / limit.daysLeft
+      ? available / limit.daysLeft
       : 0;
 
     // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
     const projectedLimit = limit.daysLeft > 0
-      ? (available - savingGoal + futureIncome - futureExpense) / limit.daysLeft
+      ? (available + futureIncome - futureExpense) / limit.daysLeft
       : 0;
 
     const card = document.createElement('div');
