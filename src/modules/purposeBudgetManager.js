@@ -64,7 +64,8 @@ export async function updatePurposeBudget(budgetId, name, amount) {
   if (amount !== budget.amount) {
     const amountDiff = parseFloat(amount) - budget.amount;
     if (amountDiff > 0) {
-      const validation = validateBudgetAmount(amountDiff);
+      // Sprawdź dostępność środków, wykluczając edytowany budżet
+      const validation = validateBudgetAmount(amountDiff, budgetId);
       if (!validation.valid) {
         throw new Error(validation.message);
       }
@@ -128,15 +129,19 @@ export async function deletePurposeBudget(budgetId) {
 
 /**
  * Waliduj czy jest dostępna kwota na nowy/zwiększony budżet
+ * @param {number} amount - Kwota do sprawdzenia
+ * @param {string} excludeBudgetId - ID budżetu do wykluczenia z obliczeń (np. przy edycji)
  */
-export function validateBudgetAmount(amount) {
+export function validateBudgetAmount(amount, excludeBudgetId = null) {
   const { available } = calculateAvailableFunds();
   const budgets = getPurposeBudgets();
 
-  // Suma wszystkich budżetów celowych
-  const totalBudgeted = budgets.reduce((sum, b) => sum + b.amount, 0);
+  // Suma budżetów celowych (bez budżetu "Ogólny" i opcjonalnie bez edytowanego budżetu)
+  const totalBudgeted = budgets
+    .filter(b => b.name !== 'Ogólny' && b.id !== excludeBudgetId)
+    .reduce((sum, b) => sum + b.amount, 0);
 
-  // Dostępne środki na budżety celowe (bez odejmowania savingGoal - został usunięty)
+  // Dostępne środki na budżety celowe
   const availableForBudgets = available - totalBudgeted;
 
   if (amount > availableForBudgets) {

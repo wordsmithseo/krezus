@@ -799,7 +799,9 @@ export async function showPurposeBudgetModal(budget = null) {
   const { getPurposeBudgets } = await import('../modules/dataManager.js');
   const { available } = calculateAvailableFunds();
   const budgets = getPurposeBudgets();
-  const totalBudgeted = budgets.reduce((sum, b) => sum + (isEditing && b.id === budget.id ? 0 : b.amount), 0);
+  const totalBudgeted = budgets
+    .filter(b => b.name !== 'Ogólny' && !(isEditing && b.id === budget.id))
+    .reduce((sum, b) => sum + b.amount, 0);
   const availableForBudgets = available - totalBudgeted;
 
   const infoElement = document.getElementById('purposeBudgetAvailableInfo');
