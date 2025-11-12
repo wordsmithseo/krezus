@@ -9,14 +9,14 @@
 }
 
 :root {
-  --primary: #3b82f6;
-  --primary-dark: #2563eb;
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
+  --primary: #a8d5ff;
+  --primary-dark: #89c4f4;
+  --success: #b8f0d8;
+  --danger: #ffb3ba;
+  --warning: #ffd6a5;
   --dark: #1f2937;
-  --gray: #6b7280;
-  --light-gray: #f3f4f6;
+  --gray: #a8adb5;
+  --light-gray: #f8f9fa;
   --border: #e5e7eb;
   --white: #ffffff;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -25,7 +25,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   min-height: 100vh;
   color: var(--dark);
   line-height: 1.6;
@@ -64,7 +64,7 @@ button:focus {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -108,7 +108,7 @@ button:focus {
 }
 
 .auth-hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   color: white;
   padding: 40px 40px 30px;
   display: flex;
@@ -321,7 +321,7 @@ button:focus {
 /* ==================== NAGŁÓWEK APLIKACJI ==================== */
 
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   color: white;
   padding: 15px 0;
   box-shadow: var(--shadow-lg);
@@ -667,7 +667,7 @@ button:focus {
 }
 
 .btn-success:hover {
-  background: #059669;
+  background: #a0e7c7;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -678,7 +678,7 @@ button:focus {
 }
 
 .btn-danger:hover {
-  background: #dc2626;
+  background: #ffa0a8;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -689,7 +689,7 @@ button:focus {
 }
 
 .btn-warning:hover {
-  background: #d97706;
+  background: #ffc490;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -776,12 +776,12 @@ tr.correction {
 }
 
 .status-normal {
-  background: #d1fae5;
+  background: #d9f5e8;
   color: #065f46;
 }
 
 .status-planned {
-  background: #fef3c7;
+  background: #fff5d6;
   color: #92400e;
 }
 
@@ -871,15 +871,15 @@ tr.correction {
 }
 
 .stat-card.success {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #b8f0d8, #a0e7c7);
 }
 
 .stat-card.warning {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #ffd6a5, #ffc490);
 }
 
 .stat-card.danger {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: linear-gradient(135deg, #ffb3ba, #ffa0a8);
 }
 
 .stat-card.beige {
@@ -928,7 +928,7 @@ tr.correction {
 /* ==================== KOPERTA DNIA ==================== */
 
 .envelope-container {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   color: white;
   padding: 30px;
   border-radius: 12px;
@@ -959,7 +959,7 @@ tr.correction {
 
 .gauge-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
+  background: linear-gradient(90deg, #b8f0d8, #a0e7c7);
   border-radius: 15px;
   transition: width 0.5s ease, background 0.3s ease;
 }
@@ -985,33 +985,33 @@ tr.correction {
 }
 
 .dynamics-excellent {
-  border-left-color: #10b981;
-  background: linear-gradient(to right, rgba(16, 185, 129, 0.1), var(--light-gray));
+  border-left-color: #b8f0d8;
+  background: linear-gradient(to right, rgba(184, 240, 216, 0.2), var(--light-gray));
 }
 
 .dynamics-good {
-  border-left-color: #34d399;
-  background: linear-gradient(to right, rgba(52, 211, 153, 0.1), var(--light-gray));
+  border-left-color: #c4f5e1;
+  background: linear-gradient(to right, rgba(196, 245, 225, 0.2), var(--light-gray));
 }
 
 .dynamics-moderate {
-  border-left-color: #3b82f6;
-  background: linear-gradient(to right, rgba(59, 130, 246, 0.1), var(--light-gray));
+  border-left-color: #a8d5ff;
+  background: linear-gradient(to right, rgba(168, 213, 255, 0.2), var(--light-gray));
 }
 
 .dynamics-warning {
-  border-left-color: #f59e0b;
-  background: linear-gradient(to right, rgba(245, 158, 11, 0.1), var(--light-gray));
+  border-left-color: #ffd6a5;
+  background: linear-gradient(to right, rgba(255, 214, 165, 0.2), var(--light-gray));
 }
 
 .dynamics-critical {
-  border-left-color: #ef4444;
-  background: linear-gradient(to right, rgba(239, 68, 68, 0.1), var(--light-gray));
+  border-left-color: #ffb3ba;
+  background: linear-gradient(to right, rgba(255, 179, 186, 0.2), var(--light-gray));
 }
 
 .dynamics-no-date {
-  border-left-color: #6b7280;
-  background: linear-gradient(to right, rgba(107, 114, 128, 0.1), var(--light-gray));
+  border-left-color: #a8adb5;
+  background: linear-gradient(to right, rgba(168, 173, 181, 0.2), var(--light-gray));
 }
 
 .dynamics-title {
@@ -1648,7 +1648,7 @@ tr.correction {
 /* ==================== STOPKA APLIKACJI ==================== */
 
 .app-footer {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
   color: white;
   padding: 30px 0;
   margin-top: 40px;

@@ -83,14 +83,14 @@ export function renderSummary() {
 
 /**
  * Oblicza kolor tła dla budżetu celowego na podstawie procenta pozostałych środków
- * Płynne przejście: zielony (100%) → żółty (50%) → pomarańczowy (25%) → czerwony (0%)
+ * Płynne przejście: pastelowy zielony (100%) → pastelowy żółty (50%) → pastelowy pomarańczowy (25%) → pastelowy różowy (0%)
  */
 function getBudgetColor(percentRemaining) {
-  // Kolory bazowe w RGB
-  const green = { r: 16, g: 185, b: 129 };       // #10b981
-  const yellow = { r: 245, g: 158, b: 11 };      // #f59e0b
-  const orange = { r: 251, g: 146, b: 60 };      // #fb923c
-  const red = { r: 239, g: 68, b: 68 };          // #ef4444
+  // Kolory bazowe w RGB (pastelowe odcienie)
+  const green = { r: 184, g: 240, b: 216 };      // #b8f0d8
+  const yellow = { r: 255, g: 214, b: 165 };     // #ffd6a5
+  const orange = { r: 255, g: 196, b: 144 };     // #ffc490
+  const red = { r: 255, g: 179, b: 186 };        // #ffb3ba
 
   let color1, color2, ratio;
 
