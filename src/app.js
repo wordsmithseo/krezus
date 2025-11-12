@@ -373,7 +373,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
-  renderLogs();
+  await renderLogs();
   loadSettings();
   setupCategorySuggestions();
   setupPurposeBudgetSelect();
@@ -517,7 +517,7 @@ function renderCategoriesChart(breakdown) {
   const isMobile = containerWidth < 768;
 
   canvas.width = containerWidth;
-  canvas.height = isMobile ? 600 : 550;
+  canvas.height = isMobile ? 750 : 550;
   canvas.style.display = 'block';
 
   const ctx = canvas.getContext('2d');
@@ -564,8 +564,8 @@ function renderCategoriesChart(breakdown) {
   ];
 
   // Calculate pie chart dimensions - wyśrodkowany wykres
-  const centerX = isMobile ? canvas.width / 2 : canvas.width / 2;
-  const centerY = isMobile ? canvas.height * 0.35 : canvas.height / 2;
+  const centerX = isMobile ? canvas.width / 2 : canvas.width * 0.35;
+  const centerY = isMobile ? canvas.height * 0.3 : canvas.height / 2;
   const maxRadius = isMobile ?
     Math.min(canvas.width / 2 - 40, 150) :
     Math.min(canvas.width * 0.25, canvas.height * 0.35, 180);
