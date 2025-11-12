@@ -16,6 +16,7 @@ import {
 import { getDynamicsPeriod } from '../modules/dataManager.js';
 import { formatDateLabel } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
+import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
 
 export function renderSummary() {
   const { available } = calculateAvailableFunds();
@@ -112,10 +113,11 @@ function renderPurposeBudgetsSummary() {
           const percentUsed = budget.percentage.toFixed(1);
           const percentOfTotal = available > 0 ? ((budget.amount / available) * 100).toFixed(1) : 0;
           const barColor = budget.percentage > 90 ? '#f44336' : (budget.percentage > 75 ? '#ff9800' : '#4CAF50');
+          const budgetIcon = getCategoryIcon(budget.name);
 
           return `
             <div class="stat-card">
-              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px;">${budget.name}</div>
+              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px;">${budgetIcon} ${budget.name}</div>
               <div class="stat-value">
                 <span>${budget.remaining.toFixed(2)}</span>
                 <span class="stat-unit">zł pozostało</span>
@@ -289,12 +291,13 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const card = document.createElement('div');
     card.className = 'stat-card';
 
-    // Nazwa wpływu na górze
+    // Nazwa wpływu na górze z ikoną
     const nameDiv = document.createElement('div');
     nameDiv.className = 'stat-label';
     nameDiv.style.fontWeight = 'bold';
     nameDiv.style.marginBottom = '5px';
-    nameDiv.textContent = limit.name || 'Planowany wpływ';
+    const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
+    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}`;
 
     // Limit realny
     const realLabelDiv = document.createElement('div');
