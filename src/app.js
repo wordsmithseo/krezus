@@ -22,6 +22,7 @@ import {
   getEnvelopePeriod,
   getDynamicsPeriod,
   getDailyEnvelope,
+  getPurposeBudgets,
   saveCategories,
   saveExpenses,
   saveIncomes,
@@ -37,6 +38,8 @@ import {
   loadExpenses
 
 } from './modules/dataManager.js';
+
+import { ensureDefaultBudget, getBudgetStatistics } from './modules/purposeBudgetManager.js';
 
 import {
   calculateRealisedTotals,
@@ -232,9 +235,10 @@ async function loadAllData() {
     }
 
     console.log('📥 Ładowanie danych dla użytkownika:', userId);
-    
+
     await clearCache();
     await fetchAllData(userId);
+    await ensureDefaultBudget(); // Upewnij się że istnieje domyślny budżet "Ogólny"
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
@@ -262,6 +266,10 @@ async function loadAllData() {
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
+      },
+      onPurposeBudgetsChange: () => {
+        renderSummary();
+        setupPurposeBudgetSelect();
       },
       onEndDatesChange: () => {
         renderSummary();
@@ -330,6 +338,32 @@ function getBudgetUserName(userId) {
   return user ? user.name : 'Nieznany';
 }
 
+function setupPurposeBudgetSelect() {
+  const select = document.getElementById('expensePurposeBudget');
+  if (!select) return;
+
+  const currentValue = select.value;
+  const budgets = getBudgetStatistics();
+
+  // Opcje selecta z informacją o dostępnych środkach
+  const optionsHTML = budgets.map(budget => {
+    const available = budget.remaining.toFixed(2);
+    return `<option value="${budget.id}">${budget.name} (dostępne: ${available} zł)</option>`;
+  }).join('');
+
+  select.innerHTML = optionsHTML;
+
+  // Przywróć poprzednią wartość lub ustaw domyślny budżet "Ogólny"
+  if (currentValue && budgets.some(b => b.id === currentValue)) {
+    select.value = currentValue;
+  } else {
+    const defaultBudget = budgets.find(b => b.name === 'Ogólny');
+    if (defaultBudget) {
+      select.value = defaultBudget.id;
+    }
+  }
+}
+
 async function renderAll() {
   renderCategories();
   renderExpenses();
@@ -340,6 +374,7 @@ async function renderAll() {
   renderLogs();
   loadSettings();
   setupCategorySuggestions();
+  setupPurposeBudgetSelect();
   setupSourceSuggestions();
   setupExpenseTypeToggle();
   setupIncomeTypeToggle();
@@ -1330,6 +1365,99 @@ function renderIncomesPagination(total) {
   container.innerHTML = html;
 }
 
+function renderPurposeBudgets() {
+  const container = document.getElementById('purposeBudgetsList');
+  if (!container) return;
+
+  const budgets = getBudgetStatistics();
+
+  if (budgets.length === 0) {
+    container.innerHTML = '<p class="text-muted">Brak budżetów celowych. Dodaj pierwszy budżet używając przycisku powyżej.</p>';
+    return;
+  }
+
+  const html = budgets.map(budget => {
+    const percentUsed = budget.percentage.toFixed(1);
+    const barColor = budget.percentage > 90 ? '#f44336' : (budget.percentage > 75 ? '#ff9800' : '#4CAF50');
+
+    return `
+      <div class="purpose-budget-item" style="margin-bottom: 15px; padding: 15px; background: #f5f5f5; border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h4 style="margin: 0;">${budget.name}</h4>
+          <div>
+            <button class="btn-icon" onclick="editPurposeBudget('${budget.id}')" title="Edytuj">✏️</button>
+            ${budget.name !== 'Ogólny' ? `<button class="btn-icon" onclick="deletePurposeBudget('${budget.id}')" title="Usuń">🗑️</button>` : ''}
+          </div>
+        </div>
+        <div style="margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px;">
+            <span><strong>Wydane:</strong> ${budget.spent.toFixed(2)} zł</span>
+            <span><strong>Pozostało:</strong> ${budget.remaining.toFixed(2)} zł</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px;">
+            <span><strong>Budżet:</strong> ${budget.amount.toFixed(2)} zł</span>
+            <span><strong>Wykorzystano:</strong> ${percentUsed}%</span>
+          </div>
+        </div>
+        <div style="background: #ddd; border-radius: 10px; height: 20px; overflow: hidden;">
+          <div style="background: ${barColor}; height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+// Globalnie dostępne funkcje do zarządzania budżetami celowymi
+window.renderPurposeBudgets = renderPurposeBudgets;
+
+window.editPurposeBudget = async (budgetId) => {
+  const budgets = getPurposeBudgets();
+  const budget = budgets.find(b => b.id === budgetId);
+  if (budget) {
+    const { showPurposeBudgetModal } = await import('./components/modals.js');
+    await showPurposeBudgetModal(budget);
+  }
+};
+
+window.deletePurposeBudget = async (budgetId) => {
+  const budgets = getPurposeBudgets();
+  const budget = budgets.find(b => b.id === budgetId);
+  if (!budget) return;
+
+  if (budget.name === 'Ogólny') {
+    showErrorMessage('Nie można usunąć domyślnego budżetu "Ogólny"');
+    return;
+  }
+
+  const { showConfirmModal } = await import('./components/confirmModal.js');
+  const confirmed = await showConfirmModal(
+    'Usuń budżet celowy',
+    `Czy na pewno chcesz usunąć budżet "${budget.name}"?`,
+    { type: 'danger', confirmText: 'Usuń', cancelText: 'Anuluj' }
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const { deletePurposeBudget } = await import('./modules/purposeBudgetManager.js');
+    await deletePurposeBudget(budgetId);
+    showSuccessMessage('Budżet celowy usunięty');
+    renderPurposeBudgets();
+    renderSummary();
+    setupPurposeBudgetSelect();
+  } catch (error) {
+    console.error('❌ Błąd usuwania budżetu:', error);
+    showErrorMessage(error.message || 'Nie udało się usunąć budżetu celowego');
+  }
+};
+
+window.showPurposeBudgetModal = async (budget = null) => {
+  const { showPurposeBudgetModal } = await import('./components/modals.js');
+  await showPurposeBudgetModal(budget);
+};
+
 window.changeIncomePage = (page) => {
   const total = getIncomes().length;
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
@@ -1613,11 +1741,12 @@ window.selectMergeTarget = async (targetCategoryId) => {
 
 window.addExpense = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
   const amount = parseFloat(form.expenseAmount.value);
   const type = form.expenseType.value;
   const userId = form.expenseUser.value;
+  const purposeBudgetId = form.expensePurposeBudget.value;
   const category = form.expenseCategory.value.trim();
   const description = form.expenseDescription.value.trim();
 
@@ -1630,12 +1759,27 @@ window.addExpense = async (e) => {
     showErrorMessage('Wybierz użytkownika');
     return;
   }
-  
+
+  if (!purposeBudgetId) {
+    showErrorMessage('Wybierz budżet celowy');
+    return;
+  }
+
+  // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
+  if (type === 'normal') {
+    const { canSpendFromBudget } = await import('./modules/purposeBudgetManager.js');
+    const validation = canSpendFromBudget(purposeBudgetId, amount);
+    if (!validation.canSpend) {
+      showErrorMessage(validation.message);
+      return;
+    }
+  }
+
   if (!category) {
     showErrorMessage('Podaj kategorię');
     return;
   }
-  
+
   if (!description) {
     showErrorMessage('Podaj opis');
     return;
@@ -1668,6 +1812,7 @@ window.addExpense = async (e) => {
     type,
     time,
     userId,
+    purposeBudgetId,
     category,
     description,
     timestamp: editingExpenseId ? getExpenses().find(e => e.id === editingExpenseId)?.timestamp : getCurrentTimeString()
@@ -1961,6 +2106,9 @@ function loadSettings() {
       dynamicsPeriodSelect.appendChild(option);
     });
   }
+
+  // Renderuj budżety celowe
+  renderPurposeBudgets();
 }
 
 window.saveSettings = async (e) => {

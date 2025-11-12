@@ -219,6 +219,9 @@
                     
                     <h3>🎯 Dynamika wydatków</h3>
                     <div id="dynamicsInfo" class="spending-dynamics"></div>
+
+                    <h3>💰 Budżety celowe</h3>
+                    <div id="summaryPurposeBudgets"></div>
                 </div>
             </section>
 
@@ -361,6 +364,14 @@
                                     <option value="">Wybierz użytkownika</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label>Budżet celowy</label>
+                                <select id="expensePurposeBudget" name="expensePurposeBudget" required>
+                                    <option value="">Ładowanie...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Kategoria</label>
                                 <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off">
@@ -521,6 +532,15 @@
 
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
                     </form>
+                </div>
+
+                <div class="section-card">
+                    <h2>💰 Budżety celowe</h2>
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        Zarządzaj budżetami celowymi - przypisuj środki do konkretnych celów (np. wakacje, remont, prezenty).
+                    </p>
+                    <button class="btn btn-success mb-20" onclick="showPurposeBudgetModal()">➕ Dodaj budżet celowy</button>
+                    <div id="purposeBudgetsList"></div>
                 </div>
 
                 <div class="section-card">

@@ -77,6 +77,56 @@ export function renderSummary() {
 
   // Dynamika wydatków
   renderSpendingDynamics();
+
+  // Budżety celowe
+  renderPurposeBudgetsSummary();
+}
+
+function renderPurposeBudgetsSummary() {
+  const container = document.getElementById('summaryPurposeBudgets');
+  if (!container) return;
+
+  // Importuj dynamicznie funkcje z modułów
+  import('../modules/purposeBudgetManager.js').then(({ getBudgetStatistics }) => {
+    const budgets = getBudgetStatistics();
+
+    if (budgets.length === 0) {
+      container.innerHTML = sanitizeHTML('<p class="text-muted">Brak budżetów celowych.</p>');
+      return;
+    }
+
+    const html = `
+      <div class="stats-grid">
+        ${budgets.map(budget => {
+          const percentUsed = budget.percentage.toFixed(1);
+          const barColor = budget.percentage > 90 ? '#f44336' : (budget.percentage > 75 ? '#ff9800' : '#4CAF50');
+
+          return `
+            <div class="stat-card">
+              <div class="stat-label" style="font-weight: bold; margin-bottom: 5px;">${budget.name}</div>
+              <div class="stat-value">
+                <span>${budget.remaining.toFixed(2)}</span>
+                <span class="stat-unit">zł pozostało</span>
+              </div>
+              <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.9;">
+                <div style="margin-bottom: 5px;">Budżet: <strong>${budget.amount.toFixed(2)} zł</strong></div>
+                <div style="margin-bottom: 5px;">Wydano: <strong>${budget.spent.toFixed(2)} zł</strong></div>
+                <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong></div>
+                <div style="background: #ddd; border-radius: 10px; height: 10px; overflow: hidden;">
+                  <div style="background: ${barColor}; height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s;"></div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    container.innerHTML = sanitizeHTML(html);
+  }).catch(error => {
+    console.error('❌ Błąd ładowania budżetów celowych:', error);
+    container.innerHTML = sanitizeHTML('<p class="text-muted">Błąd ładowania budżetów celowych.</p>');
+  });
 }
 
 export function renderSpendingDynamics() {
