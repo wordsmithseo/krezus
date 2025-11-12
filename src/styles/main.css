@@ -9,13 +9,13 @@
 }
 
 :root {
-  --primary: #a8d5ff;
-  --primary-dark: #89c4f4;
-  --success: #b8f0d8;
-  --danger: #ffb3ba;
-  --warning: #ffd6a5;
+  --primary: #7eb8e8;
+  --primary-dark: #5a9fd4;
+  --success: #8fd9b8;
+  --danger: #f28b93;
+  --warning: #f5b76d;
   --dark: #1f2937;
-  --gray: #a8adb5;
+  --gray: #8a8f97;
   --light-gray: #f8f9fa;
   --border: #e5e7eb;
   --white: #ffffff;
@@ -25,7 +25,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   min-height: 100vh;
   color: var(--dark);
   line-height: 1.6;
@@ -64,7 +64,7 @@ button:focus {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -108,7 +108,7 @@ button:focus {
 }
 
 .auth-hero {
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   color: white;
   padding: 40px 40px 30px;
   display: flex;
@@ -321,7 +321,7 @@ button:focus {
 /* ==================== NAGŁÓWEK APLIKACJI ==================== */
 
 .app-header {
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   color: white;
   padding: 15px 0;
   box-shadow: var(--shadow-lg);
@@ -515,6 +515,32 @@ button:focus {
     font-size: 0.9rem;
     gap: 6px;
   }
+
+  .stat-card.beige .stat-value {
+    font-size: 2rem;
+  }
+
+  .stat-card.beige .stat-label {
+    font-size: 0.95rem;
+  }
+
+  .stat-card.beige .stat-unit {
+    font-size: 1.1rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .stat-card.beige .stat-value {
+    font-size: 3.5rem;
+  }
+
+  .stat-card.beige .stat-label {
+    font-size: 1.2rem;
+  }
+
+  .stat-card.beige .stat-unit {
+    font-size: 1.5rem;
+  }
 }
 
 /* ==================== CONTAINER ==================== */
@@ -667,7 +693,7 @@ button:focus {
 }
 
 .btn-success:hover {
-  background: #a0e7c7;
+  background: #6fc79f;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -678,7 +704,7 @@ button:focus {
 }
 
 .btn-danger:hover {
-  background: #ffa0a8;
+  background: #ed6872;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -689,7 +715,7 @@ button:focus {
 }
 
 .btn-warning:hover {
-  background: #ffc490;
+  background: #f09d4a;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -776,12 +802,12 @@ tr.correction {
 }
 
 .status-normal {
-  background: #d9f5e8;
+  background: #c4e8d4;
   color: #065f46;
 }
 
 .status-planned {
-  background: #fff5d6;
+  background: #f5e5b8;
   color: #92400e;
 }
 
@@ -871,35 +897,39 @@ tr.correction {
 }
 
 .stat-card.success {
-  background: linear-gradient(135deg, #b8f0d8, #a0e7c7);
+  background: linear-gradient(135deg, #8fd9b8, #6fc79f);
 }
 
 .stat-card.warning {
-  background: linear-gradient(135deg, #ffd6a5, #ffc490);
+  background: linear-gradient(135deg, #f5b76d, #f09d4a);
 }
 
 .stat-card.danger {
-  background: linear-gradient(135deg, #ffb3ba, #ffa0a8);
+  background: linear-gradient(135deg, #f28b93, #ed6872);
 }
 
 .stat-card.beige {
-  background: linear-gradient(135deg, #f5e6d3, #e8d4b8);
+  background: linear-gradient(135deg, #e8d4b8, #d9c09d);
   color: #2d2d2d;
 }
 
 .stat-card.beige .stat-label {
   color: #2d2d2d;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .stat-card.beige .stat-value {
   color: #1a1a1a;
-  font-size: 2.3rem;
+  font-size: 3rem;
+  font-weight: 800;
 }
 
 .stat-card.beige .stat-unit {
   color: #2d2d2d;
-  opacity: 0.85;
+  opacity: 0.9;
+  font-size: 1.4rem;
+  font-weight: 600;
 }
 
 .stat-label {
@@ -928,7 +958,7 @@ tr.correction {
 /* ==================== KOPERTA DNIA ==================== */
 
 .envelope-container {
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   color: white;
   padding: 30px;
   border-radius: 12px;
@@ -959,7 +989,7 @@ tr.correction {
 
 .gauge-fill {
   height: 100%;
-  background: linear-gradient(90deg, #b8f0d8, #a0e7c7);
+  background: linear-gradient(90deg, #8fd9b8, #6fc79f);
   border-radius: 15px;
   transition: width 0.5s ease, background 0.3s ease;
 }
@@ -985,33 +1015,33 @@ tr.correction {
 }
 
 .dynamics-excellent {
-  border-left-color: #b8f0d8;
-  background: linear-gradient(to right, rgba(184, 240, 216, 0.2), var(--light-gray));
+  border-left-color: #8fd9b8;
+  background: linear-gradient(to right, rgba(143, 217, 184, 0.25), var(--light-gray));
 }
 
 .dynamics-good {
-  border-left-color: #c4f5e1;
-  background: linear-gradient(to right, rgba(196, 245, 225, 0.2), var(--light-gray));
+  border-left-color: #a5e0c4;
+  background: linear-gradient(to right, rgba(165, 224, 196, 0.25), var(--light-gray));
 }
 
 .dynamics-moderate {
-  border-left-color: #a8d5ff;
-  background: linear-gradient(to right, rgba(168, 213, 255, 0.2), var(--light-gray));
+  border-left-color: #7eb8e8;
+  background: linear-gradient(to right, rgba(126, 184, 232, 0.25), var(--light-gray));
 }
 
 .dynamics-warning {
-  border-left-color: #ffd6a5;
-  background: linear-gradient(to right, rgba(255, 214, 165, 0.2), var(--light-gray));
+  border-left-color: #f5b76d;
+  background: linear-gradient(to right, rgba(245, 183, 109, 0.25), var(--light-gray));
 }
 
 .dynamics-critical {
-  border-left-color: #ffb3ba;
-  background: linear-gradient(to right, rgba(255, 179, 186, 0.2), var(--light-gray));
+  border-left-color: #f28b93;
+  background: linear-gradient(to right, rgba(242, 139, 147, 0.25), var(--light-gray));
 }
 
 .dynamics-no-date {
-  border-left-color: #a8adb5;
-  background: linear-gradient(to right, rgba(168, 173, 181, 0.2), var(--light-gray));
+  border-left-color: #8a8f97;
+  background: linear-gradient(to right, rgba(138, 143, 151, 0.25), var(--light-gray));
 }
 
 .dynamics-title {
@@ -1582,6 +1612,18 @@ tr.correction {
     font-size: 1.5rem;
   }
 
+  .stat-card.beige .stat-value {
+    font-size: 2.5rem;
+  }
+
+  .stat-card.beige .stat-label {
+    font-size: 1rem;
+  }
+
+  .stat-card.beige .stat-unit {
+    font-size: 1.2rem;
+  }
+
   .envelope-amount {
     font-size: 2rem;
   }
@@ -1648,7 +1690,7 @@ tr.correction {
 /* ==================== STOPKA APLIKACJI ==================== */
 
 .app-footer {
-  background: linear-gradient(135deg, #c7d2fe 0%, #e0d4f7 100%);
+  background: linear-gradient(135deg, #a8b9e8 0%, #c9b3e0 100%);
   color: white;
   padding: 30px 0;
   margin-top: 40px;
