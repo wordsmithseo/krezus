@@ -527,6 +527,34 @@ button:focus {
   .stat-card.beige .stat-unit {
     font-size: 1.1rem;
   }
+
+  .dynamics-card {
+    padding: 18px;
+  }
+
+  .dynamics-title {
+    font-size: 1.1rem;
+  }
+
+  .dynamics-summary {
+    font-size: 0.95rem;
+  }
+
+  .dynamics-details {
+    padding: 15px;
+  }
+
+  .dynamics-details li {
+    font-size: 0.9rem;
+  }
+
+  .dynamics-recommendation {
+    padding: 15px;
+  }
+
+  .dynamics-recommendation p {
+    font-size: 0.9rem;
+  }
 }
 
 @media (min-width: 1200px) {
@@ -1047,7 +1075,7 @@ tr.correction {
 }
 
 .dynamics-card {
-  padding: 20px;
+  padding: 25px;
   border-radius: 12px;
   border-left: 5px solid;
   background: var(--light-gray);
@@ -1055,77 +1083,79 @@ tr.correction {
 
 .dynamics-excellent {
   border-left-color: #5cb88a;
-  background: linear-gradient(to right, rgba(92, 184, 138, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-good {
   border-left-color: #7ac9a0;
-  background: linear-gradient(to right, rgba(122, 201, 160, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-moderate {
   border-left-color: #4a9fd8;
-  background: linear-gradient(to right, rgba(74, 159, 216, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-warning {
   border-left-color: #e89d3f;
-  background: linear-gradient(to right, rgba(232, 157, 63, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-critical {
   border-left-color: #e85c6a;
-  background: linear-gradient(to right, rgba(232, 92, 106, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-no-date {
   border-left-color: #6c717a;
-  background: linear-gradient(to right, rgba(108, 113, 122, 0.3), var(--light-gray));
+  background: var(--light-gray);
 }
 
 .dynamics-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--dark);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .dynamics-summary {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--dark);
-  margin-bottom: 15px;
-  line-height: 1.6;
+  margin-bottom: 18px;
+  line-height: 1.7;
 }
 
 .dynamics-details {
   background: white;
-  padding: 15px;
+  padding: 18px;
   border-radius: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 18px;
 }
 
 .dynamics-details ul {
   list-style: none;
   padding: 0;
-  margin: 10px 0 0 0;
+  margin: 12px 0 0 0;
 }
 
 .dynamics-details li {
-  padding: 5px 0;
+  padding: 6px 0;
   color: var(--gray);
-  font-size: 0.9rem;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .dynamics-recommendation {
   background: white;
-  padding: 15px;
+  padding: 18px;
   border-radius: 8px;
 }
 
 .dynamics-recommendation p {
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--dark);
-  line-height: 1.6;
+  line-height: 1.7;
+  font-size: 1rem;
 }
 
 /* ==================== LISTY ==================== */
@@ -1692,6 +1722,26 @@ tr.correction {
   .category-quick-btn {
     font-size: 0.85rem;
     padding: 6px 12px;
+  }
+
+  .dynamics-card {
+    padding: 20px;
+  }
+
+  .dynamics-title {
+    font-size: 1.2rem;
+  }
+
+  .dynamics-summary {
+    font-size: 1rem;
+  }
+
+  .dynamics-details li {
+    font-size: 0.95rem;
+  }
+
+  .dynamics-recommendation p {
+    font-size: 0.95rem;
   }
 }
 
