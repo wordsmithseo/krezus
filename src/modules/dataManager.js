@@ -97,11 +97,13 @@ export async function loadCategories() {
         console.log(`🔄 Dodano ID do kategorii: ${cat.name} -> ${cat.id}`);
       }
 
-      // MIGRACJA: dodaj ikonę jeśli kategoria jej nie ma
-      if (!cat.icon) {
-        cat.icon = getCategoryIcon(cat.name);
+      // MIGRACJA: odśwież ikonę na podstawie nazwy (zawsze)
+      // Używamy inteligentnego systemu dopasowania dla najlepszych wyników
+      const smartIcon = getCategoryIcon(cat.name);
+      if (!cat.icon || cat.icon !== smartIcon) {
+        cat.icon = smartIcon;
         needsMigration = true;
-        console.log(`🎨 Przypisano ikonę do kategorii: ${cat.name} -> ${cat.icon}`);
+        console.log(`🎨 Zaktualizowano ikonę kategorii: ${cat.name} -> ${cat.icon}`);
       }
 
       // Unikalne kategorie - sprawdzaj zarówno ID jak i nazwę

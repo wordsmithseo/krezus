@@ -877,7 +877,8 @@ function renderCategories() {
   const html = categoryStats.map(cat => {
     const isMergingThis = mergingCategoryId === cat.id;
     const showCheckbox = mergingCategoryId && !isMergingThis;
-    const categoryIcon = cat.icon || getCategoryIcon(cat.name);
+    // ZAWSZE używaj inteligentnego dopasowania dla najlepszych wyników
+    const categoryIcon = getCategoryIcon(cat.name);
 
     return `
       <div class="category-item" style="${isMergingThis ? 'background: #fff3cd;' : ''}">
