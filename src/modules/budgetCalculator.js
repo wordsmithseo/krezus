@@ -246,18 +246,7 @@ export function calculateCurrentLimits() {
             });
         }
 
-        // Krok 2: Bufor bezpieczeństwa (20%)
-        const bufferFactor = 0.80; // Zostaw 20% jako bufor
-        adjustedAmount = adjustedAmount * bufferFactor;
-        console.log('  🛡️ Po zastosowaniu bufora (20%):', adjustedAmount.toFixed(2), 'zł');
-
-        appliedMeasures.push({
-            type: 'safety-buffer',
-            description: 'Bufor bezpieczeństwa: 20%',
-            impact: toSpend * (1 - bufferFactor)
-        });
-
-        // Krok 3: Progresywne ograniczanie dla małej liczby dni
+        // Krok 2: Progresywne ograniczanie dla małej liczby dni
         let conservativeFactor = 1.0;
         if (period.daysLeft <= 7) {
             conservativeFactor = 0.7;
@@ -337,17 +326,17 @@ export function calculatePlannedTransactionsTotals() {
         let futureExpense = 0;
 
         if (period.date && period.date.trim() !== '') {
-            console.log(`🔍 Filtrowanie dla okresu ${index + 1} (od ${today} do ${period.date})`);
+            console.log(`🔍 Filtrowanie dla okresu ${index + 1} (pomiędzy ${today} a ${period.date}, bez dat granicznych)`);
 
             incomes.forEach(inc => {
-                if (inc.type === 'planned' && inc.date >= today && inc.date <= period.date) {
+                if (inc.type === 'planned' && inc.date > today && inc.date < period.date) {
                     console.log(`  ✅ Dodaję przychód: ${inc.amount} zł, data: ${inc.date}, źródło: ${inc.source}`);
                     futureIncome += inc.amount || 0;
                 }
             });
 
             expenses.forEach(exp => {
-                if (exp.type === 'planned' && exp.date >= today && exp.date <= period.date) {
+                if (exp.type === 'planned' && exp.date > today && exp.date < period.date) {
                     console.log(`  ✅ Dodaję wydatek: ${exp.amount} zł, data: ${exp.date}`);
                     futureExpense += exp.amount || 0;
                 }
