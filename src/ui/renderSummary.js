@@ -240,22 +240,12 @@ export function renderSpendingDynamics() {
     </div>
   ` : '';
 
-  const measuresHTML = dynamics.appliedMeasures && dynamics.appliedMeasures.length > 0 ? `
-    <div class="dynamics-measures" style="margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.1); border-radius: 8px;">
-      <strong>🛡️ Zastosowane zabezpieczenia:</strong>
-      <ul style="margin: 5px 0 0 0; padding-left: 20px; opacity: 0.9;">
-        ${dynamics.appliedMeasures.map(measure => `<li>${measure.description}</li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
-
   const html = `
     <div class="dynamics-card ${statusClass}">
       <h4 class="dynamics-title">${dynamics.title}</h4>
       <p class="dynamics-summary">${dynamics.summary}</p>
       <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
       ${detailsHTML}
-      ${measuresHTML}
       <div class="dynamics-recommendation">
         <strong>💡 Rekomendacja:</strong>
         <p>${dynamics.recommendation}</p>
@@ -356,13 +346,14 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const card = document.createElement('div');
     card.className = 'stat-card';
 
-    // Nazwa wpływu na górze z ikoną
+    // Nazwa wpływu na górze z ikoną i kwotą
     const nameDiv = document.createElement('div');
     nameDiv.className = 'stat-label';
     nameDiv.style.fontWeight = 'bold';
     nameDiv.style.marginBottom = '5px';
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
-    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}`;
+    const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
+    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
     // Bezpieczny limit dzienny (główny)
     const safeLabelDiv = document.createElement('div');

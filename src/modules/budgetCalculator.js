@@ -139,18 +139,23 @@ function getNextPlannedIncomeDates() {
         .filter(inc => inc.type === 'planned' && inc.date >= today)
         .map(inc => ({
             date: inc.date,
-            name: inc.source || 'Bez nazwy'
+            name: inc.source || 'Bez nazwy',
+            amount: inc.amount || 0
         }))
         .sort((a, b) => a.date.localeCompare(b.date)); // Sortuj chronologicznie
 
-    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, weź pierwszy)
+    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, zsumuj kwoty)
     const uniqueIncomes = [];
-    const seenDates = new Set();
+    const seenDates = new Map();
 
     for (const income of plannedIncomes) {
         if (!seenDates.has(income.date)) {
-            seenDates.add(income.date);
+            seenDates.set(income.date, income);
             uniqueIncomes.push(income);
+        } else {
+            // Jeśli ta data już istnieje, dodaj amount do istniejącego wpływu
+            const existing = seenDates.get(income.date);
+            existing.amount += income.amount;
         }
     }
 
@@ -179,6 +184,7 @@ export function calculateSpendingPeriods() {
         return {
             date: income.date,
             name: income.name,
+            amount: income.amount,
             daysLeft
         };
     });
@@ -283,6 +289,7 @@ export function calculateCurrentLimits() {
         return {
             date: period.date,
             name: period.name,
+            amount: period.amount, // Kwota planowanego przychodu
             daysLeft: period.daysLeft,
             currentLimit,
             appliedMeasures,
@@ -887,8 +894,7 @@ export function calculateSpendingDynamics() {
             title: '⚠️ Brak wybranego okresu',
             summary: 'Aby zobaczyć analizę dynamiki wydatków, wybierz okres w ustawieniach.',
             details: [],
-            recommendation: 'Przejdź do ustawień i wybierz okres dla dynamiki wydatków.',
-            appliedMeasures: []
+            recommendation: 'Przejdź do ustawień i wybierz okres dla dynamiki wydatków.'
         };
     }
 
@@ -896,10 +902,9 @@ export function calculateSpendingDynamics() {
 
     // Znajdź limit dla wybranego okresu dynamiki
     const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
-    const appliedMeasures = selectedLimit?.appliedMeasures || [];
 
-    // Użyj bezpiecznego limitu dziennego (z zabezpieczeniami) zamiast surowego
-    const targetDaily = selectedLimit?.currentLimit || 0;
+    // Użyj surowego limitu dziennego (bez zabezpieczeń)
+    const targetDaily = selectedLimit?.rawLimit || 0;
 
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
@@ -919,10 +924,9 @@ export function calculateSpendingDynamics() {
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
                 `Dni do końca okresu (${selectedPeriod.name}): ${activeDays}`,
-                `Bezpieczny dzienny limit: ${targetDaily.toFixed(2)} zł`
+                `Dzienny limit: ${targetDaily.toFixed(2)} zł`
             ],
-            recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.',
-            appliedMeasures
+            recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.'
         };
     }
 
@@ -939,8 +943,7 @@ export function calculateSpendingDynamics() {
                 `Średnie dzienne wydatki (7 dni): ${dailyAvg7.toFixed(2)} zł`,
                 `Dni do końca okresu: ${activeDays}`
             ],
-            recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.',
-            appliedMeasures
+            recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.'
         };
     }
     
@@ -952,34 +955,34 @@ export function calculateSpendingDynamics() {
     if (ratio <= 0.5) {
         status = 'excellent';
         title = '🌟 Doskonała kontrola wydatków!';
-        summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% bezpiecznego limitu dziennego. Budżet jest w bardzo dobrej kondycji.`;
+        summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% limitu dziennego. Budżet jest w bardzo dobrej kondycji.`;
         recommendation = 'Świetna robota! Masz dużo przestrzeni w budżecie. Możesz kontynuować obecny styl życia lub rozważyć zwiększenie oszczędności.';
     } else if (ratio <= 0.8) {
         status = 'good';
         title = '✅ Dobra sytuacja budżetowa';
-        summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% bezpiecznego limitu dziennego (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
+        summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
         recommendation = 'Dobrze Ci idzie! Kontynuuj obecne tempo wydatków, ale uważaj na większe zakupy.';
     } else if (ratio <= 1.0) {
         status = 'moderate';
         title = '⚡ Wydatki zbliżone do limitu';
-        summary = `Średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) zbliżają się do bezpiecznego limitu (${targetDaily.toFixed(2)} zł). Stanowią ${percentageOfLimit}% dostępnego budżetu dziennego.`;
+        summary = `Średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) zbliżają się do limitu (${targetDaily.toFixed(2)} zł). Stanowią ${percentageOfLimit}% dostępnego budżetu dziennego.`;
         recommendation = 'Sytuacja jest pod kontrolą, ale nie masz dużego marginesu błędu. Uważaj na spontaniczne zakupy i monitoruj wydatki częściej.';
     } else if (ratio <= 1.3) {
         status = 'warning';
-        title = '⚠️ Przekraczasz bezpieczny limit!';
-        summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% bezpiecznego limitu dziennego (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
+        title = '⚠️ Przekraczasz limit!';
+        summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
         recommendation = 'Czas na większą ostrożność! Ogranicz niepotrzebne wydatki i skup się na priorytetach. Jeśli tak dalej pójdzie, możesz nie zmieścić się w budżecie do końca okresu.';
     } else {
         status = 'critical';
         title = '🚨 Znaczne przekroczenie limitu!';
-        summary = `Alarm! Średnie wydatki dzienne (${dailyAvg7.toFixed(2)} zł) przekraczają bezpieczny limit (${targetDaily.toFixed(2)} zł) o ${((ratio - 1) * 100).toFixed(0)}%! To ${(dailyAvg7 - targetDaily).toFixed(2)} zł dziennie ponad budżet.`;
+        summary = `Alarm! Średnie wydatki dzienne (${dailyAvg7.toFixed(2)} zł) przekraczają limit (${targetDaily.toFixed(2)} zł) o ${((ratio - 1) * 100).toFixed(0)}%! To ${(dailyAvg7 - targetDaily).toFixed(2)} zł dziennie ponad budżet.`;
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
-    
+
     const details = [
         `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,
         `Dni do końca okresu: ${activeDays}`,
-        `Bezpieczny limit dzienny: ${targetDaily.toFixed(2)} zł`,
+        `Dzienny limit: ${targetDaily.toFixed(2)} zł`,
         `Średnie wydatki dzienne (7 dni): ${dailyAvg7.toFixed(2)} zł`,
         `Liczba transakcji (7 dni): ${last7.length}`,
         `Prognozowane wydatki do końca okresu: ${(dailyAvg7 * activeDays).toFixed(2)} zł`
@@ -990,8 +993,7 @@ export function calculateSpendingDynamics() {
         title,
         summary,
         details,
-        recommendation,
-        appliedMeasures
+        recommendation
     };
 }
 
