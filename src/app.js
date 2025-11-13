@@ -1559,6 +1559,7 @@ window.realiseIncome = async (incomeId) => {
   try {
     await saveIncomes(incomes);
     clearLimitsCache(); // Wyczyść cache po zmianie przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
     await updateDailyEnvelope();
 
     const budgetUserName = getBudgetUserName(income.userId);
@@ -1586,6 +1587,7 @@ window.editIncome = (incomeId) => {
     try {
       await saveIncomes(updated);
       clearLimitsCache(); // Wyczyść cache po zmianie przychodu
+      refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
 
       if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
         await updateDailyEnvelope();
@@ -1623,6 +1625,7 @@ window.deleteIncome = async (incomeId) => {
   try {
     await saveIncomes(updated);
     clearLimitsCache(); // Wyczyść cache po usunięciu przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
 
     await loadIncomes();
 
@@ -2051,6 +2054,7 @@ window.addIncome = async (e) => {
   try {
     await saveIncomes(updated);
     clearLimitsCache(); // Wyczyść cache po dodaniu/edycji przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
 
     if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
@@ -2130,6 +2134,7 @@ window.addCorrection = async (e) => {
   try {
     await saveIncomes(updated);
     clearLimitsCache(); // Wyczyść cache po wprowadzeniu korekty
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach (na wszelki wypadek)
     await updateDailyEnvelope();
 
     await log('CORRECTION_ADD', {
@@ -2149,7 +2154,11 @@ window.addCorrection = async (e) => {
   }
 };
 
-function loadSettings() {
+/**
+ * Odświeża listy rozwijane okresów w ustawieniach
+ * Powinna być wywołana po każdej zmianie przychodów planowanych
+ */
+function refreshPeriodSelectors() {
   const envelopePeriod = getEnvelopePeriod();
   const dynamicsPeriod = getDynamicsPeriod();
 
@@ -2180,6 +2189,10 @@ function loadSettings() {
       dynamicsPeriodSelect.appendChild(option);
     });
   }
+}
+
+function loadSettings() {
+  refreshPeriodSelectors();
 
   // Renderuj budżety celowe
   renderPurposeBudgets();

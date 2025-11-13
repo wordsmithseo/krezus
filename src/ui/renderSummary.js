@@ -330,10 +330,11 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
-    // Limit realny (tylko obecne środki)
-    const realLimit = limit.daysLeft > 0
-      ? available / limit.daysLeft
-      : 0;
+    // Limit z zabezpieczeniami (obliczony przez calculateCurrentLimits)
+    const safeLimitDaily = limit.currentLimit || 0;
+
+    // Limit surowy (bez zabezpieczeń) dla porównania
+    const rawLimitDaily = limit.rawLimit || 0;
 
     // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
     const projectedLimit = limit.daysLeft > 0
@@ -351,35 +352,43 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
     nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}`;
 
-    // Limit realny
-    const realLabelDiv = document.createElement('div');
-    realLabelDiv.className = 'stat-label';
-    realLabelDiv.style.fontSize = '0.85rem';
-    realLabelDiv.style.opacity = '0.8';
-    realLabelDiv.textContent = `Limit realny (do ${formatDateLabel(limit.date)})`;
+    // Bezpieczny limit dzienny (główny)
+    const safeLabelDiv = document.createElement('div');
+    safeLabelDiv.className = 'stat-label';
+    safeLabelDiv.style.fontSize = '0.9rem';
+    safeLabelDiv.style.opacity = '0.8';
+    safeLabelDiv.style.marginTop = '8px';
+    safeLabelDiv.innerHTML = `🛡️ Bezpieczny limit dzienny`;
 
-    const realValueDiv = document.createElement('div');
-    realValueDiv.className = 'stat-value';
-    realValueDiv.style.fontSize = '1.2rem';
-    realValueDiv.style.marginBottom = '10px';
-    const realValueSpan = document.createElement('span');
-    realValueSpan.textContent = realLimit.toFixed(2);
-    const realUnitSpan = document.createElement('span');
-    realUnitSpan.className = 'stat-unit';
-    realUnitSpan.textContent = 'zł/dzień';
-    realValueDiv.appendChild(realValueSpan);
-    realValueDiv.appendChild(realUnitSpan);
+    const safeValueDiv = document.createElement('div');
+    safeValueDiv.className = 'stat-value';
+    safeValueDiv.style.fontSize = '1.8rem';
+    safeValueDiv.style.marginBottom = '10px';
+    const safeValueSpan = document.createElement('span');
+    safeValueSpan.textContent = safeLimitDaily.toFixed(2);
+    const safeUnitSpan = document.createElement('span');
+    safeUnitSpan.className = 'stat-unit';
+    safeUnitSpan.textContent = 'zł/dzień';
+    safeValueDiv.appendChild(safeValueSpan);
+    safeValueDiv.appendChild(safeUnitSpan);
 
-    // Limit planowany
+    // Surowy limit dla porównania (mniejszą czcionką)
+    const rawInfoDiv = document.createElement('div');
+    rawInfoDiv.style.fontSize = '0.75rem';
+    rawInfoDiv.style.opacity = '0.7';
+    rawInfoDiv.style.marginBottom = '10px';
+    rawInfoDiv.textContent = `(bez zabezpieczeń: ${rawLimitDaily.toFixed(2)} zł/dzień)`;
+
+    // Limit planowany (z przyszłymi wpływami/wydatkami)
     const projectedLabelDiv = document.createElement('div');
     projectedLabelDiv.className = 'stat-label';
     projectedLabelDiv.style.fontSize = '0.85rem';
     projectedLabelDiv.style.opacity = '0.8';
-    projectedLabelDiv.textContent = `Limit planowany`;
+    projectedLabelDiv.textContent = `📊 Limit planowany`;
 
     const projectedValueDiv = document.createElement('div');
     projectedValueDiv.className = 'stat-value';
-    projectedValueDiv.style.fontSize = '1.5rem';
+    projectedValueDiv.style.fontSize = '1.2rem';
     const projectedValueSpan = document.createElement('span');
     projectedValueSpan.textContent = projectedLimit.toFixed(2);
     const projectedUnitSpan = document.createElement('span');
@@ -393,11 +402,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
     card.appendChild(nameDiv);
-    card.appendChild(realLabelDiv);
-    card.appendChild(realValueDiv);
+    card.appendChild(daysDiv);
+    card.appendChild(safeLabelDiv);
+    card.appendChild(safeValueDiv);
+    card.appendChild(rawInfoDiv);
     card.appendChild(projectedLabelDiv);
     card.appendChild(projectedValueDiv);
-    card.appendChild(daysDiv);
 
     // Dodaj informacje o zastosowanych środkach zabezpieczających
     if (limit.appliedMeasures && limit.appliedMeasures.length > 0) {
