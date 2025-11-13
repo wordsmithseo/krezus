@@ -310,12 +310,23 @@ export function getBudgetStatistics() {
   const budgets = getPurposeBudgets();
 
   return budgets.map(budget => {
-    const spent = calculateBudgetSpent(budget.id);
-    const remaining = budget.amount - spent;
-    const percentage = budget.amount > 0 ? (spent / budget.amount) * 100 : 0;
+    // Zabezpieczenie przed undefined/null
+    const amount = parseFloat(budget.amount) || 0;
+    const spent = calculateBudgetSpent(budget.id) || 0;
+    const remaining = amount - spent;
+    const percentage = amount > 0 ? (spent / amount) * 100 : 0;
+
+    console.log(`📊 Statystyki budżetu "${budget.name}":`, {
+      id: budget.id,
+      amount,
+      spent,
+      remaining,
+      percentage: percentage.toFixed(1)
+    });
 
     return {
       ...budget,
+      amount,
       spent,
       remaining,
       percentage: Math.min(percentage, 100) // Cap at 100%
