@@ -39,7 +39,7 @@ import {
 
 } from './modules/dataManager.js';
 
-import { ensureDefaultBudget, getBudgetStatistics } from './modules/purposeBudgetManager.js';
+import { ensureDefaultBudget, getBudgetStatistics, validateBudgetAllocation } from './modules/purposeBudgetManager.js';
 
 import {
   calculateRealisedTotals,
@@ -245,6 +245,13 @@ async function loadAllData() {
     await clearCache();
     await fetchAllData(userId);
     await ensureDefaultBudget(); // Upewnij się że istnieje domyślny budżet "Ogólny"
+
+    // Waliduj alokację budżetów
+    const validation = await validateBudgetAllocation();
+    if (validation.liquidated) {
+      showErrorMessage(validation.message);
+    }
+
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
@@ -268,6 +275,13 @@ async function loadAllData() {
       },
       onIncomesChange: async () => {
         await updateDailyEnvelope();
+
+        // Waliduj alokację budżetów po zmianie przychodów
+        const validation = await validateBudgetAllocation();
+        if (validation.liquidated) {
+          showErrorMessage(validation.message);
+        }
+
         renderSources();
         renderSummary();
         renderDailyEnvelope();
@@ -277,13 +291,29 @@ async function loadAllData() {
         renderSummary();
         setupPurposeBudgetSelect();
       },
-      onEndDatesChange: () => {
+      onEndDatesChange: async () => {
+        await updateDailyEnvelope();
+
+        // Waliduj alokację budżetów po zmianie dat końcowych
+        const validation = await validateBudgetAllocation();
+        if (validation.liquidated) {
+          showErrorMessage(validation.message);
+        }
+
         renderSummary();
-        updateDailyEnvelope().then(() => renderDailyEnvelope());
+        renderDailyEnvelope();
       },
-      onSavingGoalChange: () => {
+      onSavingGoalChange: async () => {
+        await updateDailyEnvelope();
+
+        // Waliduj alokację budżetów po zmianie celu oszczędnościowego
+        const validation = await validateBudgetAllocation();
+        if (validation.liquidated) {
+          showErrorMessage(validation.message);
+        }
+
         renderSummary();
-        updateDailyEnvelope().then(() => renderDailyEnvelope());
+        renderDailyEnvelope();
       },
       onDailyEnvelopeChange: () => {
         renderSummary();
@@ -349,7 +379,15 @@ function setupPurposeBudgetSelect() {
   if (!select) return;
 
   const currentValue = select.value;
-  const budgets = getBudgetStatistics();
+  const allBudgets = getBudgetStatistics();
+
+  // Sprawdź czy są jakiekolwiek budżety celowe (poza "Ogólny")
+  const purposeBudgets = allBudgets.filter(b => b.name !== 'Ogólny');
+
+  // Jeśli są budżety celowe, ukryj "Ogólny" z listy
+  const budgets = purposeBudgets.length > 0
+    ? purposeBudgets
+    : allBudgets;
 
   // Opcje selecta z informacją o dostępnych środkach
   const optionsHTML = budgets.map(budget => {
@@ -359,14 +397,11 @@ function setupPurposeBudgetSelect() {
 
   select.innerHTML = optionsHTML;
 
-  // Przywróć poprzednią wartość lub ustaw domyślny budżet "Ogólny"
+  // Przywróć poprzednią wartość lub ustaw pierwszy budżet
   if (currentValue && budgets.some(b => b.id === currentValue)) {
     select.value = currentValue;
-  } else {
-    const defaultBudget = budgets.find(b => b.name === 'Ogólny');
-    if (defaultBudget) {
-      select.value = defaultBudget.id;
-    }
+  } else if (budgets.length > 0) {
+    select.value = budgets[0].id;
   }
 }
 
@@ -2668,14 +2703,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (availableFundsCard) {
     availableFundsCard.style.cursor = 'pointer';
     availableFundsCard.addEventListener('click', () => {
-      window.showSection('expensesSection');
-      // Scrolluj do formularza
-      setTimeout(() => {
-        const expensesSection = document.getElementById('expensesSection');
-        if (expensesSection) {
-          expensesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
+      // Znajdź budżet "Ogólny"
+      const budgets = getBudgetStatistics();
+      const generalBudget = budgets.find(b => b.name === 'Ogólny');
+
+      if (generalBudget) {
+        window.openExpenseFormWithBudget(generalBudget.id);
+      } else {
+        // Jeśli nie ma budżetu "Ogólny", otwórz formularz bez wybranego budżetu
+        window.showSection('expensesSection');
+        setTimeout(() => {
+          const expensesSection = document.getElementById('expensesSection');
+          if (expensesSection) {
+            expensesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 100);
+      }
     });
   }
 

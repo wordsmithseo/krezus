@@ -333,3 +333,70 @@ export function getBudgetStatistics() {
     };
   });
 }
+
+/**
+ * Waliduj czy suma budżetów celowych nie przekracza dostępnych środków
+ * Jeśli przekracza, zlikwiduj wszystkie budżety celowe
+ * @returns {Object} { isValid, message, liquidated }
+ */
+export async function validateBudgetAllocation() {
+  const budgets = getPurposeBudgets();
+  const purposeBudgets = budgets.filter(b => b.name !== 'Ogólny');
+
+  // Jeśli nie ma budżetów celowych, wszystko jest OK
+  if (purposeBudgets.length === 0) {
+    return { isValid: true, liquidated: false };
+  }
+
+  const { available } = calculateAvailableFunds();
+  const totalPurposeBudgets = purposeBudgets.reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
+
+  console.log(`🔍 Walidacja budżetów: dostępne=${available.toFixed(2)} zł, zadeklarowane=${totalPurposeBudgets.toFixed(2)} zł`);
+
+  // Jeśli suma budżetów przekracza dostępne środki, zlikwiduj wszystkie budżety celowe
+  if (totalPurposeBudgets > available) {
+    console.warn('⚠️ Dostępne środki spadły poniżej poziomu zadeklarowanych budżetów!');
+
+    // Znajdź budżet "Ogólny"
+    const generalBudget = budgets.find(b => b.name === 'Ogólny');
+
+    // Przenieś wszystkie wydatki z budżetów celowych do "Ogólny"
+    const { saveExpenses } = await import('./dataManager.js');
+    const expenses = getExpenses();
+    const updatedExpenses = expenses.map(exp => {
+      const isFromPurposeBudget = purposeBudgets.some(pb => pb.id === exp.purposeBudgetId);
+      if (isFromPurposeBudget && generalBudget) {
+        return { ...exp, purposeBudgetId: generalBudget.id };
+      }
+      return exp;
+    });
+
+    // Usuń wszystkie budżety celowe (zostaw tylko "Ogólny")
+    const remainingBudgets = budgets.filter(b => b.name === 'Ogólny');
+
+    // Zapisz zmiany
+    await saveExpenses(updatedExpenses);
+    await savePurposeBudgets(remainingBudgets);
+
+    // Zaloguj operację
+    await log('PURPOSE_BUDGETS_LIQUIDATED', {
+      reason: 'Dostępne środki spadły poniżej zadeklarowanych budżetów',
+      available: available,
+      totalPurposeBudgets: totalPurposeBudgets,
+      liquidatedBudgets: purposeBudgets.map(b => ({ id: b.id, name: b.name, amount: b.amount }))
+    });
+
+    console.log('🗑️ Zlikwidowano wszystkie budżety celowe');
+
+    // Synchronizuj budżet "Ogólny"
+    await syncGeneralBudget();
+
+    return {
+      isValid: false,
+      liquidated: true,
+      message: `⚠️ UWAGA: Dostępne środki (${available.toFixed(2)} zł) spadły poniżej poziomu zadeklarowanych budżetów celowych (${totalPurposeBudgets.toFixed(2)} zł). Wszystkie budżety celowe zostały zlikwidowane. Konieczne jest ponowne zadeklarowanie budżetów celowych.`
+    };
+  }
+
+  return { isValid: true, liquidated: false };
+}
