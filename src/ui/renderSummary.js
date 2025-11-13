@@ -369,25 +369,39 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
     nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
-    // Bezpieczny limit dzienny (główny)
-    const safeLabelDiv = document.createElement('div');
-    safeLabelDiv.className = 'stat-label';
-    safeLabelDiv.style.fontSize = '0.9rem';
-    safeLabelDiv.style.opacity = '0.8';
-    safeLabelDiv.style.marginTop = '8px';
-    safeLabelDiv.innerHTML = `🛡️ Bezpieczny limit dzienny`;
+    // Sprawdź czy są aktywne progresywne limity
+    const hasProgressiveLimits = limit.appliedMeasures &&
+      limit.appliedMeasures.some(m => m.type === 'progressive-limit');
 
-    const safeValueDiv = document.createElement('div');
-    safeValueDiv.className = 'stat-value';
-    safeValueDiv.style.fontSize = '1.8rem';
-    safeValueDiv.style.marginBottom = '10px';
-    const safeValueSpan = document.createElement('span');
-    safeValueSpan.textContent = safeLimitDaily.toFixed(2);
-    const safeUnitSpan = document.createElement('span');
-    safeUnitSpan.className = 'stat-unit';
-    safeUnitSpan.textContent = 'zł/dzień';
-    safeValueDiv.appendChild(safeValueSpan);
-    safeValueDiv.appendChild(safeUnitSpan);
+    // Limit dzienny (nazwa zależy od tego czy są zabezpieczenia)
+    const limitLabelDiv = document.createElement('div');
+    limitLabelDiv.className = 'stat-label';
+    limitLabelDiv.style.fontSize = '0.9rem';
+    limitLabelDiv.style.opacity = '0.8';
+    limitLabelDiv.style.marginTop = '8px';
+    limitLabelDiv.innerHTML = hasProgressiveLimits ? `🛡️ Bezpieczny limit dzienny` : `💰 Limit dzienny`;
+
+    const limitValueDiv = document.createElement('div');
+    limitValueDiv.className = 'stat-value';
+    limitValueDiv.style.fontSize = '1.8rem';
+    limitValueDiv.style.marginBottom = '10px';
+    const limitValueSpan = document.createElement('span');
+    limitValueSpan.textContent = safeLimitDaily.toFixed(2);
+    const limitUnitSpan = document.createElement('span');
+    limitUnitSpan.className = 'stat-unit';
+    limitUnitSpan.textContent = 'zł/dzień';
+    limitValueDiv.appendChild(limitValueSpan);
+    limitValueDiv.appendChild(limitUnitSpan);
+
+    // Surowy limit dla porównania (TYLKO gdy są zabezpieczenia)
+    let rawInfoDiv = null;
+    if (hasProgressiveLimits) {
+      rawInfoDiv = document.createElement('div');
+      rawInfoDiv.style.fontSize = '0.75rem';
+      rawInfoDiv.style.opacity = '0.7';
+      rawInfoDiv.style.marginBottom = '10px';
+      rawInfoDiv.textContent = `(bez zabezpieczeń: ${rawLimitDaily.toFixed(2)} zł/dzień)`;
+    }
 
     // Limit planowany (z przyszłymi wpływami/wydatkami)
     const projectedLabelDiv = document.createElement('div');
@@ -413,16 +427,18 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     card.appendChild(nameDiv);
     card.appendChild(daysDiv);
-    card.appendChild(safeLabelDiv);
-    card.appendChild(safeValueDiv);
+    card.appendChild(limitLabelDiv);
+    card.appendChild(limitValueDiv);
+
+    // Dodaj surowy limit TYLKO gdy są zabezpieczenia
+    if (rawInfoDiv) {
+      card.appendChild(rawInfoDiv);
+    }
+
     card.appendChild(projectedLabelDiv);
     card.appendChild(projectedValueDiv);
 
     // Dodaj informacje o zastosowanych środkach zabezpieczających TYLKO gdy są aktywne
-    // (sprawdzamy czy są progresywne limity, nie tylko planowane wydatki)
-    const hasProgressiveLimits = limit.appliedMeasures &&
-      limit.appliedMeasures.some(m => m.type === 'progressive-limit');
-
     if (hasProgressiveLimits) {
       const measuresDiv = document.createElement('div');
       measuresDiv.style.marginTop = '12px';
