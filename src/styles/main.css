@@ -1831,7 +1831,7 @@ tr.correction {
   right: 20px;
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
+  background: white;
   border-radius: 50%;
   display: none; /* Domyślnie ukryta, pokazuje się gdy ktoś inny jest aktywny */
   align-items: center;
@@ -1840,12 +1840,20 @@ tr.correction {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   z-index: 9999;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  color: black;
+  filter: grayscale(1);
 }
 
 #presenceIndicator:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+#presenceIndicator.active {
+  background: #ff4444;
+  filter: grayscale(0);
+  color: white;
 }
 
 @media (max-width: 768px) {
