@@ -158,7 +158,30 @@ function renderPurposeBudgetsSummary() {
       return;
     }
 
+    // Oblicz wolne środki do alokacji
+    const totalAllocated = budgets.reduce((sum, b) => sum + b.amount, 0);
+    const unallocatedFunds = available - totalAllocated;
+
+    // Komunikat o wolnych środkach (tylko jeśli są budżety celowe i są wolne środki)
+    const unallocatedMessage = unallocatedFunds > 0 ? `
+      <div style="background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%); color: white; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="font-size: 2rem;">💡</div>
+          <div style="flex: 1;">
+            <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">Masz wolne środki do zaalokowania!</div>
+            <div style="font-size: 0.9rem; opacity: 0.95;">
+              Do rozplanowania w budżetach celowych: <strong style="font-size: 1.1rem;">${unallocatedFunds.toFixed(2)} zł</strong>
+            </div>
+          </div>
+          <button onclick="showPurposeBudgetModal()" style="background: rgba(255, 255, 255, 0.2); border: 2px solid white; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.95rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+            ➕ Dodaj budżet
+          </button>
+        </div>
+      </div>
+    ` : '';
+
     const html = `
+      ${unallocatedMessage}
       <div class="stats-grid">
         ${budgets.map(budget => {
           const percentUsed = budget.percentage.toFixed(1);
