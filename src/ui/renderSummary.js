@@ -240,26 +240,12 @@ export function renderSpendingDynamics() {
     </div>
   ` : '';
 
-  // Pokazuj zabezpieczenia TYLKO gdy są aktywne progresywne limity
-  const hasProgressiveLimits = dynamics.appliedMeasures &&
-    dynamics.appliedMeasures.some(m => m.type === 'progressive-limit');
-
-  const measuresHTML = hasProgressiveLimits ? `
-    <div class="dynamics-measures" style="margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.1); border-radius: 8px;">
-      <strong>🛡️ Zastosowane zabezpieczenia:</strong>
-      <ul style="margin: 5px 0 0 0; padding-left: 20px; opacity: 0.9;">
-        ${dynamics.appliedMeasures.map(measure => `<li>${measure.description}</li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
-
   const html = `
     <div class="dynamics-card ${statusClass}">
       <h4 class="dynamics-title">${dynamics.title}</h4>
       <p class="dynamics-summary">${dynamics.summary}</p>
       <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
       ${detailsHTML}
-      ${measuresHTML}
       <div class="dynamics-recommendation">
         <strong>💡 Rekomendacja:</strong>
         <p>${dynamics.recommendation}</p>
