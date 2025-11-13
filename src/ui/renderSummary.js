@@ -455,7 +455,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     // Limit surowy (bez zabezpieczeń) dla porównania
     const rawLimitDaily = limit.rawLimit || 0;
 
-    // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
+    // Limit planowany (z przyszłymi wpływami/wydatkami PO DRODZE, bez wpływu na dacie końcowej)
     const projectedLimit = limit.daysLeft > 0
       ? (available + futureIncome - futureExpense) / limit.daysLeft
       : 0;
