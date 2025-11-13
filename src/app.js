@@ -1572,6 +1572,7 @@ window.realiseIncome = async (incomeId) => {
       budgetUser: budgetUserName
     });
 
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage('Przychód zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji przychodu:', error);
@@ -1605,6 +1606,7 @@ window.editIncome = (incomeId) => {
         budgetUser: budgetUserName
       });
 
+      renderSummary(); // Odśwież wyświetlanie planowanych transakcji
       showSuccessMessage('Przychód zaktualizowany');
     } catch (error) {
       console.error('❌ Błąd aktualizacji przychodu:', error);
@@ -1644,6 +1646,7 @@ window.deleteIncome = async (incomeId) => {
       budgetUser: budgetUserName
     });
 
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -2078,9 +2081,10 @@ window.addIncome = async (e) => {
     editingIncomeId = null;
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
-    
+
     setupIncomeTypeToggle();
-    
+
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -2150,6 +2154,7 @@ window.addCorrection = async (e) => {
     });
 
     form.reset();
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
   } catch (error) {
     console.error('❌ Błąd wprowadzania korekty:', error);

@@ -63,16 +63,19 @@ export function renderSummary() {
 
   renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt);
 
-  // Planowane transakcje - używamy ostatniego okresu (najdalszego)
-  const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
-  const displayIncome = lastPeriod?.futureIncome || 0;
-  const displayExpense = lastPeriod?.futureExpense || 0;
+  // Planowane transakcje - sumujemy WSZYSTKIE przychody/wydatki ze wszystkich okresów
+  // aby pokazać całkowitą kwotę planowanych transakcji
+  const totalPlannedIncome = plannedTotals.periodTotals.reduce((sum, period) => sum + (period.futureIncome || 0), 0);
+  const totalPlannedExpense = plannedTotals.periodTotals.reduce((sum, period) => sum + (period.futureExpense || 0), 0);
+
+  console.log('💰 Planowane przychody (suma wszystkich okresów):', totalPlannedIncome.toFixed(2), 'zł');
+  console.log('💸 Planowane wydatki (suma wszystkich okresów):', totalPlannedExpense.toFixed(2), 'zł');
 
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
 
-  if (futureIncomeEl) futureIncomeEl.textContent = displayIncome.toFixed(2);
-  if (futureExpenseEl) futureExpenseEl.textContent = displayExpense.toFixed(2);
+  if (futureIncomeEl) futureIncomeEl.textContent = totalPlannedIncome.toFixed(2);
+  if (futureExpenseEl) futureExpenseEl.textContent = totalPlannedExpense.toFixed(2);
 
   // Dynamika wydatków
   renderSpendingDynamics();
