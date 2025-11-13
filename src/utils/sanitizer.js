@@ -9,9 +9,9 @@ export function sanitizeHTML(html) {
   if (!html) return '';
 
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'small', 'br', 'span', 'div', 'p', 'ul', 'li'],
-    ALLOWED_ATTR: ['class', 'style'],
-    ALLOW_DATA_ATTR: false
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'small', 'br', 'span', 'div', 'p', 'ul', 'li', 'button'],
+    ALLOWED_ATTR: ['class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'onclick', 'onmouseover', 'onmouseout'],
+    ALLOW_DATA_ATTR: true
   });
 }
 

@@ -117,7 +117,7 @@ function listenToOtherSessions(userId) {
     });
 
     if (activeSessions.length > 0) {
-      showPresenceIndicator();
+      showPresenceIndicator(activeSessions.length);
 
       // Sprawdź czy była MANUALNA aktywność w ostatnich 5 sekundach
       const recentManualActivity = activeSessions.some(session => {
@@ -141,18 +141,31 @@ function listenToOtherSessions(userId) {
 
 /**
  * Pokazuje wskaźnik obecności innych użytkowników
+ * @param {number} count - Liczba aktywnych sesji
  */
-function showPresenceIndicator() {
+function showPresenceIndicator(count = 0) {
   let indicator = document.getElementById('presenceIndicator');
 
   if (!indicator) {
     indicator = document.createElement('div');
     indicator.id = 'presenceIndicator';
-    indicator.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-    </svg>`;
-    indicator.title = 'Ktoś inny jest aktywny na Twoim koncie';
+    indicator.innerHTML = `
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+      <span class="presence-badge">${count}</span>
+    `;
+    const title = count === 1 ? 'Jedna inna sesja jest aktywna na Twoim koncie' : `${count} inne sesje są aktywne na Twoim koncie`;
+    indicator.title = title;
     document.body.appendChild(indicator);
+  } else {
+    // Zaktualizuj badge jeśli indicator już istnieje
+    const badge = indicator.querySelector('.presence-badge');
+    if (badge) {
+      badge.textContent = count;
+    }
+    const title = count === 1 ? 'Jedna inna sesja jest aktywna na Twoim koncie' : `${count} inne sesje są aktywne na Twoim koncie`;
+    indicator.title = title;
   }
 
   indicator.style.display = 'flex';

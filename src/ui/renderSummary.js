@@ -158,7 +158,50 @@ function renderPurposeBudgetsSummary() {
       return;
     }
 
+    // Oblicz wolne środki do alokacji
+    const totalAllocated = budgets.reduce((sum, b) => sum + b.amount, 0);
+    const unallocatedFunds = available - totalAllocated;
+
+    // Komunikat o stanie alokacji budżetów
+    let unallocatedMessage = '';
+
+    if (unallocatedFunds > 0.01) {
+      // Są wolne środki do zaalokowania
+      unallocatedMessage = `
+        <div style="background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%); color: white; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 2rem;">💡</div>
+            <div style="flex: 1;">
+              <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">Masz wolne środki do zaalokowania!</div>
+              <div style="font-size: 0.9rem; opacity: 0.95;">
+                Do rozplanowania w budżetach celowych: <strong style="font-size: 1.1rem;">${unallocatedFunds.toFixed(2)} zł</strong>
+              </div>
+            </div>
+            <button onclick="showPurposeBudgetModal()" style="background: rgba(255, 255, 255, 0.2); border: 2px solid white; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.95rem; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">
+              ➕ Dodaj budżet
+            </button>
+          </div>
+        </div>
+      `;
+    } else {
+      // Wszystkie środki zostały zaalokowane
+      unallocatedMessage = `
+        <div style="background: linear-gradient(135deg, #5cb88a 0%, #4CAF50 100%); color: white; padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 2rem;">✅</div>
+            <div style="flex: 1;">
+              <div style="font-weight: bold; font-size: 1rem; margin-bottom: 4px;">Świetna robota!</div>
+              <div style="font-size: 0.9rem; opacity: 0.95;">
+                Cały budżet (<strong style="font-size: 1.1rem;">${available.toFixed(2)} zł</strong>) został z powodzeniem umieszczony w budżetach celowych.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     const html = `
+      ${unallocatedMessage}
       <div class="stats-grid">
         ${budgets.map(budget => {
           const percentUsed = budget.percentage.toFixed(1);
@@ -198,15 +241,14 @@ function renderPurposeBudgetsSummary() {
           ` : '';
 
           return `
-            <div class="stat-card" style="background: ${bgColor}; color: white;" data-budget-id="${budget.id}">
+            <div class="stat-card budget-card" style="background: ${bgColor}; color: white; cursor: pointer;" data-budget-id="${budget.id}" onclick="openExpenseFormWithBudget('${budget.id}')">
               <div class="stat-label" style="font-weight: bold; margin-bottom: 5px; color: white;">${budgetIcon} ${budget.name}</div>
               <div class="stat-value">
                 <span class="budget-remaining" data-value="${budget.remaining}">0.00</span>
-                <span class="stat-unit">zł pozostało</span>
+                <span class="stat-unit">zł</span>
               </div>
               <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.95;">
-                <div style="margin-bottom: 5px;">Budżet: <strong class="budget-amount" data-value="${budget.amount}">0.00</strong> zł <span style="opacity: 0.85;">(${percentOfTotal}% środków)</span></div>
-                <div style="margin-bottom: 5px;">Wydano: <strong class="budget-spent" data-value="${budget.spent}">0.00</strong> zł</div>
+                <div style="margin-bottom: 5px;"><strong class="budget-spent" data-value="${budget.spent}">0.00</strong> zł (<strong class="budget-amount" data-value="${budget.amount}">0.00</strong> zł)</div>
                 <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong> | Pozostało: <strong>${percentRemaining.toFixed(1)}%</strong></div>
                 <div style="background: rgba(255, 255, 255, 0.3); border-radius: 10px; height: 10px; overflow: hidden;">
                   <div style="background: rgba(255, 255, 255, 0.9); height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s, background 0.5s;"></div>

@@ -1843,6 +1843,10 @@ tr.correction {
   color: #333;
 }
 
+#presenceIndicator svg {
+  position: relative;
+}
+
 #presenceIndicator:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
@@ -1850,6 +1854,25 @@ tr.correction {
 
 #presenceIndicator.active {
   color: #ff4444;
+}
+
+.presence-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  background: #ff4444;
+  color: white;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 2px solid white;
 }
 
 @media (max-width: 768px) {
@@ -1863,6 +1886,15 @@ tr.correction {
   #presenceIndicator svg {
     width: 20px;
     height: 20px;
+  }
+
+  .presence-badge {
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: 2px 5px;
   }
 }
 
