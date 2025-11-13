@@ -13,8 +13,8 @@ import {
   calculateSpendingDynamics
 } from '../modules/budgetCalculator.js';
 
-import { getDynamicsPeriod } from '../modules/dataManager.js';
-import { formatDateLabel } from '../utils/dateHelpers.js';
+import { getDynamicsPeriod, getIncomes, getExpenses } from '../modules/dataManager.js';
+import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
 
@@ -63,13 +63,22 @@ export function renderSummary() {
 
   renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt);
 
-  // Planowane transakcje - sumujemy WSZYSTKIE przychody/wydatki ze wszystkich okresów
-  // aby pokazać całkowitą kwotę planowanych transakcji
-  const totalPlannedIncome = plannedTotals.periodTotals.reduce((sum, period) => sum + (period.futureIncome || 0), 0);
-  const totalPlannedExpense = plannedTotals.periodTotals.reduce((sum, period) => sum + (period.futureExpense || 0), 0);
+  // Planowane transakcje - obliczamy sumę UNIKALNYCH planowanych transakcji
+  // (nie sumujemy okresów, bo każda transakcja byłaby liczona wielokrotnie!)
+  const incomes = getIncomes();
+  const expenses = getExpenses();
+  const today = getWarsawDateString();
 
-  console.log('💰 Planowane przychody (suma wszystkich okresów):', totalPlannedIncome.toFixed(2), 'zł');
-  console.log('💸 Planowane wydatki (suma wszystkich okresów):', totalPlannedExpense.toFixed(2), 'zł');
+  const totalPlannedIncome = incomes
+    .filter(inc => inc.type === 'planned' && inc.date >= today)
+    .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+  const totalPlannedExpense = expenses
+    .filter(exp => exp.type === 'planned' && exp.date >= today)
+    .reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+  console.log('💰 Planowane przychody (unikalne, od dzisiaj):', totalPlannedIncome.toFixed(2), 'zł');
+  console.log('💸 Planowane wydatki (unikalne, od dzisiaj):', totalPlannedExpense.toFixed(2), 'zł');
 
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
