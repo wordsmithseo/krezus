@@ -1866,6 +1866,13 @@ tr.correction {
   }
 }
 
+/* ==================== ANIMACJA LICZB (CASINO STYLE) ==================== */
+
+.animating-number {
+  display: inline-block;
+  transition: all 0.1s ease;
+}
+
 /* ==================== STOPKA APLIKACJI ==================== */
 
 .app-footer {
