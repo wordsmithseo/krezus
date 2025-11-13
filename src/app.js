@@ -2441,6 +2441,26 @@ window.showSection = (sectionId) => {
   }
 };
 
+// Otwiera formularz wydatku z pre-wybranym budżetem celowym
+window.openExpenseFormWithBudget = (budgetId) => {
+  // Otwórz sekcję wydatków
+  window.showSection('expensesSection');
+
+  // Ustaw wybrany budżet celowy
+  setTimeout(() => {
+    const budgetSelect = document.getElementById('expensePurposeBudget');
+    if (budgetSelect && budgetId) {
+      budgetSelect.value = budgetId;
+    }
+
+    // Scrolluj do formularza
+    const expensesSection = document.getElementById('expensesSection');
+    if (expensesSection) {
+      expensesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 100);
+};
+
 window.openProfile = () => {
   showProfileModal();
 };
@@ -2642,6 +2662,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
+
+  // Dodaj kliknięcie na kafelek "Dostępne środki"
+  const availableFundsCard = document.querySelector('.stat-card.beige');
+  if (availableFundsCard) {
+    availableFundsCard.style.cursor = 'pointer';
+    availableFundsCard.addEventListener('click', () => {
+      window.showSection('expensesSection');
+      // Scrolluj do formularza
+      setTimeout(() => {
+        const expensesSection = document.getElementById('expensesSection');
+        if (expensesSection) {
+          expensesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    });
+  }
 
   console.log('✅ Aplikacja Krezus gotowa do działania!');
 });

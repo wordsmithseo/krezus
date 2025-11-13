@@ -198,15 +198,14 @@ function renderPurposeBudgetsSummary() {
           ` : '';
 
           return `
-            <div class="stat-card" style="background: ${bgColor}; color: white;" data-budget-id="${budget.id}">
+            <div class="stat-card budget-card" style="background: ${bgColor}; color: white; cursor: pointer;" data-budget-id="${budget.id}" onclick="openExpenseFormWithBudget('${budget.id}')">
               <div class="stat-label" style="font-weight: bold; margin-bottom: 5px; color: white;">${budgetIcon} ${budget.name}</div>
               <div class="stat-value">
                 <span class="budget-remaining" data-value="${budget.remaining}">0.00</span>
-                <span class="stat-unit">zł pozostało</span>
+                <span class="stat-unit">zł</span>
               </div>
               <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.95;">
-                <div style="margin-bottom: 5px;">Budżet: <strong class="budget-amount" data-value="${budget.amount}">0.00</strong> zł <span style="opacity: 0.85;">(${percentOfTotal}% środków)</span></div>
-                <div style="margin-bottom: 5px;">Wydano: <strong class="budget-spent" data-value="${budget.spent}">0.00</strong> zł</div>
+                <div style="margin-bottom: 5px;"><strong class="budget-spent" data-value="${budget.spent}">0.00</strong> zł (<strong class="budget-amount" data-value="${budget.amount}">0.00</strong> zł)</div>
                 <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong> | Pozostało: <strong>${percentRemaining.toFixed(1)}%</strong></div>
                 <div style="background: rgba(255, 255, 255, 0.3); border-radius: 10px; height: 10px; overflow: hidden;">
                   <div style="background: rgba(255, 255, 255, 0.9); height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s, background 0.5s;"></div>
