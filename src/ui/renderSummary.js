@@ -455,10 +455,9 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     // Limit surowy (bez zabezpieczeń) dla porównania
     const rawLimitDaily = limit.rawLimit || 0;
 
-    // Limit planowany (z przyszłymi wydatkami PRZED datą końcową, BEZ przyszłych przychodów)
-    // Nie uwzględniamy futureIncome, bo te środki jeszcze nie są dostępne
+    // Limit planowany (z przyszłymi wpływami/wydatkami PO DRODZE, bez wpływu na dacie końcowej)
     const projectedLimit = limit.daysLeft > 0
-      ? (available - futureExpense) / limit.daysLeft
+      ? (available + futureIncome - futureExpense) / limit.daysLeft
       : 0;
 
     const card = document.createElement('div');

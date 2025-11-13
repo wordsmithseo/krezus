@@ -218,7 +218,8 @@ export function calculateCurrentLimits() {
     const plannedTotals = calculatePlannedTransactionsTotals();
 
     console.log('💰 === OBLICZANIE LIMITÓW Z ZABEZPIECZENIAMI ===');
-    console.log('💰 Dostępne środki:', toSpend.toFixed(2), 'zł');
+    console.log('💰 Dostępne środki (available z calculateAvailableFunds):', available.toFixed(2), 'zł');
+    console.log('💰 toSpend:', toSpend.toFixed(2), 'zł');
 
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map((period, index) => {
@@ -284,7 +285,14 @@ export function calculateCurrentLimits() {
 
         // Końcowy limit dzienny
         const currentLimit = Math.max(0, adjustedAmount / period.daysLeft);
-        console.log('  ✅ Końcowy limit dzienny:', currentLimit.toFixed(2), 'zł/dzień');
+        const rawLimit = toSpend / period.daysLeft;
+
+        console.log('  ✅ Końcowy limit dzienny (z zabezpieczeniami):', currentLimit.toFixed(2), 'zł/dzień');
+        console.log('  📏 LIMIT REALNY (rawLimit) - szczegóły:');
+        console.log('     toSpend (available):', toSpend.toFixed(2), 'zł');
+        console.log('     daysLeft:', period.daysLeft, 'dni');
+        console.log('     rawLimit = toSpend / daysLeft =', toSpend.toFixed(2), '/', period.daysLeft, '=', rawLimit.toFixed(2), 'zł/dzień');
+        console.log('     WERYFIKACJA: rawLimit * daysLeft =', (rawLimit * period.daysLeft).toFixed(2), 'zł');
 
         return {
             date: period.date,
@@ -293,7 +301,7 @@ export function calculateCurrentLimits() {
             daysLeft: period.daysLeft,
             currentLimit,
             appliedMeasures,
-            rawLimit: toSpend / period.daysLeft, // Surowy limit bez zabezpieczeń
+            rawLimit: rawLimit, // Surowy limit bez zabezpieczeń
             adjustedAmount // Kwota po zastosowaniu wszystkich zabezpieczeń
         };
     });
