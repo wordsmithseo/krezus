@@ -139,6 +139,7 @@ let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 let mergingCategoryId = null;  // ID kategorii która ma być scalona
+let budgetValidationTimeout = null;  // Timer dla debounced walidacji budżetów
 
 const APP_VERSION = '1.9.9';
 const LOGS_PER_PAGE = 20;
@@ -149,6 +150,27 @@ initGlobalErrorHandler();
 window.onDisplayNameUpdate = (newName) => {
   updateDisplayNameInUI(newName);
 };
+
+// === DEBOUNCED WALIDACJA BUDŻETÓW ===
+/**
+ * Debounced walidacja budżetów - czeka 2 sekundy na synchronizację wszystkich danych
+ * Zapobiega fałszywym alarmom podczas synchronizacji zmian z Firebase
+ */
+async function debouncedValidateBudgets() {
+  // Anuluj poprzedni timeout
+  if (budgetValidationTimeout) {
+    clearTimeout(budgetValidationTimeout);
+  }
+
+  // Ustaw nowy timeout - walidacja po 2 sekundach
+  budgetValidationTimeout = setTimeout(async () => {
+    console.log('🔍 Uruchamiam opóźnioną walidację budżetów (po synchronizacji danych)');
+    const validation = await validateBudgetAllocation();
+    if (validation.liquidated) {
+      showErrorMessage(validation.message);
+    }
+  }, 2000);
+}
 
 // === SPRAWDZANIE PÓŁNOCY I PRZELICZANIE LIMITÓW/KOPERTY ===
 let lastKnownDate = getWarsawDateString();
@@ -266,54 +288,44 @@ async function loadAllData() {
         setupCategorySuggestions();
       },
       onExpensesChange: async () => {
+        clearLimitsCache();  // Wyczyść cache przy zmianie wydatków
         await updateDailyEnvelope();
         renderExpenses();
         renderCategories();
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
+        await debouncedValidateBudgets();  // Walidacja z opóźnieniem
       },
       onIncomesChange: async () => {
+        clearLimitsCache();  // Wyczyść cache przy zmianie przychodów
         await updateDailyEnvelope();
-
-        // Waliduj alokację budżetów po zmianie przychodów
-        const validation = await validateBudgetAllocation();
-        if (validation.liquidated) {
-          showErrorMessage(validation.message);
-        }
 
         renderSources();
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
+        await debouncedValidateBudgets();  // Walidacja z opóźnieniem
       },
       onPurposeBudgetsChange: () => {
         renderSummary();
         setupPurposeBudgetSelect();
       },
       onEndDatesChange: async () => {
+        clearLimitsCache();  // Wyczyść cache przy zmianie dat
         await updateDailyEnvelope();
-
-        // Waliduj alokację budżetów po zmianie dat końcowych
-        const validation = await validateBudgetAllocation();
-        if (validation.liquidated) {
-          showErrorMessage(validation.message);
-        }
 
         renderSummary();
         renderDailyEnvelope();
+        await debouncedValidateBudgets();  // Walidacja z opóźnieniem
       },
       onSavingGoalChange: async () => {
+        clearLimitsCache();  // Wyczyść cache przy zmianie celu oszczędnościowego
         await updateDailyEnvelope();
-
-        // Waliduj alokację budżetów po zmianie celu oszczędnościowego
-        const validation = await validateBudgetAllocation();
-        if (validation.liquidated) {
-          showErrorMessage(validation.message);
-        }
 
         renderSummary();
         renderDailyEnvelope();
+        await debouncedValidateBudgets();  // Walidacja z opóźnieniem
       },
       onDailyEnvelopeChange: () => {
         renderSummary();

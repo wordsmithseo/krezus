@@ -58,7 +58,8 @@ export function recordActivity() {
     clearTimeout(activityTimeout);
   }
 
-  // Aktualizuj timestamp w Firebase (throttled do raz na 5 sekund)
+  // Aktualizuj timestamp w Firebase (throttled do raz na 0.5 sekundy)
+  // Zmniejszono z 5s do 0.5s dla lepszej responsywności
   activityTimeout = setTimeout(() => {
     set(presenceRef, {
       sessionId: currentSessionId,
@@ -66,7 +67,7 @@ export function recordActivity() {
       lastActivity: serverTimestamp(),
       isManualActivity: true
     });
-  }, 5000);
+  }, 500);
 }
 
 /**
@@ -119,7 +120,8 @@ function listenToOtherSessions(userId) {
     if (activeSessions.length > 0) {
       showPresenceIndicator(activeSessions.length);
 
-      // Sprawdź czy była MANUALNA aktywność w ostatnich 5 sekundach
+      // Sprawdź czy była MANUALNA aktywność w ostatnich 2 sekundach
+      // Zmniejszono z 5s do 2s dla szybszej reakcji animacji
       const recentManualActivity = activeSessions.some(session => {
         if (!session.isManualActivity) return false;
 
@@ -127,7 +129,7 @@ function listenToOtherSessions(userId) {
         const activityTime = typeof lastActivity === 'number' ? lastActivity :
                             (lastActivity?.toMillis ? lastActivity.toMillis() : now);
         const timeDiff = now - activityTime;
-        return timeDiff < 5000; // 5 sekund
+        return timeDiff < 2000; // 2 sekundy
       });
 
       if (recentManualActivity) {
