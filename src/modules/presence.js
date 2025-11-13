@@ -28,7 +28,8 @@ export function initializePresence() {
   const presenceData = {
     sessionId: currentSessionId,
     timestamp: serverTimestamp(),
-    lastActivity: serverTimestamp()
+    lastActivity: serverTimestamp(),
+    isManualActivity: false
   };
 
   set(presenceRef, presenceData);
@@ -41,12 +42,10 @@ export function initializePresence() {
 
   // Rozpocznij heartbeat
   startHeartbeat();
-
-  console.log('👥 Inicjalizacja obecności dla sesji:', currentSessionId);
 }
 
 /**
- * Aktualizuje timestamp ostatniej aktywności
+ * Aktualizuje timestamp ostatniej aktywności (tylko manualne akcje użytkownika)
  */
 export function recordActivity() {
   const userId = getUserId();
@@ -64,7 +63,8 @@ export function recordActivity() {
     set(presenceRef, {
       sessionId: currentSessionId,
       timestamp: serverTimestamp(),
-      lastActivity: serverTimestamp()
+      lastActivity: serverTimestamp(),
+      isManualActivity: true
     });
   }, 5000);
 }
@@ -110,20 +110,27 @@ function listenToOtherSessions(userId) {
     const now = Date.now();
     const activeSessions = sessions.filter(session => {
       const lastActivity = session.lastActivity || session.timestamp;
-      const timeDiff = now - (typeof lastActivity === 'number' ? lastActivity : Date.now());
+      const activityTime = typeof lastActivity === 'number' ? lastActivity :
+                          (lastActivity?.toMillis ? lastActivity.toMillis() : now);
+      const timeDiff = now - activityTime;
       return timeDiff < 120000; // 2 minuty
     });
 
     if (activeSessions.length > 0) {
       showPresenceIndicator();
-      // Sprawdź czy była aktywność w ostatnich 5 sekundach (nowa aktywność)
-      const recentActivity = activeSessions.some(session => {
+
+      // Sprawdź czy była MANUALNA aktywność w ostatnich 5 sekundach
+      const recentManualActivity = activeSessions.some(session => {
+        if (!session.isManualActivity) return false;
+
         const lastActivity = session.lastActivity || session.timestamp;
-        const timeDiff = now - (typeof lastActivity === 'number' ? lastActivity : Date.now());
+        const activityTime = typeof lastActivity === 'number' ? lastActivity :
+                            (lastActivity?.toMillis ? lastActivity.toMillis() : now);
+        const timeDiff = now - activityTime;
         return timeDiff < 5000; // 5 sekund
       });
 
-      if (recentActivity) {
+      if (recentManualActivity) {
         triggerPulse();
       }
     } else {
@@ -139,7 +146,6 @@ function showPresenceIndicator() {
   let indicator = document.getElementById('presenceIndicator');
 
   if (!indicator) {
-    // Utwórz wskaźnik
     indicator = document.createElement('div');
     indicator.id = 'presenceIndicator';
     indicator.innerHTML = '👤';
@@ -177,16 +183,16 @@ function triggerPulse() {
   // Wymusz reflow
   void indicator.offsetWidth;
 
-  // Dodaj szybkie pulsowanie na 2 sekundy
-  indicator.classList.add('pulse-fast');
+  // Dodaj klasę active (czerwone tło) i szybkie pulsowanie na 2 sekundy
+  indicator.classList.add('pulse-fast', 'active');
 
   pulseTimeout = setTimeout(() => {
     indicator.classList.remove('pulse-fast');
     indicator.classList.add('pulse-slow');
 
-    // Usuń wolne pulsowanie po 5 sekundach
+    // Usuń wolne pulsowanie i czerwone tło po 5 sekundach
     pulseLongerTimeout = setTimeout(() => {
-      indicator.classList.remove('pulse-slow');
+      indicator.classList.remove('pulse-slow', 'active');
     }, 5000);
   }, 2000);
 }
@@ -219,6 +225,5 @@ export function cleanupPresence() {
 
   hidePresenceIndicator();
 
-  console.log('👋 Czyszczenie obecności dla sesji:', currentSessionId);
   currentSessionId = null;
 }
