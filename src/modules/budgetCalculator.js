@@ -209,20 +209,106 @@ export function calculateCurrentLimits() {
     const toSpend = available;
     const spendingPeriods = calculateSpendingPeriods();
     const { periods, date1, date2, daysLeft1, daysLeft2 } = spendingPeriods;
+    const plannedTotals = calculatePlannedTransactionsTotals();
+
+    console.log('💰 === OBLICZANIE LIMITÓW Z ZABEZPIECZENIAMI ===');
+    console.log('💰 Dostępne środki:', toSpend.toFixed(2), 'zł');
 
     // Oblicz limity dla wszystkich okresów
-    const limits = periods.map(period => ({
-        date: period.date,
-        name: period.name,
-        daysLeft: period.daysLeft,
-        currentLimit: period.daysLeft > 0 ? toSpend / period.daysLeft : 0
-    }));
+    const limits = periods.map((period, index) => {
+        if (period.daysLeft <= 0) {
+            return {
+                date: period.date,
+                name: period.name,
+                daysLeft: period.daysLeft,
+                currentLimit: 0,
+                appliedMeasures: []
+            };
+        }
+
+        const periodTotal = plannedTotals.periodTotals[index];
+        const plannedExpenses = periodTotal?.futureExpense || 0;
+
+        console.log(`\n📊 Okres: ${period.name} (${period.daysLeft} dni)`);
+        console.log('  💸 Planowane wydatki:', plannedExpenses.toFixed(2), 'zł');
+
+        // Krok 1: Odejmij planowane wydatki
+        let adjustedAmount = toSpend - plannedExpenses;
+        console.log('  💰 Po odjęciu planowanych wydatków:', adjustedAmount.toFixed(2), 'zł');
+
+        const appliedMeasures = [];
+
+        if (plannedExpenses > 0) {
+            appliedMeasures.push({
+                type: 'planned-expenses',
+                description: `Odjęto planowane wydatki: ${plannedExpenses.toFixed(2)} zł`,
+                impact: -plannedExpenses
+            });
+        }
+
+        // Krok 2: Bufor bezpieczeństwa (20%)
+        const bufferFactor = 0.80; // Zostaw 20% jako bufor
+        adjustedAmount = adjustedAmount * bufferFactor;
+        console.log('  🛡️ Po zastosowaniu bufora (20%):', adjustedAmount.toFixed(2), 'zł');
+
+        appliedMeasures.push({
+            type: 'safety-buffer',
+            description: 'Bufor bezpieczeństwa: 20%',
+            impact: toSpend * (1 - bufferFactor)
+        });
+
+        // Krok 3: Progresywne ograniczanie dla małej liczby dni
+        let conservativeFactor = 1.0;
+        if (period.daysLeft <= 7) {
+            conservativeFactor = 0.7;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤7 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+        if (period.daysLeft <= 3) {
+            conservativeFactor = 0.5;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤3 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+        if (period.daysLeft <= 1) {
+            conservativeFactor = 0.3;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤1 dzień): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+
+        adjustedAmount = adjustedAmount * conservativeFactor;
+        console.log(`  ⚖️ Po zastosowaniu zachowawczego limitu (${(conservativeFactor * 100).toFixed(0)}%):`, adjustedAmount.toFixed(2), 'zł');
+
+        // Końcowy limit dzienny
+        const currentLimit = Math.max(0, adjustedAmount / period.daysLeft);
+        console.log('  ✅ Końcowy limit dzienny:', currentLimit.toFixed(2), 'zł/dzień');
+
+        return {
+            date: period.date,
+            name: period.name,
+            daysLeft: period.daysLeft,
+            currentLimit,
+            appliedMeasures,
+            rawLimit: toSpend / period.daysLeft, // Surowy limit bez zabezpieczeń
+            adjustedAmount // Kwota po zastosowaniu wszystkich zabezpieczeń
+        };
+    });
+
+    console.log('✅ === KONIEC OBLICZANIA LIMITÓW ===\n');
 
     // BACKWARD COMPATIBILITY: Zachowaj stare pola dla zgodności
     return {
         limits,  // Nowa tablica limitów dla wszystkich okresów
-        currentLimit1: daysLeft1 > 0 ? toSpend / daysLeft1 : 0,
-        currentLimit2: daysLeft2 > 0 ? toSpend / daysLeft2 : 0,
+        currentLimit1: limits[0]?.currentLimit || 0,
+        currentLimit2: limits[1]?.currentLimit || 0,
         daysLeft1,
         daysLeft2,
         date1,
@@ -804,6 +890,7 @@ export function calculateSpendingDynamics() {
     const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
     const { available } = calculateAvailableFunds();
     const toSpend = available;
+    const limitsData = calculateCurrentLimits();
 
     if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
         return {
@@ -811,12 +898,17 @@ export function calculateSpendingDynamics() {
             title: '⚠️ Brak wybranego okresu',
             summary: 'Aby zobaczyć analizę dynamiki wydatków, wybierz okres w ustawieniach.',
             details: [],
-            recommendation: 'Przejdź do ustawień i wybierz okres dla dynamiki wydatków.'
+            recommendation: 'Przejdź do ustawień i wybierz okres dla dynamiki wydatków.',
+            appliedMeasures: []
         };
     }
 
     const activeDays = selectedPeriod.daysLeft;
     const targetDaily = toSpend / activeDays;
+
+    // Znajdź limit dla wybranego okresu dynamiki
+    const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
+    const appliedMeasures = selectedLimit?.appliedMeasures || [];
 
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
@@ -838,13 +930,14 @@ export function calculateSpendingDynamics() {
                 `Dni do końca okresu (${selectedPeriod.name}): ${activeDays}`,
                 `Teoretyczny dzienny limit: ${targetDaily.toFixed(2)} zł`
             ],
-            recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.'
+            recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.',
+            appliedMeasures
         };
     }
 
     const sum7 = last7.reduce((sum, e) => sum + (e.amount || 0), 0);
     const dailyAvg7 = sum7 / 7;
-    
+
     if (targetDaily <= 0) {
         return {
             status: 'critical',
@@ -855,7 +948,8 @@ export function calculateSpendingDynamics() {
                 `Średnie dzienne wydatki (7 dni): ${dailyAvg7.toFixed(2)} zł`,
                 `Dni do końca okresu: ${activeDays}`
             ],
-            recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.'
+            recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.',
+            appliedMeasures
         };
     }
     
@@ -899,13 +993,14 @@ export function calculateSpendingDynamics() {
         `Liczba transakcji (7 dni): ${last7.length}`,
         `Prognozowane wydatki do końca okresu: ${(dailyAvg7 * activeDays).toFixed(2)} zł`
     ];
-    
+
     return {
         status,
         title,
         summary,
         details,
-        recommendation
+        recommendation,
+        appliedMeasures
     };
 }
 

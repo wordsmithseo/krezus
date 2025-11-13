@@ -1558,15 +1558,16 @@ window.realiseIncome = async (incomeId) => {
   
   try {
     await saveIncomes(incomes);
+    clearLimitsCache(); // Wyczyść cache po zmianie przychodu
     await updateDailyEnvelope();
-    
+
     const budgetUserName = getBudgetUserName(income.userId);
     await log('INCOME_REALISE', {
       amount: income.amount,
       source: income.source,
       budgetUser: budgetUserName
     });
-    
+
     showSuccessMessage('Przychód zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji przychodu:', error);
@@ -1584,20 +1585,21 @@ window.editIncome = (incomeId) => {
     
     try {
       await saveIncomes(updated);
-      
+      clearLimitsCache(); // Wyczyść cache po zmianie przychodu
+
       if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
         await updateDailyEnvelope();
       }
-      
+
       const budgetUserName = getBudgetUserName(updatedIncome.userId);
-      
+
       await log('INCOME_EDIT', {
         amount: updatedIncome.amount,
         source: updatedIncome.source,
         type: updatedIncome.type,
         budgetUser: budgetUserName
       });
-      
+
       showSuccessMessage('Przychód zaktualizowany');
     } catch (error) {
       console.error('❌ Błąd aktualizacji przychodu:', error);
@@ -1620,21 +1622,22 @@ window.deleteIncome = async (incomeId) => {
   
   try {
     await saveIncomes(updated);
+    clearLimitsCache(); // Wyczyść cache po usunięciu przychodu
 
     await loadIncomes();
-    
+
     if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
-    
+
     await log('INCOME_DELETE', {
       amount: income?.amount,
       source: income?.source,
       budgetUser: budgetUserName
     });
-    
+
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -2047,20 +2050,21 @@ window.addIncome = async (e) => {
 
   try {
     await saveIncomes(updated);
-    
+    clearLimitsCache(); // Wyczyść cache po dodaniu/edycji przychodu
+
     if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     const budgetUserName = getBudgetUserName(userId);
-    
+
     await log(editingIncomeId ? 'INCOME_EDIT' : 'INCOME_ADD', {
       amount,
       source,
       type,
       budgetUser: budgetUserName
     });
-    
+
     form.reset();
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
@@ -2125,8 +2129,9 @@ window.addCorrection = async (e) => {
   
   try {
     await saveIncomes(updated);
+    clearLimitsCache(); // Wyczyść cache po wprowadzeniu korekty
     await updateDailyEnvelope();
-    
+
     await log('CORRECTION_ADD', {
       difference: difference,
       correctionType: correctionType,
@@ -2135,7 +2140,7 @@ window.addCorrection = async (e) => {
       reason: reason,
       budgetUser: 'System'
     });
-    
+
     form.reset();
     showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
   } catch (error) {

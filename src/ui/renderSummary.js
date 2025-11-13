@@ -228,12 +228,22 @@ export function renderSpendingDynamics() {
     </div>
   ` : '';
 
+  const measuresHTML = dynamics.appliedMeasures && dynamics.appliedMeasures.length > 0 ? `
+    <div class="dynamics-measures" style="margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.1); border-radius: 8px;">
+      <strong>🛡️ Zastosowane zabezpieczenia:</strong>
+      <ul style="margin: 5px 0 0 0; padding-left: 20px; opacity: 0.9;">
+        ${dynamics.appliedMeasures.map(measure => `<li>${measure.description}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
+
   const html = `
     <div class="dynamics-card ${statusClass}">
       <h4 class="dynamics-title">${dynamics.title}</h4>
       <p class="dynamics-summary">${dynamics.summary}</p>
       <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
       ${detailsHTML}
+      ${measuresHTML}
       <div class="dynamics-recommendation">
         <strong>💡 Rekomendacja:</strong>
         <p>${dynamics.recommendation}</p>
@@ -388,6 +398,38 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     card.appendChild(projectedLabelDiv);
     card.appendChild(projectedValueDiv);
     card.appendChild(daysDiv);
+
+    // Dodaj informacje o zastosowanych środkach zabezpieczających
+    if (limit.appliedMeasures && limit.appliedMeasures.length > 0) {
+      const measuresDiv = document.createElement('div');
+      measuresDiv.style.marginTop = '12px';
+      measuresDiv.style.padding = '10px';
+      measuresDiv.style.background = 'rgba(0, 0, 0, 0.1)';
+      measuresDiv.style.borderRadius = '8px';
+      measuresDiv.style.fontSize = '0.8rem';
+
+      const measuresTitle = document.createElement('div');
+      measuresTitle.style.fontWeight = 'bold';
+      measuresTitle.style.marginBottom = '6px';
+      measuresTitle.style.opacity = '0.9';
+      measuresTitle.textContent = '🛡️ Zastosowane zabezpieczenia:';
+      measuresDiv.appendChild(measuresTitle);
+
+      const measuresList = document.createElement('ul');
+      measuresList.style.margin = '0';
+      measuresList.style.paddingLeft = '18px';
+      measuresList.style.opacity = '0.85';
+
+      limit.appliedMeasures.forEach(measure => {
+        const li = document.createElement('li');
+        li.textContent = measure.description;
+        li.style.marginBottom = '3px';
+        measuresList.appendChild(li);
+      });
+
+      measuresDiv.appendChild(measuresList);
+      card.appendChild(measuresDiv);
+    }
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);
