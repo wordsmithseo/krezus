@@ -25,6 +25,8 @@ import {
   showSuccessMessage
 } from '../utils/errorHandler.js';
 
+import { recordActivity } from '../modules/presence.js';
+
 import {
   validateCategoryName,
   validateAmount
@@ -919,10 +921,12 @@ export async function showPurposeBudgetModal(budget = null) {
         const { updatePurposeBudget } = await import('../modules/purposeBudgetManager.js');
         await updatePurposeBudget(budget.id, name, amount);
         showSuccessMessage('Budżet celowy zaktualizowany');
+        recordActivity(); // Oznacz aktywność użytkownika
       } else {
         const { createPurposeBudget } = await import('../modules/purposeBudgetManager.js');
         await createPurposeBudget(name, amount);
         showSuccessMessage('Budżet celowy utworzony');
+        recordActivity(); // Oznacz aktywność użytkownika
       }
 
       closeModal('purposeBudgetModal');

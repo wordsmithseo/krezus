@@ -1519,6 +1519,7 @@ window.deletePurposeBudget = async (budgetId) => {
     const { deletePurposeBudget } = await import('./modules/purposeBudgetManager.js');
     await deletePurposeBudget(budgetId);
     showSuccessMessage('Budżet celowy usunięty');
+    recordActivity(); // Oznacz aktywność użytkownika
     renderPurposeBudgets();
     renderSummary();
     setupPurposeBudgetSelect();
@@ -2596,6 +2597,9 @@ onAuthChange(async (user) => {
     // Inicjalizuj śledzenie obecności
     initializePresence();
 
+    // Oznacz otwarcie strony jako aktywność
+    recordActivity();
+
   } else {
     console.log('❌ Użytkownik wylogowany');
 
@@ -2635,9 +2639,14 @@ document.addEventListener('DOMContentLoaded', () => {
       recordActivity();
     }, { passive: true });
   });
-  
+
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
 
   console.log('✅ Aplikacja Krezus gotowa do działania!');
+});
+
+// Oznacz aktywność przy zamknięciu strony
+window.addEventListener('beforeunload', () => {
+  recordActivity();
 });
