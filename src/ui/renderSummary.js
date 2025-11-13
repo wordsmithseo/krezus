@@ -240,12 +240,26 @@ export function renderSpendingDynamics() {
     </div>
   ` : '';
 
+  // Pokazuj zabezpieczenia TYLKO gdy są aktywne progresywne limity
+  const hasProgressiveLimits = dynamics.appliedMeasures &&
+    dynamics.appliedMeasures.some(m => m.type === 'progressive-limit');
+
+  const measuresHTML = hasProgressiveLimits ? `
+    <div class="dynamics-measures" style="margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.1); border-radius: 8px;">
+      <strong>🛡️ Zastosowane zabezpieczenia:</strong>
+      <ul style="margin: 5px 0 0 0; padding-left: 20px; opacity: 0.9;">
+        ${dynamics.appliedMeasures.map(measure => `<li>${measure.description}</li>`).join('')}
+      </ul>
+    </div>
+  ` : '';
+
   const html = `
     <div class="dynamics-card ${statusClass}">
       <h4 class="dynamics-title">${dynamics.title}</h4>
       <p class="dynamics-summary">${dynamics.summary}</p>
       <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
       ${detailsHTML}
+      ${measuresHTML}
       <div class="dynamics-recommendation">
         <strong>💡 Rekomendacja:</strong>
         <p>${dynamics.recommendation}</p>
@@ -355,25 +369,25 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
     nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
-    // Limit dzienny (główny)
-    const limitLabelDiv = document.createElement('div');
-    limitLabelDiv.className = 'stat-label';
-    limitLabelDiv.style.fontSize = '0.9rem';
-    limitLabelDiv.style.opacity = '0.8';
-    limitLabelDiv.style.marginTop = '8px';
-    limitLabelDiv.innerHTML = `💰 Limit dzienny`;
+    // Bezpieczny limit dzienny (główny)
+    const safeLabelDiv = document.createElement('div');
+    safeLabelDiv.className = 'stat-label';
+    safeLabelDiv.style.fontSize = '0.9rem';
+    safeLabelDiv.style.opacity = '0.8';
+    safeLabelDiv.style.marginTop = '8px';
+    safeLabelDiv.innerHTML = `🛡️ Bezpieczny limit dzienny`;
 
-    const limitValueDiv = document.createElement('div');
-    limitValueDiv.className = 'stat-value';
-    limitValueDiv.style.fontSize = '1.8rem';
-    limitValueDiv.style.marginBottom = '10px';
-    const limitValueSpan = document.createElement('span');
-    limitValueSpan.textContent = safeLimitDaily.toFixed(2);
-    const limitUnitSpan = document.createElement('span');
-    limitUnitSpan.className = 'stat-unit';
-    limitUnitSpan.textContent = 'zł/dzień';
-    limitValueDiv.appendChild(limitValueSpan);
-    limitValueDiv.appendChild(limitUnitSpan);
+    const safeValueDiv = document.createElement('div');
+    safeValueDiv.className = 'stat-value';
+    safeValueDiv.style.fontSize = '1.8rem';
+    safeValueDiv.style.marginBottom = '10px';
+    const safeValueSpan = document.createElement('span');
+    safeValueSpan.textContent = safeLimitDaily.toFixed(2);
+    const safeUnitSpan = document.createElement('span');
+    safeUnitSpan.className = 'stat-unit';
+    safeUnitSpan.textContent = 'zł/dzień';
+    safeValueDiv.appendChild(safeValueSpan);
+    safeValueDiv.appendChild(safeUnitSpan);
 
     // Limit planowany (z przyszłymi wpływami/wydatkami)
     const projectedLabelDiv = document.createElement('div');
@@ -399,10 +413,46 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     card.appendChild(nameDiv);
     card.appendChild(daysDiv);
-    card.appendChild(limitLabelDiv);
-    card.appendChild(limitValueDiv);
+    card.appendChild(safeLabelDiv);
+    card.appendChild(safeValueDiv);
     card.appendChild(projectedLabelDiv);
     card.appendChild(projectedValueDiv);
+
+    // Dodaj informacje o zastosowanych środkach zabezpieczających TYLKO gdy są aktywne
+    // (sprawdzamy czy są progresywne limity, nie tylko planowane wydatki)
+    const hasProgressiveLimits = limit.appliedMeasures &&
+      limit.appliedMeasures.some(m => m.type === 'progressive-limit');
+
+    if (hasProgressiveLimits) {
+      const measuresDiv = document.createElement('div');
+      measuresDiv.style.marginTop = '12px';
+      measuresDiv.style.padding = '10px';
+      measuresDiv.style.background = 'rgba(0, 0, 0, 0.1)';
+      measuresDiv.style.borderRadius = '8px';
+      measuresDiv.style.fontSize = '0.8rem';
+
+      const measuresTitle = document.createElement('div');
+      measuresTitle.style.fontWeight = 'bold';
+      measuresTitle.style.marginBottom = '6px';
+      measuresTitle.style.opacity = '0.9';
+      measuresTitle.textContent = '🛡️ Zastosowane zabezpieczenia:';
+      measuresDiv.appendChild(measuresTitle);
+
+      const measuresList = document.createElement('ul');
+      measuresList.style.margin = '0';
+      measuresList.style.paddingLeft = '18px';
+      measuresList.style.opacity = '0.85';
+
+      limit.appliedMeasures.forEach(measure => {
+        const li = document.createElement('li');
+        li.textContent = measure.description;
+        li.style.marginBottom = '3px';
+        measuresList.appendChild(li);
+      });
+
+      measuresDiv.appendChild(measuresList);
+      card.appendChild(measuresDiv);
+    }
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);
