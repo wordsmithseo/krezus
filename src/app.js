@@ -126,6 +126,9 @@ import { showConfirmModal } from './components/confirmModal.js';
 import { renderSummary } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 
+// Import modułu obecności użytkowników
+import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentCategoryPage = 1;
@@ -2585,9 +2588,15 @@ onAuthChange(async (user) => {
     await loadAllData();
     hideLoader();
 
+    // Inicjalizuj śledzenie obecności
+    initializePresence();
+
   } else {
     console.log('❌ Użytkownik wylogowany');
-    
+
+    // Wyczyść obecność przy wylogowaniu
+    cleanupPresence();
+
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
@@ -2613,6 +2622,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
+
+  // Śledź aktywność użytkownika
+  const activityEvents = ['click', 'keydown', 'scroll', 'touchstart'];
+  activityEvents.forEach(eventType => {
+    document.addEventListener(eventType, () => {
+      recordActivity();
+    }, { passive: true });
+  });
   
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
