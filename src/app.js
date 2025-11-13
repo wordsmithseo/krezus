@@ -126,6 +126,9 @@ import { showConfirmModal } from './components/confirmModal.js';
 import { renderSummary } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 
+// Import modułu obecności użytkowników
+import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentCategoryPage = 1;
@@ -1558,15 +1561,18 @@ window.realiseIncome = async (incomeId) => {
   
   try {
     await saveIncomes(incomes);
+    clearLimitsCache(); // Wyczyść cache po zmianie przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
     await updateDailyEnvelope();
-    
+
     const budgetUserName = getBudgetUserName(income.userId);
     await log('INCOME_REALISE', {
       amount: income.amount,
       source: income.source,
       budgetUser: budgetUserName
     });
-    
+
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage('Przychód zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji przychodu:', error);
@@ -1584,20 +1590,23 @@ window.editIncome = (incomeId) => {
     
     try {
       await saveIncomes(updated);
-      
+      clearLimitsCache(); // Wyczyść cache po zmianie przychodu
+      refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
+
       if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
         await updateDailyEnvelope();
       }
-      
+
       const budgetUserName = getBudgetUserName(updatedIncome.userId);
-      
+
       await log('INCOME_EDIT', {
         amount: updatedIncome.amount,
         source: updatedIncome.source,
         type: updatedIncome.type,
         budgetUser: budgetUserName
       });
-      
+
+      renderSummary(); // Odśwież wyświetlanie planowanych transakcji
       showSuccessMessage('Przychód zaktualizowany');
     } catch (error) {
       console.error('❌ Błąd aktualizacji przychodu:', error);
@@ -1620,21 +1629,24 @@ window.deleteIncome = async (incomeId) => {
   
   try {
     await saveIncomes(updated);
+    clearLimitsCache(); // Wyczyść cache po usunięciu przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
 
     await loadIncomes();
-    
+
     if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
-    
+
     await log('INCOME_DELETE', {
       amount: income?.amount,
       source: income?.source,
       budgetUser: budgetUserName
     });
-    
+
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -2047,29 +2059,32 @@ window.addIncome = async (e) => {
 
   try {
     await saveIncomes(updated);
-    
+    clearLimitsCache(); // Wyczyść cache po dodaniu/edycji przychodu
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
+
     if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     const budgetUserName = getBudgetUserName(userId);
-    
+
     await log(editingIncomeId ? 'INCOME_EDIT' : 'INCOME_ADD', {
       amount,
       source,
       type,
       budgetUser: budgetUserName
     });
-    
+
     form.reset();
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
     editingIncomeId = null;
     document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
-    
+
     setupIncomeTypeToggle();
-    
+
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
@@ -2125,8 +2140,10 @@ window.addCorrection = async (e) => {
   
   try {
     await saveIncomes(updated);
+    clearLimitsCache(); // Wyczyść cache po wprowadzeniu korekty
+    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach (na wszelki wypadek)
     await updateDailyEnvelope();
-    
+
     await log('CORRECTION_ADD', {
       difference: difference,
       correctionType: correctionType,
@@ -2135,8 +2152,9 @@ window.addCorrection = async (e) => {
       reason: reason,
       budgetUser: 'System'
     });
-    
+
     form.reset();
+    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
     showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
   } catch (error) {
     console.error('❌ Błąd wprowadzania korekty:', error);
@@ -2144,7 +2162,11 @@ window.addCorrection = async (e) => {
   }
 };
 
-function loadSettings() {
+/**
+ * Odświeża listy rozwijane okresów w ustawieniach
+ * Powinna być wywołana po każdej zmianie przychodów planowanych
+ */
+function refreshPeriodSelectors() {
   const envelopePeriod = getEnvelopePeriod();
   const dynamicsPeriod = getDynamicsPeriod();
 
@@ -2175,6 +2197,10 @@ function loadSettings() {
       dynamicsPeriodSelect.appendChild(option);
     });
   }
+}
+
+function loadSettings() {
+  refreshPeriodSelectors();
 
   // Renderuj budżety celowe
   renderPurposeBudgets();
@@ -2567,9 +2593,15 @@ onAuthChange(async (user) => {
     await loadAllData();
     hideLoader();
 
+    // Inicjalizuj śledzenie obecności
+    initializePresence();
+
   } else {
     console.log('❌ Użytkownik wylogowany');
-    
+
+    // Wyczyść obecność przy wylogowaniu
+    cleanupPresence();
+
     await clearAllListeners();
     if (budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
@@ -2595,6 +2627,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
+
+  // Śledź aktywność użytkownika
+  const activityEvents = ['click', 'keydown', 'scroll', 'touchstart'];
+  activityEvents.forEach(eventType => {
+    document.addEventListener(eventType, () => {
+      recordActivity();
+    }, { passive: true });
+  });
   
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;

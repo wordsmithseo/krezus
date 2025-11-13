@@ -1007,7 +1007,7 @@ tr.correction {
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   display: flex;
   align-items: baseline;
@@ -1019,7 +1019,7 @@ tr.correction {
 }
 
 .stat-unit {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   opacity: 0.8;
 }
 
@@ -1694,7 +1694,7 @@ tr.correction {
   }
 
   .stat-value {
-    font-size: 1.5rem;
+    font-size: 2rem;
   }
 
   .stat-card.beige .stat-value {
@@ -1790,6 +1790,72 @@ tr.correction {
 
 .shake {
   animation: shake 0.5s;
+}
+
+/* Animacje pulsowania dla wskaźnika obecności */
+@keyframes pulseFast {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+.pulse-fast {
+  animation: pulseFast 0.6s ease-in-out infinite;
+}
+
+.pulse-slow {
+  animation: pulseSlow 1.2s ease-in-out infinite;
+}
+
+/* ==================== WSKAŹNIK OBECNOŚCI ==================== */
+
+#presenceIndicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 9999;
+  transition: all 0.3s ease;
+}
+
+#presenceIndicator:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  #presenceIndicator {
+    top: 15px;
+    right: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
 }
 
 /* ==================== STOPKA APLIKACJI ==================== */

@@ -13,8 +13,8 @@ import {
   calculateSpendingDynamics
 } from '../modules/budgetCalculator.js';
 
-import { getDynamicsPeriod } from '../modules/dataManager.js';
-import { formatDateLabel } from '../utils/dateHelpers.js';
+import { getDynamicsPeriod, getIncomes, getExpenses } from '../modules/dataManager.js';
+import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
 
@@ -63,16 +63,28 @@ export function renderSummary() {
 
   renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt);
 
-  // Planowane transakcje - używamy ostatniego okresu (najdalszego)
-  const lastPeriod = plannedTotals.periodTotals[plannedTotals.periodTotals.length - 1];
-  const displayIncome = lastPeriod?.futureIncome || 0;
-  const displayExpense = lastPeriod?.futureExpense || 0;
+  // Planowane transakcje - obliczamy sumę UNIKALNYCH planowanych transakcji
+  // (nie sumujemy okresów, bo każda transakcja byłaby liczona wielokrotnie!)
+  const incomes = getIncomes();
+  const expenses = getExpenses();
+  const today = getWarsawDateString();
+
+  const totalPlannedIncome = incomes
+    .filter(inc => inc.type === 'planned' && inc.date >= today)
+    .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+  const totalPlannedExpense = expenses
+    .filter(exp => exp.type === 'planned' && exp.date >= today)
+    .reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+  console.log('💰 Planowane przychody (unikalne, od dzisiaj):', totalPlannedIncome.toFixed(2), 'zł');
+  console.log('💸 Planowane wydatki (unikalne, od dzisiaj):', totalPlannedExpense.toFixed(2), 'zł');
 
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
 
-  if (futureIncomeEl) futureIncomeEl.textContent = displayIncome.toFixed(2);
-  if (futureExpenseEl) futureExpenseEl.textContent = displayExpense.toFixed(2);
+  if (futureIncomeEl) futureIncomeEl.textContent = totalPlannedIncome.toFixed(2);
+  if (futureExpenseEl) futureExpenseEl.textContent = totalPlannedExpense.toFixed(2);
 
   // Dynamika wydatków
   renderSpendingDynamics();
@@ -320,10 +332,11 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const futureIncome = periodTotal?.futureIncome || 0;
     const futureExpense = periodTotal?.futureExpense || 0;
 
-    // Limit realny (tylko obecne środki)
-    const realLimit = limit.daysLeft > 0
-      ? available / limit.daysLeft
-      : 0;
+    // Limit z zabezpieczeniami (obliczony przez calculateCurrentLimits)
+    const safeLimitDaily = limit.currentLimit || 0;
+
+    // Limit surowy (bez zabezpieczeń) dla porównania
+    const rawLimitDaily = limit.rawLimit || 0;
 
     // Limit planowany (z przyszłymi wpływami/wydatkami PRZED datą końcową)
     const projectedLimit = limit.daysLeft > 0
@@ -333,43 +346,59 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const card = document.createElement('div');
     card.className = 'stat-card';
 
-    // Nazwa wpływu na górze z ikoną
+    // Nazwa wpływu na górze z ikoną i kwotą
     const nameDiv = document.createElement('div');
     nameDiv.className = 'stat-label';
     nameDiv.style.fontWeight = 'bold';
     nameDiv.style.marginBottom = '5px';
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
-    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}`;
+    const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
+    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
-    // Limit realny
-    const realLabelDiv = document.createElement('div');
-    realLabelDiv.className = 'stat-label';
-    realLabelDiv.style.fontSize = '0.85rem';
-    realLabelDiv.style.opacity = '0.8';
-    realLabelDiv.textContent = `Limit realny (do ${formatDateLabel(limit.date)})`;
+    // Sprawdź czy są aktywne progresywne limity
+    const hasProgressiveLimits = limit.appliedMeasures &&
+      limit.appliedMeasures.some(m => m.type === 'progressive-limit');
 
-    const realValueDiv = document.createElement('div');
-    realValueDiv.className = 'stat-value';
-    realValueDiv.style.fontSize = '1.2rem';
-    realValueDiv.style.marginBottom = '10px';
-    const realValueSpan = document.createElement('span');
-    realValueSpan.textContent = realLimit.toFixed(2);
-    const realUnitSpan = document.createElement('span');
-    realUnitSpan.className = 'stat-unit';
-    realUnitSpan.textContent = 'zł/dzień';
-    realValueDiv.appendChild(realValueSpan);
-    realValueDiv.appendChild(realUnitSpan);
+    // Limit dzienny (nazwa zależy od tego czy są zabezpieczenia)
+    const limitLabelDiv = document.createElement('div');
+    limitLabelDiv.className = 'stat-label';
+    limitLabelDiv.style.fontSize = '0.9rem';
+    limitLabelDiv.style.opacity = '0.8';
+    limitLabelDiv.style.marginTop = '8px';
+    limitLabelDiv.innerHTML = hasProgressiveLimits ? `🛡️ Bezpieczny limit dzienny` : `💰 Limit dzienny`;
 
-    // Limit planowany
+    const limitValueDiv = document.createElement('div');
+    limitValueDiv.className = 'stat-value';
+    limitValueDiv.style.fontSize = '1.8rem';
+    limitValueDiv.style.marginBottom = '10px';
+    const limitValueSpan = document.createElement('span');
+    limitValueSpan.textContent = safeLimitDaily.toFixed(2);
+    const limitUnitSpan = document.createElement('span');
+    limitUnitSpan.className = 'stat-unit';
+    limitUnitSpan.textContent = 'zł/dzień';
+    limitValueDiv.appendChild(limitValueSpan);
+    limitValueDiv.appendChild(limitUnitSpan);
+
+    // Surowy limit dla porównania (TYLKO gdy są zabezpieczenia)
+    let rawInfoDiv = null;
+    if (hasProgressiveLimits) {
+      rawInfoDiv = document.createElement('div');
+      rawInfoDiv.style.fontSize = '0.75rem';
+      rawInfoDiv.style.opacity = '0.7';
+      rawInfoDiv.style.marginBottom = '10px';
+      rawInfoDiv.textContent = `(bez zabezpieczeń: ${rawLimitDaily.toFixed(2)} zł/dzień)`;
+    }
+
+    // Limit planowany (z przyszłymi wpływami/wydatkami)
     const projectedLabelDiv = document.createElement('div');
     projectedLabelDiv.className = 'stat-label';
     projectedLabelDiv.style.fontSize = '0.85rem';
     projectedLabelDiv.style.opacity = '0.8';
-    projectedLabelDiv.textContent = `Limit planowany`;
+    projectedLabelDiv.textContent = `📊 Limit planowany`;
 
     const projectedValueDiv = document.createElement('div');
     projectedValueDiv.className = 'stat-value';
-    projectedValueDiv.style.fontSize = '1.5rem';
+    projectedValueDiv.style.fontSize = '1.2rem';
     const projectedValueSpan = document.createElement('span');
     projectedValueSpan.textContent = projectedLimit.toFixed(2);
     const projectedUnitSpan = document.createElement('span');
@@ -383,11 +412,49 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
     card.appendChild(nameDiv);
-    card.appendChild(realLabelDiv);
-    card.appendChild(realValueDiv);
+    card.appendChild(daysDiv);
+    card.appendChild(limitLabelDiv);
+    card.appendChild(limitValueDiv);
+
+    // Dodaj surowy limit TYLKO gdy są zabezpieczenia
+    if (rawInfoDiv) {
+      card.appendChild(rawInfoDiv);
+    }
+
     card.appendChild(projectedLabelDiv);
     card.appendChild(projectedValueDiv);
-    card.appendChild(daysDiv);
+
+    // Dodaj informacje o zastosowanych środkach zabezpieczających TYLKO gdy są aktywne
+    if (hasProgressiveLimits) {
+      const measuresDiv = document.createElement('div');
+      measuresDiv.style.marginTop = '12px';
+      measuresDiv.style.padding = '10px';
+      measuresDiv.style.background = 'rgba(0, 0, 0, 0.1)';
+      measuresDiv.style.borderRadius = '8px';
+      measuresDiv.style.fontSize = '0.8rem';
+
+      const measuresTitle = document.createElement('div');
+      measuresTitle.style.fontWeight = 'bold';
+      measuresTitle.style.marginBottom = '6px';
+      measuresTitle.style.opacity = '0.9';
+      measuresTitle.textContent = '🛡️ Zastosowane zabezpieczenia:';
+      measuresDiv.appendChild(measuresTitle);
+
+      const measuresList = document.createElement('ul');
+      measuresList.style.margin = '0';
+      measuresList.style.paddingLeft = '18px';
+      measuresList.style.opacity = '0.85';
+
+      limit.appliedMeasures.forEach(measure => {
+        const li = document.createElement('li');
+        li.textContent = measure.description;
+        li.style.marginBottom = '3px';
+        measuresList.appendChild(li);
+      });
+
+      measuresDiv.appendChild(measuresList);
+      card.appendChild(measuresDiv);
+    }
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);

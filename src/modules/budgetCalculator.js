@@ -139,18 +139,23 @@ function getNextPlannedIncomeDates() {
         .filter(inc => inc.type === 'planned' && inc.date >= today)
         .map(inc => ({
             date: inc.date,
-            name: inc.source || 'Bez nazwy'
+            name: inc.source || 'Bez nazwy',
+            amount: inc.amount || 0
         }))
         .sort((a, b) => a.date.localeCompare(b.date)); // Sortuj chronologicznie
 
-    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, weź pierwszy)
+    // Usuń duplikaty po dacie (jeśli kilka wpływów w tym samym dniu, zsumuj kwoty)
     const uniqueIncomes = [];
-    const seenDates = new Set();
+    const seenDates = new Map();
 
     for (const income of plannedIncomes) {
         if (!seenDates.has(income.date)) {
-            seenDates.add(income.date);
+            seenDates.set(income.date, income);
             uniqueIncomes.push(income);
+        } else {
+            // Jeśli ta data już istnieje, dodaj amount do istniejącego wpływu
+            const existing = seenDates.get(income.date);
+            existing.amount += income.amount;
         }
     }
 
@@ -179,6 +184,7 @@ export function calculateSpendingPeriods() {
         return {
             date: income.date,
             name: income.name,
+            amount: income.amount,
             daysLeft
         };
     });
@@ -209,20 +215,96 @@ export function calculateCurrentLimits() {
     const toSpend = available;
     const spendingPeriods = calculateSpendingPeriods();
     const { periods, date1, date2, daysLeft1, daysLeft2 } = spendingPeriods;
+    const plannedTotals = calculatePlannedTransactionsTotals();
+
+    console.log('💰 === OBLICZANIE LIMITÓW Z ZABEZPIECZENIAMI ===');
+    console.log('💰 Dostępne środki:', toSpend.toFixed(2), 'zł');
 
     // Oblicz limity dla wszystkich okresów
-    const limits = periods.map(period => ({
-        date: period.date,
-        name: period.name,
-        daysLeft: period.daysLeft,
-        currentLimit: period.daysLeft > 0 ? toSpend / period.daysLeft : 0
-    }));
+    const limits = periods.map((period, index) => {
+        if (period.daysLeft <= 0) {
+            return {
+                date: period.date,
+                name: period.name,
+                daysLeft: period.daysLeft,
+                currentLimit: 0,
+                appliedMeasures: []
+            };
+        }
+
+        const periodTotal = plannedTotals.periodTotals[index];
+        const plannedExpenses = periodTotal?.futureExpense || 0;
+
+        console.log(`\n📊 Okres: ${period.name} (${period.daysLeft} dni)`);
+        console.log('  💸 Planowane wydatki:', plannedExpenses.toFixed(2), 'zł');
+
+        // Krok 1: Odejmij planowane wydatki
+        let adjustedAmount = toSpend - plannedExpenses;
+        console.log('  💰 Po odjęciu planowanych wydatków:', adjustedAmount.toFixed(2), 'zł');
+
+        const appliedMeasures = [];
+
+        if (plannedExpenses > 0) {
+            appliedMeasures.push({
+                type: 'planned-expenses',
+                description: `Odjęto planowane wydatki: ${plannedExpenses.toFixed(2)} zł`,
+                impact: -plannedExpenses
+            });
+        }
+
+        // Krok 2: Progresywne ograniczanie dla małej liczby dni
+        let conservativeFactor = 1.0;
+        if (period.daysLeft <= 7) {
+            conservativeFactor = 0.7;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤7 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+        if (period.daysLeft <= 3) {
+            conservativeFactor = 0.5;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤3 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+        if (period.daysLeft <= 1) {
+            conservativeFactor = 0.3;
+            appliedMeasures.push({
+                type: 'progressive-limit',
+                description: `Zachowawczy limit (≤1 dzień): ${(conservativeFactor * 100).toFixed(0)}%`,
+                impact: adjustedAmount * (1 - conservativeFactor)
+            });
+        }
+
+        adjustedAmount = adjustedAmount * conservativeFactor;
+        console.log(`  ⚖️ Po zastosowaniu zachowawczego limitu (${(conservativeFactor * 100).toFixed(0)}%):`, adjustedAmount.toFixed(2), 'zł');
+
+        // Końcowy limit dzienny
+        const currentLimit = Math.max(0, adjustedAmount / period.daysLeft);
+        console.log('  ✅ Końcowy limit dzienny:', currentLimit.toFixed(2), 'zł/dzień');
+
+        return {
+            date: period.date,
+            name: period.name,
+            amount: period.amount, // Kwota planowanego przychodu
+            daysLeft: period.daysLeft,
+            currentLimit,
+            appliedMeasures,
+            rawLimit: toSpend / period.daysLeft, // Surowy limit bez zabezpieczeń
+            adjustedAmount // Kwota po zastosowaniu wszystkich zabezpieczeń
+        };
+    });
+
+    console.log('✅ === KONIEC OBLICZANIA LIMITÓW ===\n');
 
     // BACKWARD COMPATIBILITY: Zachowaj stare pola dla zgodności
     return {
         limits,  // Nowa tablica limitów dla wszystkich okresów
-        currentLimit1: daysLeft1 > 0 ? toSpend / daysLeft1 : 0,
-        currentLimit2: daysLeft2 > 0 ? toSpend / daysLeft2 : 0,
+        currentLimit1: limits[0]?.currentLimit || 0,
+        currentLimit2: limits[1]?.currentLimit || 0,
         daysLeft1,
         daysLeft2,
         date1,
@@ -251,17 +333,17 @@ export function calculatePlannedTransactionsTotals() {
         let futureExpense = 0;
 
         if (period.date && period.date.trim() !== '') {
-            console.log(`🔍 Filtrowanie dla okresu ${index + 1} (od ${today} do ${period.date})`);
+            console.log(`🔍 Filtrowanie dla okresu ${index + 1} (pomiędzy ${today} a ${period.date}, bez dat granicznych)`);
 
             incomes.forEach(inc => {
-                if (inc.type === 'planned' && inc.date >= today && inc.date < period.date) {
+                if (inc.type === 'planned' && inc.date > today && inc.date < period.date) {
                     console.log(`  ✅ Dodaję przychód: ${inc.amount} zł, data: ${inc.date}, źródło: ${inc.source}`);
                     futureIncome += inc.amount || 0;
                 }
             });
 
             expenses.forEach(exp => {
-                if (exp.type === 'planned' && exp.date >= today && exp.date < period.date) {
+                if (exp.type === 'planned' && exp.date > today && exp.date < period.date) {
                     console.log(`  ✅ Dodaję wydatek: ${exp.amount} zł, data: ${exp.date}`);
                     futureExpense += exp.amount || 0;
                 }
@@ -804,6 +886,7 @@ export function calculateSpendingDynamics() {
     const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
     const { available } = calculateAvailableFunds();
     const toSpend = available;
+    const limitsData = calculateCurrentLimits();
 
     if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
         return {
@@ -816,7 +899,12 @@ export function calculateSpendingDynamics() {
     }
 
     const activeDays = selectedPeriod.daysLeft;
-    const targetDaily = toSpend / activeDays;
+
+    // Znajdź limit dla wybranego okresu dynamiki
+    const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
+
+    // Użyj surowego limitu dziennego (bez zabezpieczeń) - dynamika bazuje na rzeczywistych wydatkach
+    const targetDaily = selectedLimit?.rawLimit || 0;
 
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
@@ -836,7 +924,7 @@ export function calculateSpendingDynamics() {
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
                 `Dni do końca okresu (${selectedPeriod.name}): ${activeDays}`,
-                `Teoretyczny dzienny limit: ${targetDaily.toFixed(2)} zł`
+                `Dzienny limit: ${targetDaily.toFixed(2)} zł`
             ],
             recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.'
         };
@@ -844,7 +932,7 @@ export function calculateSpendingDynamics() {
 
     const sum7 = last7.reduce((sum, e) => sum + (e.amount || 0), 0);
     const dailyAvg7 = sum7 / 7;
-    
+
     if (targetDaily <= 0) {
         return {
             status: 'critical',
@@ -867,12 +955,12 @@ export function calculateSpendingDynamics() {
     if (ratio <= 0.5) {
         status = 'excellent';
         title = '🌟 Doskonała kontrola wydatków!';
-        summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% dziennego limitu. Budżet jest w bardzo dobrej kondycji.`;
+        summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% limitu dziennego. Budżet jest w bardzo dobrej kondycji.`;
         recommendation = 'Świetna robota! Masz dużo przestrzeni w budżecie. Możesz kontynuować obecny styl życia lub rozważyć zwiększenie oszczędności.';
     } else if (ratio <= 0.8) {
         status = 'good';
         title = '✅ Dobra sytuacja budżetowa';
-        summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% dziennego limitu (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
+        summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
         recommendation = 'Dobrze Ci idzie! Kontynuuj obecne tempo wydatków, ale uważaj na większe zakupy.';
     } else if (ratio <= 1.0) {
         status = 'moderate';
@@ -881,8 +969,8 @@ export function calculateSpendingDynamics() {
         recommendation = 'Sytuacja jest pod kontrolą, ale nie masz dużego marginesu błędu. Uważaj na spontaniczne zakupy i monitoruj wydatki częściej.';
     } else if (ratio <= 1.3) {
         status = 'warning';
-        title = '⚠️ Przekraczasz dzienny limit!';
-        summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% dziennego limitu (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
+        title = '⚠️ Przekraczasz limit!';
+        summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
         recommendation = 'Czas na większą ostrożność! Ogranicz niepotrzebne wydatki i skup się na priorytetach. Jeśli tak dalej pójdzie, możesz nie zmieścić się w budżecie do końca okresu.';
     } else {
         status = 'critical';
@@ -890,16 +978,16 @@ export function calculateSpendingDynamics() {
         summary = `Alarm! Średnie wydatki dzienne (${dailyAvg7.toFixed(2)} zł) przekraczają limit (${targetDaily.toFixed(2)} zł) o ${((ratio - 1) * 100).toFixed(0)}%! To ${(dailyAvg7 - targetDaily).toFixed(2)} zł dziennie ponad budżet.`;
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
-    
+
     const details = [
         `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,
         `Dni do końca okresu: ${activeDays}`,
-        `Dzienny limit budżetowy: ${targetDaily.toFixed(2)} zł`,
+        `Dzienny limit: ${targetDaily.toFixed(2)} zł`,
         `Średnie wydatki dzienne (7 dni): ${dailyAvg7.toFixed(2)} zł`,
         `Liczba transakcji (7 dni): ${last7.length}`,
         `Prognozowane wydatki do końca okresu: ${(dailyAvg7 * activeDays).toFixed(2)} zł`
     ];
-    
+
     return {
         status,
         title,
