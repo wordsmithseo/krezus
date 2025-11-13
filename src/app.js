@@ -383,15 +383,22 @@ function setupPurposeBudgetSelect() {
 
   // Sprawdź czy są jakiekolwiek budżety celowe (poza "Ogólny")
   const purposeBudgets = allBudgets.filter(b => b.name !== 'Ogólny');
+  const hasPurposeBudgets = purposeBudgets.length > 0;
 
   // Jeśli są budżety celowe, ukryj "Ogólny" z listy
-  const budgets = purposeBudgets.length > 0
+  const budgets = hasPurposeBudgets
     ? purposeBudgets
     : allBudgets;
 
+  // Jeśli nie ma budżetów celowych, pobierz całkowite dostępne środki
+  const { available: totalAvailable } = calculateAvailableFunds();
+
   // Opcje selecta z informacją o dostępnych środkach
   const optionsHTML = budgets.map(budget => {
-    const available = budget.remaining.toFixed(2);
+    // Jeśli nie ma budżetów celowych i to jest "Ogólny", pokaż całkowite dostępne środki
+    const available = (!hasPurposeBudgets && budget.name === 'Ogólny')
+      ? totalAvailable.toFixed(2)
+      : budget.remaining.toFixed(2);
     return `<option value="${budget.id}">${budget.name} (dostępne: ${available} zł)</option>`;
   }).join('');
 
