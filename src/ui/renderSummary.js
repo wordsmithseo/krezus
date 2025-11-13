@@ -17,6 +17,7 @@ import { getDynamicsPeriod, getIncomes, getExpenses } from '../modules/dataManag
 import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
+import { animateNumber } from '../utils/animateNumber.js';
 
 export function renderSummary() {
   const { available } = calculateAvailableFunds();
@@ -32,7 +33,7 @@ export function renderSummary() {
   // Podstawowe statystyki
   const availableFundsEl = document.getElementById('availableFunds');
 
-  if (availableFundsEl) availableFundsEl.textContent = available.toFixed(2);
+  if (availableFundsEl) animateNumber(availableFundsEl, available);
 
   // Wydatki dzisiaj
   const todayLabel = document.querySelector('#todayExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
@@ -40,7 +41,7 @@ export function renderSummary() {
     todayLabel.innerHTML = sanitizeHTML(`Wydano dziś<br><small style="font-size: 0.75rem; opacity: 0.8;">(${todayDate})</small>`);
   }
   const todayExpensesEl = document.getElementById('todayExpenses');
-  if (todayExpensesEl) todayExpensesEl.textContent = todayExpenses.toFixed(2);
+  if (todayExpensesEl) animateNumber(todayExpensesEl, todayExpenses);
 
   // Wydatki w tym tygodniu
   const weekLabel = document.querySelector('#weekExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
@@ -48,7 +49,7 @@ export function renderSummary() {
     weekLabel.innerHTML = sanitizeHTML(`Wydano w tym tygodniu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${weekRange.start} - ${weekRange.end})</small>`);
   }
   const weekExpensesEl = document.getElementById('weekExpenses');
-  if (weekExpensesEl) weekExpensesEl.textContent = weekExpenses.toFixed(2);
+  if (weekExpensesEl) animateNumber(weekExpensesEl, weekExpenses);
 
   // Wydatki w tym miesiącu
   const monthLabel = document.querySelector('#monthExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
@@ -56,7 +57,7 @@ export function renderSummary() {
     monthLabel.innerHTML = sanitizeHTML(`Wydano w tym miesiącu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${monthName})</small>`);
   }
   const monthExpensesEl = document.getElementById('monthExpenses');
-  if (monthExpensesEl) monthExpensesEl.textContent = monthExpenses.toFixed(2);
+  if (monthExpensesEl) animateNumber(monthExpensesEl, monthExpenses);
 
   // NOWE: Renderuj wszystkie okresy dynamicznie
   const { limits: limitsData, plannedTotals, calculatedAt } = getOrCalculateLimits();
@@ -83,8 +84,8 @@ export function renderSummary() {
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
 
-  if (futureIncomeEl) futureIncomeEl.textContent = totalPlannedIncome.toFixed(2);
-  if (futureExpenseEl) futureExpenseEl.textContent = totalPlannedExpense.toFixed(2);
+  if (futureIncomeEl) animateNumber(futureIncomeEl, totalPlannedIncome);
+  if (futureExpenseEl) animateNumber(futureExpenseEl, totalPlannedExpense);
 
   // Dynamika wydatków
   renderSpendingDynamics();
@@ -169,21 +170,49 @@ function renderPurposeBudgetsSummary() {
           const barColor = bgColor;  // Kolor paska taki sam jak tło
           const budgetIcon = getCategoryIcon(budget.name);
 
+          // Sprawdź czy budżet jest wyczerpany lub bliski wyczerpania
+          const isDepletedOrNear = budget.remaining <= 10 && budget.name !== 'Ogólny';
+          const deleteButtonHtml = isDepletedOrNear ? `
+            <button
+              class="delete-depleted-budget-btn"
+              data-budget-id="${budget.id}"
+              data-budget-name="${budget.name}"
+              style="
+                margin-top: 10px;
+                width: 100%;
+                padding: 8px 12px;
+                background: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                border-radius: 8px;
+                color: white;
+                font-size: 0.85rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+              "
+              onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'"
+              onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'"
+            >
+              ${budget.remaining <= 0 ? '⚠️ Budżet wyczerpany - Usuń?' : '⚠️ Budżet prawie pusty - Usuń?'}
+            </button>
+          ` : '';
+
           return `
-            <div class="stat-card" style="background: ${bgColor}; color: white;">
+            <div class="stat-card" style="background: ${bgColor}; color: white;" data-budget-id="${budget.id}">
               <div class="stat-label" style="font-weight: bold; margin-bottom: 5px; color: white;">${budgetIcon} ${budget.name}</div>
               <div class="stat-value">
-                <span>${budget.remaining.toFixed(2)}</span>
+                <span class="budget-remaining" data-value="${budget.remaining}">0.00</span>
                 <span class="stat-unit">zł pozostało</span>
               </div>
               <div style="margin-top: 10px; font-size: 0.85rem; opacity: 0.95;">
-                <div style="margin-bottom: 5px;">Budżet: <strong>${budget.amount.toFixed(2)} zł</strong> <span style="opacity: 0.85;">(${percentOfTotal}% środków)</span></div>
-                <div style="margin-bottom: 5px;">Wydano: <strong>${budget.spent.toFixed(2)} zł</strong></div>
+                <div style="margin-bottom: 5px;">Budżet: <strong class="budget-amount" data-value="${budget.amount}">0.00</strong> zł <span style="opacity: 0.85;">(${percentOfTotal}% środków)</span></div>
+                <div style="margin-bottom: 5px;">Wydano: <strong class="budget-spent" data-value="${budget.spent}">0.00</strong> zł</div>
                 <div style="margin-bottom: 8px;">Wykorzystano: <strong>${percentUsed}%</strong> | Pozostało: <strong>${percentRemaining.toFixed(1)}%</strong></div>
                 <div style="background: rgba(255, 255, 255, 0.3); border-radius: 10px; height: 10px; overflow: hidden;">
                   <div style="background: rgba(255, 255, 255, 0.9); height: 100%; width: ${Math.min(percentUsed, 100)}%; transition: width 0.3s, background 0.5s;"></div>
                 </div>
               </div>
+              ${deleteButtonHtml}
             </div>
           `;
         }).join('')}
@@ -191,6 +220,52 @@ function renderPurposeBudgetsSummary() {
     `;
 
     container.innerHTML = sanitizeHTML(html);
+
+    // Animuj liczby w budżetach celowych
+    requestAnimationFrame(() => {
+      container.querySelectorAll('.budget-remaining').forEach(el => {
+        const value = parseFloat(el.dataset.value);
+        animateNumber(el, value);
+      });
+      container.querySelectorAll('.budget-amount').forEach(el => {
+        const value = parseFloat(el.dataset.value);
+        animateNumber(el, value);
+      });
+      container.querySelectorAll('.budget-spent').forEach(el => {
+        const value = parseFloat(el.dataset.value);
+        animateNumber(el, value);
+      });
+    });
+
+    // Dodaj event listenery do przycisków usuwania wyczerpanych budżetów
+    container.querySelectorAll('.delete-depleted-budget-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const budgetId = e.target.dataset.budgetId;
+        const budgetName = e.target.dataset.budgetName;
+
+        const confirmed = confirm(`Czy na pewno chcesz usunąć budżet "${budgetName}"?\n\nNiewydane środki zostaną przeniesione do budżetu "Ogólny".`);
+
+        if (confirmed) {
+          try {
+            const { deletePurposeBudget } = await import('../modules/purposeBudgetManager.js');
+            await deletePurposeBudget(budgetId);
+
+            // Import funkcji z app.js
+            const { showSuccessMessage, renderPurposeBudgets, renderSummary, setupPurposeBudgetSelect, recordActivity } = await import('../app.js');
+
+            showSuccessMessage('Budżet celowy usunięty');
+            recordActivity();
+            renderPurposeBudgets();
+            renderSummary();
+            setupPurposeBudgetSelect();
+          } catch (error) {
+            console.error('❌ Błąd usuwania budżetu:', error);
+            const { showErrorMessage } = await import('../app.js');
+            showErrorMessage(error.message || 'Nie udało się usunąć budżetu');
+          }
+        }
+      });
+    });
   }).catch(error => {
     console.error('❌ Błąd ładowania budżetów celowych:', error);
     container.innerHTML = sanitizeHTML('<p class="text-muted">Błąd ładowania budżetów celowych.</p>');
@@ -372,12 +447,17 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     limitValueDiv.style.fontSize = '1.8rem';
     limitValueDiv.style.marginBottom = '10px';
     const limitValueSpan = document.createElement('span');
-    limitValueSpan.textContent = safeLimitDaily.toFixed(2);
+    limitValueSpan.textContent = '0.00';
     const limitUnitSpan = document.createElement('span');
     limitUnitSpan.className = 'stat-unit';
     limitUnitSpan.textContent = 'zł/dzień';
     limitValueDiv.appendChild(limitValueSpan);
     limitValueDiv.appendChild(limitUnitSpan);
+
+    // Animuj wartość
+    requestAnimationFrame(() => {
+      animateNumber(limitValueSpan, safeLimitDaily);
+    });
 
     // Surowy limit dla porównania (TYLKO gdy są zabezpieczenia)
     let rawInfoDiv = null;
@@ -400,12 +480,17 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     projectedValueDiv.className = 'stat-value';
     projectedValueDiv.style.fontSize = '1.2rem';
     const projectedValueSpan = document.createElement('span');
-    projectedValueSpan.textContent = projectedLimit.toFixed(2);
+    projectedValueSpan.textContent = '0.00';
     const projectedUnitSpan = document.createElement('span');
     projectedUnitSpan.className = 'stat-unit';
     projectedUnitSpan.textContent = 'zł/dzień';
     projectedValueDiv.appendChild(projectedValueSpan);
     projectedValueDiv.appendChild(projectedUnitSpan);
+
+    // Animuj wartość planowaną
+    requestAnimationFrame(() => {
+      animateNumber(projectedValueSpan, projectedLimit);
+    });
 
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';

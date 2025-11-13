@@ -6,6 +6,7 @@ import {
   getExpenses
 } from './dataManager.js';
 import { calculateAvailableFunds } from './budgetCalculator.js';
+import { log } from './logger.js';
 
 /**
  * Utwórz nowy budżet celowy
@@ -40,6 +41,13 @@ export async function createPurposeBudget(name, amount) {
 
   budgets.push(newBudget);
   await savePurposeBudgets(budgets);
+
+  // Zaloguj operację
+  await log('PURPOSE_BUDGET_ADD', {
+    budgetName: name,
+    amount: parseFloat(amount),
+    budgetId: newBudget.id
+  });
 
   console.log('✅ Utworzono budżet celowy:', newBudget);
   console.log(`💰 Zmniejszono budżet "Ogólny" o ${amount} zł`);
@@ -88,10 +96,22 @@ export async function updatePurposeBudget(budgetId, name, amount) {
     }
   }
 
+  const oldName = budget.name;
+  const oldAmount = budget.amount;
+
   budget.name = name;
   budget.amount = parseFloat(amount);
 
   await savePurposeBudgets(budgets);
+
+  // Zaloguj operację
+  await log('PURPOSE_BUDGET_EDIT', {
+    budgetId: budgetId,
+    oldName: oldName,
+    newName: name,
+    oldAmount: oldAmount,
+    newAmount: parseFloat(amount)
+  });
 
   console.log('✅ Zaktualizowano budżet celowy:', budget);
   return budget;
@@ -137,6 +157,15 @@ export async function deletePurposeBudget(budgetId) {
   // Zapisz zmiany
   await saveExpenses(updatedExpenses);
   await savePurposeBudgets(filteredBudgets);
+
+  // Zaloguj operację
+  await log('PURPOSE_BUDGET_DELETE', {
+    budgetName: budget.name,
+    budgetAmount: budget.amount,
+    spentAmount: spent,
+    remainingAmount: remaining,
+    budgetId: budgetId
+  });
 
   console.log('✅ Usunięto budżet celowy:', budget.name);
   console.log(`💰 Przeniesiono ${remaining.toFixed(2)} zł do budżetu "Ogólny"`);

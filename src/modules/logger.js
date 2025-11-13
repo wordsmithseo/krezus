@@ -111,7 +111,10 @@ export function formatLogEntry(logEntry) {
     'PROFILE_UPDATE': '👤 Aktualizacja profilu',
     'LOGS_CLEARED': '🗑️ Wyczyszczenie logów',
     'ENVELOPE_UPDATE': '📩 Aktualizacja koperty dnia',
-    'AUTO_REALISE': '🤖 Automatyczna realizacja transakcji'
+    'AUTO_REALISE': '🤖 Automatyczna realizacja transakcji',
+    'PURPOSE_BUDGET_ADD': '🎯 Dodanie budżetu celowego',
+    'PURPOSE_BUDGET_EDIT': '✏️ Edycja budżetu celowego',
+    'PURPOSE_BUDGET_DELETE': '🗑️ Usunięcie budżetu celowego'
   };
   
   let userName = null;
