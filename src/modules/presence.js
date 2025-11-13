@@ -16,10 +16,16 @@ let pulseLongerTimeout = null;
  */
 export function initializePresence() {
   const userId = getUserId();
-  if (!userId) return;
+  console.log('👥 initializePresence() wywołana dla userId:', userId);
+
+  if (!userId) {
+    console.log('❌ Brak userId - anulowanie inicjalizacji presence');
+    return;
+  }
 
   // Utwórz unikalny ID sesji
   currentSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  console.log('👥 Utworzono sessionId:', currentSessionId);
 
   // Ref do obecności tego użytkownika
   presenceRef = ref(db, `presence/${userId}/${currentSessionId}`);
@@ -31,7 +37,10 @@ export function initializePresence() {
     lastActivity: serverTimestamp()
   };
 
-  set(presenceRef, presenceData);
+  console.log('👥 Zapisywanie obecności do Firebase:', `presence/${userId}/${currentSessionId}`);
+  set(presenceRef, presenceData)
+    .then(() => console.log('✅ Obecność zapisana w Firebase'))
+    .catch(err => console.error('❌ Błąd zapisu obecności:', err));
 
   // Ustaw usuwanie obecności przy rozłączeniu
   onDisconnect(presenceRef).remove();
@@ -42,7 +51,7 @@ export function initializePresence() {
   // Rozpocznij heartbeat
   startHeartbeat();
 
-  console.log('👥 Inicjalizacja obecności dla sesji:', currentSessionId);
+  console.log('👥 Inicjalizacja obecności zakończona dla sesji:', currentSessionId);
 }
 
 /**
@@ -50,7 +59,11 @@ export function initializePresence() {
  */
 export function recordActivity() {
   const userId = getUserId();
-  if (!userId || !presenceRef) return;
+  if (!userId || !presenceRef) {
+    if (!userId) console.log('⚠️ recordActivity: brak userId');
+    if (!presenceRef) console.log('⚠️ recordActivity: brak presenceRef');
+    return;
+  }
 
   lastActivityTime = Date.now();
 
@@ -61,11 +74,14 @@ export function recordActivity() {
 
   // Aktualizuj timestamp w Firebase (throttled do raz na 5 sekund)
   activityTimeout = setTimeout(() => {
+    console.log('📝 Aktualizuję aktywność w Firebase');
     set(presenceRef, {
       sessionId: currentSessionId,
       timestamp: serverTimestamp(),
       lastActivity: serverTimestamp()
-    });
+    })
+      .then(() => console.log('✅ Aktywność zaktualizowana'))
+      .catch(err => console.error('❌ Błąd aktualizacji aktywności:', err));
   }, 5000);
 }
 
@@ -91,13 +107,18 @@ function listenToOtherSessions(userId) {
   const allSessionsRef = ref(db, `presence/${userId}`);
 
   otherSessionsListener = onValue(allSessionsRef, (snapshot) => {
+    console.log('👥 Sprawdzanie obecności innych sesji...');
+
     if (!snapshot.exists()) {
+      console.log('👥 Brak danych o sesjach w Firebase');
       hidePresenceIndicator();
       return;
     }
 
     const sessions = [];
+    let totalSessions = 0;
     snapshot.forEach((childSnapshot) => {
+      totalSessions++;
       if (childSnapshot.key !== currentSessionId) {
         sessions.push({
           sessionId: childSnapshot.key,
@@ -106,27 +127,44 @@ function listenToOtherSessions(userId) {
       }
     });
 
+    console.log(`👥 Znaleziono ${totalSessions} sesji (włącznie z obecną)`);
+    console.log(`👥 Innych sesji: ${sessions.length}`);
+
     // Filtruj sesje aktywne w ostatnich 2 minutach
     const now = Date.now();
     const activeSessions = sessions.filter(session => {
       const lastActivity = session.lastActivity || session.timestamp;
-      const timeDiff = now - (typeof lastActivity === 'number' ? lastActivity : Date.now());
+      // Zamień Firebase timestamp na liczbę jeśli potrzeba
+      const activityTime = typeof lastActivity === 'number' ? lastActivity :
+                          (lastActivity?.toMillis ? lastActivity.toMillis() : now);
+      const timeDiff = now - activityTime;
+
+      console.log(`👥 Sesja ${session.sessionId.substring(0, 20)}... - ostatnia aktywność: ${Math.round(timeDiff / 1000)}s temu`);
+
       return timeDiff < 120000; // 2 minuty
     });
 
+    console.log(`👥 Aktywnych innych sesji: ${activeSessions.length}`);
+
     if (activeSessions.length > 0) {
+      console.log('✅ Pokazuję ikonkę obecności');
       showPresenceIndicator();
+
       // Sprawdź czy była aktywność w ostatnich 5 sekundach (nowa aktywność)
       const recentActivity = activeSessions.some(session => {
         const lastActivity = session.lastActivity || session.timestamp;
-        const timeDiff = now - (typeof lastActivity === 'number' ? lastActivity : Date.now());
+        const activityTime = typeof lastActivity === 'number' ? lastActivity :
+                            (lastActivity?.toMillis ? lastActivity.toMillis() : now);
+        const timeDiff = now - activityTime;
         return timeDiff < 5000; // 5 sekund
       });
 
       if (recentActivity) {
+        console.log('⚡ Wykryto świeżą aktywność - pulsowanie');
         triggerPulse();
       }
     } else {
+      console.log('❌ Brak aktywnych innych sesji - ukrywam ikonkę');
       hidePresenceIndicator();
     }
   });
@@ -136,18 +174,30 @@ function listenToOtherSessions(userId) {
  * Pokazuje wskaźnik obecności innych użytkowników
  */
 function showPresenceIndicator() {
+  console.log('👁️ showPresenceIndicator() wywołana');
   let indicator = document.getElementById('presenceIndicator');
 
   if (!indicator) {
+    console.log('🆕 Tworzenie nowej ikonki obecności');
     // Utwórz wskaźnik
     indicator = document.createElement('div');
     indicator.id = 'presenceIndicator';
     indicator.innerHTML = '👤';
     indicator.title = 'Ktoś inny jest aktywny na Twoim koncie';
     document.body.appendChild(indicator);
+    console.log('✅ Ikonka dodana do DOM');
+  } else {
+    console.log('ℹ️ Ikonka już istnieje w DOM');
   }
 
+  console.log('👁️ Ustawiam display: flex');
   indicator.style.display = 'flex';
+
+  // Sprawdź czy rzeczywiście jest widoczna
+  const computedStyle = window.getComputedStyle(indicator);
+  console.log('👁️ Computed display:', computedStyle.display);
+  console.log('👁️ Computed visibility:', computedStyle.visibility);
+  console.log('👁️ Position:', computedStyle.position, 'Top:', computedStyle.top, 'Right:', computedStyle.right);
 }
 
 /**
