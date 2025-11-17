@@ -141,6 +141,7 @@ let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 let mergingCategoryId = null;  // ID kategorii która ma być scalona
 let budgetValidationTimeout = null;  // Timer dla debounced walidacji budżetów
+let budgetValidationInProgress = false;  // Guard flag przeciwko race conditions
 
 const APP_VERSION = '1.9.9';
 const LOGS_PER_PAGE = 20;
@@ -156,6 +157,7 @@ window.onDisplayNameUpdate = (newName) => {
 /**
  * Debounced walidacja budżetów - czeka 2 sekundy na synchronizację wszystkich danych
  * Zapobiega fałszywym alarmom podczas synchronizacji zmian z Firebase
+ * Z ochroną przed race conditions
  */
 async function debouncedValidateBudgets() {
   // Anuluj poprzedni timeout
@@ -165,10 +167,24 @@ async function debouncedValidateBudgets() {
 
   // Ustaw nowy timeout - walidacja po 2 sekundach
   budgetValidationTimeout = setTimeout(async () => {
-    console.log('🔍 Uruchamiam opóźnioną walidację budżetów (po synchronizacji danych)');
-    const validation = await validateBudgetAllocation();
-    if (validation.liquidated) {
-      showErrorMessage(validation.message);
+    // Guard: jeśli walidacja już trwa, pomiń
+    if (budgetValidationInProgress) {
+      console.log('⏭️ Pomijam walidację - poprzednia jeszcze trwa');
+      return;
+    }
+
+    budgetValidationInProgress = true;
+
+    try {
+      console.log('🔍 Uruchamiam opóżnioną walidację budżetów (po synchronizacji danych)');
+      const validation = await validateBudgetAllocation();
+      if (validation.liquidated) {
+        showErrorMessage(validation.message);
+      }
+    } catch (error) {
+      console.error('❌ Błąd walidacji budżetów:', error);
+    } finally {
+      budgetValidationInProgress = false;
     }
   }, 2000);
 }
@@ -533,6 +549,8 @@ function renderAnalytics() {
 
 let categoriesChartInstance = null;
 let chartTooltip = null;
+let chartMouseMoveHandler = null;  // Referencja do handlera mousemove (zapobiega memory leak)
+let chartMouseLeaveHandler = null;  // Referencja do handlera mouseleave (zapobiega memory leak)
 
 // Helper function to adjust brightness of hex color
 function adjustBrightness(hex, percent) {
@@ -569,6 +587,16 @@ function renderCategoriesChart(breakdown) {
   if (chartTooltip) {
     chartTooltip.remove();
     chartTooltip = null;
+  }
+
+  // Cleanup starych event listenerów (zapobiega memory leak)
+  if (chartMouseMoveHandler) {
+    canvas.removeEventListener('mousemove', chartMouseMoveHandler);
+    chartMouseMoveHandler = null;
+  }
+  if (chartMouseLeaveHandler) {
+    canvas.removeEventListener('mouseleave', chartMouseLeaveHandler);
+    chartMouseLeaveHandler = null;
   }
 
   const container = canvas.parentElement;
@@ -762,8 +790,8 @@ function renderCategoriesChart(breakdown) {
   `;
   document.body.appendChild(chartTooltip);
 
-  // Mouse interaction
-  canvas.addEventListener('mousemove', (e) => {
+  // Mouse interaction - zapisz referencję do handlera (zapobiega memory leak)
+  chartMouseMoveHandler = (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
@@ -840,12 +868,16 @@ function renderCategoriesChart(breakdown) {
       chartTooltip.style.display = 'none';
       canvas.style.cursor = 'default';
     }
-  });
+  };
 
-  canvas.addEventListener('mouseleave', () => {
+  chartMouseLeaveHandler = () => {
     chartTooltip.style.display = 'none';
     canvas.style.cursor = 'default';
-  });
+  };
+
+  // Dodaj event listenery z zapisanymi referencjami
+  canvas.addEventListener('mousemove', chartMouseMoveHandler);
+  canvas.addEventListener('mouseleave', chartMouseLeaveHandler);
 
   categoriesChartInstance = {
     destroy: () => {
@@ -2155,8 +2187,9 @@ window.addCorrection = async (e) => {
   const form = e.target;
   const newTotalAmount = parseFloat(form.correctionAmount.value);
   const reason = form.correctionReason.value.trim();
-  
-  if (isNaN(newTotalAmount)) {
+
+  // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+  if (!Number.isFinite(newTotalAmount)) {
     showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
     return;
   }

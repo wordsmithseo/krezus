@@ -1,18 +1,19 @@
 export function validateAmount(amount) {
   const num = parseFloat(amount);
-  
-  if (isNaN(num)) {
+
+  // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+  if (!Number.isFinite(num)) {
     return false;
   }
-  
+
   if (num <= 0) {
     return false;
   }
-  
+
   if (num > 1000000) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -46,19 +47,20 @@ export function validateDate(dateStr) {
 
 export function validateQuantity(quantity) {
   const num = parseFloat(quantity);
-  
-  if (isNaN(num)) {
+
+  // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+  if (!Number.isFinite(num)) {
     return false;
   }
-  
+
   if (num < 1) {
     return false;
   }
-  
+
   if (num > 10000) {
     return false;
   }
-  
+
   return true;
 }
 

@@ -901,7 +901,8 @@ export async function showPurposeBudgetModal(budget = null) {
       amount = parseFloat(document.getElementById('purposeBudgetAmount').value);
     } else {
       const percent = parseFloat(document.getElementById('purposeBudgetPercent').value);
-      if (isNaN(percent) || percent <= 0 || percent > 100) {
+      // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+      if (!Number.isFinite(percent) || percent <= 0 || percent > 100) {
         showErrorMessage('Procent musi być między 0 a 100');
         return;
       }
@@ -913,7 +914,8 @@ export async function showPurposeBudgetModal(budget = null) {
       return;
     }
 
-    if (isNaN(amount) || amount <= 0) {
+    // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+    if (!Number.isFinite(amount) || amount <= 0) {
       showErrorMessage('Kwota musi być większa od 0');
       return;
     }
