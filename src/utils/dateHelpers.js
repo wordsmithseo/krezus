@@ -62,6 +62,55 @@ export function getCurrentTimeString() {
   return now.toTimeString().slice(0, 5);
 }
 
+/**
+ * Zwraca aktualną datę+czas w strefie Warsaw
+ */
+export function getWarsawDateTime() {
+  const now = new Date();
+  const warsawStr = now.toLocaleString('sv-SE', {
+    timeZone: 'Europe/Warsaw',
+    hour12: false
+  });
+  return new Date(warsawStr);
+}
+
+/**
+ * Zwraca aktualny czas HH:MM w strefie Warsaw
+ */
+export function getWarsawTimeString() {
+  const now = getWarsawDateTime();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
+ * Sprawdza czy transakcja planowana powinna być już zrealizowana
+ * Bierze pod uwagę zarówno datę jak i godzinę (jeśli podana)
+ */
+export function shouldBeRealisedNow(transaction) {
+  if (!transaction || transaction.type !== 'planned') {
+    return false;
+  }
+
+  const now = getWarsawDateTime();
+
+  // Jeśli transakcja ma podany czas, porównaj datę+czas
+  if (transaction.time && transaction.time.trim() !== '') {
+    const transactionDateTime = parseDateTime(transaction.date, transaction.time);
+    if (isNaN(transactionDateTime)) {
+      // Jeśli parsowanie się nie powiodło, użyj samej daty
+      const today = getWarsawDateString();
+      return transaction.date <= today;
+    }
+    return transactionDateTime <= now;
+  }
+
+  // Jeśli nie ma czasu, porównaj tylko daty
+  const today = getWarsawDateString();
+  return transaction.date <= today;
+}
+
 export function getDaysLeftFor(endDateStr) {
   if (!endDateStr) return 0;
   
