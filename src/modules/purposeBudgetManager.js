@@ -21,8 +21,14 @@ export async function createPurposeBudget(name, amount) {
     throw new Error(`Budżet o nazwie "${name}" już istnieje`);
   }
 
+  // Walidacja kwoty - sprawdź czy to poprawna liczba
+  const parsedAmount = parseFloat(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Niepoprawna kwota budżetu');
+  }
+
   // Sprawdź dostępne środki
-  const validation = validateBudgetAmount(amount);
+  const validation = validateBudgetAmount(parsedAmount);
   if (!validation.valid) {
     throw new Error(validation.message);
   }
@@ -30,13 +36,13 @@ export async function createPurposeBudget(name, amount) {
   // Znajdź budżet "Ogólny" i zmniejsz jego kwotę
   const generalBudget = budgets.find(b => b.name === 'Ogólny');
   if (generalBudget) {
-    generalBudget.amount -= parseFloat(amount);
+    generalBudget.amount -= parsedAmount;
   }
 
   const newBudget = {
     id: `pb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: escapeHTML(name.trim()),
-    amount: parseFloat(amount),
+    amount: parsedAmount,
     timestamp: new Date().toISOString()
   };
 
@@ -46,7 +52,7 @@ export async function createPurposeBudget(name, amount) {
   // Zaloguj operację
   await log('PURPOSE_BUDGET_ADD', {
     budgetName: name,
-    amount: parseFloat(amount),
+    amount: parsedAmount,
     budgetId: newBudget.id
   });
 
@@ -76,9 +82,15 @@ export async function updatePurposeBudget(budgetId, name, amount) {
     }
   }
 
+  // Walidacja kwoty - sprawdź czy to poprawna liczba
+  const parsedAmount = parseFloat(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    throw new Error('Niepoprawna kwota budżetu');
+  }
+
   // Jeśli zmienia się kwota, sprawdź dostępność środków i zaktualizuj budżet "Ogólny"
-  if (amount !== budget.amount) {
-    const amountDiff = parseFloat(amount) - budget.amount;
+  if (parsedAmount !== budget.amount) {
+    const amountDiff = parsedAmount - budget.amount;
     if (amountDiff > 0) {
       // Sprawdź dostępność środków, wykluczając edytowany budżet
       const validation = validateBudgetAmount(amountDiff, budgetId);
@@ -101,7 +113,7 @@ export async function updatePurposeBudget(budgetId, name, amount) {
   const oldAmount = budget.amount;
 
   budget.name = escapeHTML(name.trim());
-  budget.amount = parseFloat(amount);
+  budget.amount = parsedAmount;
 
   await savePurposeBudgets(budgets);
 
@@ -111,7 +123,7 @@ export async function updatePurposeBudget(budgetId, name, amount) {
     oldName: oldName,
     newName: name,
     oldAmount: oldAmount,
-    newAmount: parseFloat(amount)
+    newAmount: parsedAmount
   });
 
   console.log('✅ Zaktualizowano budżet celowy:', budget);
@@ -207,11 +219,15 @@ export function calculateBudgetSpent(budgetId, excludeExpenseId = null) {
   const expenses = getExpenses();
 
   // Sumuj tylko zrealizowane wydatki (type: 'normal')
+  // Z walidacją null/undefined dla bezpieczeństwa
   const budgetExpenses = expenses.filter(
-    e => e.purposeBudgetId === budgetId && e.type === 'normal' && e.id !== excludeExpenseId
+    e => e?.purposeBudgetId === budgetId &&
+         e?.type === 'normal' &&
+         e?.id &&
+         e.id !== excludeExpenseId
   );
 
-  return budgetExpenses.reduce((sum, e) => sum + e.amount, 0);
+  return budgetExpenses.reduce((sum, e) => sum + (e?.amount || 0), 0);
 }
 
 /**

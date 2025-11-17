@@ -263,7 +263,9 @@ export async function loadSavingGoal() {
   try {
     const snapshot = await get(ref(db, getUserBudgetPath('savingGoal')));
     const val = snapshot.val();
-    savingGoalCache = val ? parseFloat(val) : 0;
+    const parsed = val ? parseFloat(val) : 0;
+    // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+    savingGoalCache = Number.isFinite(parsed) ? parsed : 0;
     return savingGoalCache;
   } catch (error) {
     console.error('❌ Błąd ładowania celu oszczędności:', error);
@@ -758,7 +760,9 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
   const savingGoalRef = ref(db, getUserBudgetPath('savingGoal'));
   activeListeners.savingGoal = onValue(savingGoalRef, (snapshot) => {
     const val = snapshot.val();
-    const newGoal = val ? parseFloat(val) : 0;
+    const parsed = val ? parseFloat(val) : 0;
+    // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
+    const newGoal = Number.isFinite(parsed) ? parsed : 0;
 
     if (savingGoalCache !== newGoal) {
       savingGoalCache = newGoal;
