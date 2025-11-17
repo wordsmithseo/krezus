@@ -574,28 +574,28 @@ export async function autoRealiseDueTransactions() {
   let expensesUpdated = false;
   
   incomesCache.forEach(inc => {
-    if (inc && inc.type === 'planned' && inc.date < today) {
+    if (inc && inc.type === 'planned' && inc.date <= today) {
       inc.type = 'normal';
       inc.wasPlanned = true;
-      
+
       if (!inc.time || inc.time.trim() === '') {
         inc.time = getCurrentTimeString();
       }
-      
+
       incomesUpdated = true;
       console.log('🔄 Auto-realizacja przychodu:', inc.id);
     }
   });
-  
+
   expensesCache.forEach(exp => {
-    if (exp && exp.type === 'planned' && exp.date < today) {
+    if (exp && exp.type === 'planned' && exp.date <= today) {
       exp.type = 'normal';
       exp.wasPlanned = true;
-      
+
       if (!exp.time || exp.time.trim() === '') {
         exp.time = getCurrentTimeString();
       }
-      
+
       expensesUpdated = true;
       console.log('🔄 Auto-realizacja wydatku:', exp.id);
     }
