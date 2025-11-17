@@ -10,7 +10,7 @@ export function sanitizeHTML(html) {
 
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'small', 'br', 'span', 'div', 'p', 'ul', 'li', 'button'],
-    ALLOWED_ATTR: ['class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'onclick', 'onmouseover', 'onmouseout'],
+    ALLOWED_ATTR: ['class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'data-action', 'data-id', 'data-name', 'data-category-id', 'data-expense-id', 'data-income-id', 'data-page'],
     ALLOW_DATA_ATTR: true
   });
 }
