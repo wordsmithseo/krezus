@@ -7,6 +7,7 @@ import {
 } from './dataManager.js';
 import { calculateAvailableFunds } from './budgetCalculator.js';
 import { log } from './logger.js';
+import { escapeHTML } from '../utils/sanitizer.js';
 
 /**
  * Utwórz nowy budżet celowy
@@ -34,7 +35,7 @@ export async function createPurposeBudget(name, amount) {
 
   const newBudget = {
     id: `pb_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    name,
+    name: escapeHTML(name.trim()),
     amount: parseFloat(amount),
     timestamp: new Date().toISOString()
   };
@@ -99,7 +100,7 @@ export async function updatePurposeBudget(budgetId, name, amount) {
   const oldName = budget.name;
   const oldAmount = budget.amount;
 
-  budget.name = name;
+  budget.name = escapeHTML(name.trim());
   budget.amount = parseFloat(amount);
 
   await savePurposeBudgets(budgets);

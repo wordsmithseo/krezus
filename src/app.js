@@ -121,6 +121,7 @@ import { exportBudgetDataForLLM } from './utils/llmExport.js';
 
 import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
 import { showConfirmModal } from './components/confirmModal.js';
+import { initClickDelegation, getDataAttributes } from './handlers/clickDelegation.js';
 
 // Import funkcji renderowania UI
 import { renderSummary } from './ui/renderSummary.js';
@@ -866,9 +867,9 @@ window.addEventListener('resize', () => {
   }
 });
 
-window.selectPeriod = (days) => {
+const selectPeriod = (days) => {
   document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-  
+
   if (days === 'custom') {
     document.querySelector('.period-btn:last-child').classList.add('active');
     document.getElementById('customPeriodInputs').style.display = 'block';
@@ -880,20 +881,20 @@ window.selectPeriod = (days) => {
   }
 };
 
-window.applyCustomPeriod = () => {
+const applyCustomPeriod = () => {
   const from = document.getElementById('analyticsDateFrom').value;
   const to = document.getElementById('analyticsDateTo').value;
-  
+
   if (!from || !to) {
     showErrorMessage('Wybierz obie daty');
     return;
   }
-  
+
   if (from > to) {
     showErrorMessage('Data "od" nie może być późniejsza niż data "do"');
     return;
   }
-  
+
   setCustomDateRange(from, to);
   renderAnalytics();
   showSuccessMessage('Zastosowano własny przedział dat');
@@ -933,7 +934,7 @@ function renderCategories() {
         <div style="background: #e8cf8d; border: 1px solid #e89d3f; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
           <strong>🔀 Tryb scalania kategorii</strong>
           <p style="margin: 8px 0;">Wybierz kategorię docelową, do której chcesz scalić kategorię <strong>${mergingCat.name}</strong>.</p>
-          <button class="btn btn-secondary" onclick="window.cancelMergeCategory()" style="margin-top: 8px;">Anuluj scalanie</button>
+          <button class="btn btn-secondary" data-action="cancel-merge-category" style="margin-top: 8px;">Anuluj scalanie</button>
         </div>
       `;
     }
@@ -952,7 +953,8 @@ function renderCategories() {
             <input
               type="checkbox"
               id="merge-target-${cat.id}"
-              onchange="window.selectMergeTarget('${cat.id}')"
+              data-action="select-merge-target"
+              data-id="${cat.id}"
               style="width: 20px; height: 20px; cursor: pointer;"
             />
           ` : ''}
@@ -963,9 +965,9 @@ function renderCategories() {
         </div>
         <div style="display: flex; gap: 8px;">
           ${!mergingCategoryId ? `
-            <button class="btn-icon" onclick="window.startMergeCategory('${cat.id}')" title="Scal kategorię">🔀</button>
-            <button class="btn-icon" onclick="window.editCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">✏️</button>
-            <button class="btn-icon" onclick="window.deleteCategory('${cat.id}', '${cat.name.replace(/'/g, "\\'")}')">🗑️</button>
+            <button class="btn-icon" data-action="start-merge-category" data-id="${cat.id}" title="Scal kategorię">🔀</button>
+            <button class="btn-icon" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">✏️</button>
+            <button class="btn-icon" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">🗑️</button>
           ` : ''}
         </div>
       </div>
@@ -1001,7 +1003,7 @@ function renderCategoriesPagination(totalPages) {
   }
 
   let html = '';
-  html += `<button class="pagination-btn" ${currentCategoryPage === 1 ? 'disabled' : ''} onclick="window.changeCategoryPage(${currentCategoryPage - 1})">◀</button>`;
+  html += `<button class="pagination-btn" ${currentCategoryPage === 1 ? 'disabled' : ''} data-action="change-category-page" data-page="${currentCategoryPage - 1}">◀</button>`;
 
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentCategoryPage - Math.floor(maxButtons / 2));
@@ -1012,15 +1014,15 @@ function renderCategoriesPagination(totalPages) {
   }
 
   for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentCategoryPage ? 'active' : ''}" onclick="window.changeCategoryPage(${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === currentCategoryPage ? 'active' : ''}" data-action="change-category-page" data-page="${i}">${i}</button>`;
   }
 
-  html += `<button class="pagination-btn" ${currentCategoryPage === totalPages ? 'disabled' : ''} onclick="window.changeCategoryPage(${currentCategoryPage + 1})">▶</button>`;
+  html += `<button class="pagination-btn" ${currentCategoryPage === totalPages ? 'disabled' : ''} data-action="change-category-page" data-page="${currentCategoryPage + 1}">▶</button>`;
 
   paginationContainer.innerHTML = html;
 }
 
-window.changeCategoryPage = (page) => {
+const changeCategoryPage = (page) => {
   const total = getCategories().length;
   const totalPages = Math.ceil(total / PAGINATION.CATEGORIES_PER_PAGE);
 
@@ -1167,7 +1169,7 @@ function setupCategorySuggestions() {
     }
 
     const html = descriptions.map(desc => `
-      <button type="button" class="category-quick-btn" onclick="selectDescription('${desc.replace(/'/g, "\\'")}')">
+      <button type="button" class="category-quick-btn" data-action="select-description" data-description="${escapeHTML(desc)}">
         ${desc}
       </button>
     `).join('');
@@ -1182,7 +1184,7 @@ function setupCategorySuggestions() {
     }
 
     const html = categories.map(cat => `
-      <button type="button" class="category-quick-btn" onclick="selectCategory('${cat.name.replace(/'/g, "\\'")}')">
+      <button type="button" class="category-quick-btn" data-action="select-category" data-name="${escapeHTML(cat.name)}">
         ${cat.name}
       </button>
     `).join('');
@@ -1232,7 +1234,7 @@ function setupSourceSuggestions() {
     }
 
     const html = sources.map(src => `
-      <button type="button" class="category-quick-btn" onclick="selectSource('${typeof src === 'string' ? src.replace(/'/g, "\\'") : src}')">
+      <button type="button" class="category-quick-btn" data-action="select-source" data-source="${escapeHTML(src)}">
         ${src}
       </button>
     `).join('');
@@ -1241,21 +1243,21 @@ function setupSourceSuggestions() {
   }
 }
 
-window.selectCategory = (categoryName) => {
+const selectCategory = (categoryName) => {
   const categoryInput = document.getElementById('expenseCategory');
   if (categoryInput) {
     categoryInput.value = categoryName;
-    
+
     const descriptionInput = document.getElementById('expenseDescription');
     if (descriptionInput) {
       descriptionInput.focus();
     }
-    
+
     const topDescriptions = getTopDescriptionsForCategory(categoryName, 5);
     const descriptionSuggestions = document.getElementById('descriptionSuggestions');
     if (descriptionSuggestions && topDescriptions.length > 0) {
       const html = topDescriptions.map(desc => `
-        <div class="suggestion-item" onclick="selectDescription('${desc.name.replace(/'/g, "\\'")}')">
+        <div class="suggestion-item" data-action="select-description" data-description="${escapeHTML(desc.name)}">
           ${desc.name}
         </div>
       `).join('');
@@ -1264,7 +1266,7 @@ window.selectCategory = (categoryName) => {
   }
 };
 
-window.selectDescription = (description) => {
+const selectDescription = (description) => {
   const descriptionInput = document.getElementById('expenseDescription');
   if (descriptionInput) {
     descriptionInput.value = description;
@@ -1272,7 +1274,7 @@ window.selectDescription = (description) => {
   }
 };
 
-window.selectSource = (source) => {
+const selectSource = (source) => {
   const sourceInput = document.getElementById('incomeSource');
   if (sourceInput) {
     sourceInput.value = source;
@@ -1322,9 +1324,9 @@ function renderExpenses() {
           </span>
         </td>
         <td class="actions">
-          ${exp.type === 'planned' ? `<button class="btn-icon" onclick="window.realiseExpense('${exp.id}')" title="Zrealizuj teraz">✅</button>` : ''}
-          <button class="btn-icon" onclick="window.editExpense('${exp.id}')" title="Edytuj">✏️</button>
-          <button class="btn-icon" onclick="window.deleteExpense('${exp.id}')" title="Usuń">🗑️</button>
+          ${exp.type === 'planned' ? `<button class="btn-icon" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj teraz">✅</button>` : ''}
+          <button class="btn-icon" data-action="edit-expense" data-id="${exp.id}" title="Edytuj">✏️</button>
+          <button class="btn-icon" data-action="delete-expense" data-id="${exp.id}" title="Usuń">🗑️</button>
         </td>
       </tr>
     `;
@@ -1345,54 +1347,54 @@ function renderExpensesPagination(total) {
   }
 
   let html = '';
-  html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage - 1})">◀</button>`;
-  
+  html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage - 1}">◀</button>`;
+
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentExpensePage - Math.floor(maxButtons / 2));
   let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-  
+
   if (endPage - startPage + 1 < maxButtons) {
     startPage = Math.max(1, endPage - maxButtons + 1);
   }
-  
+
   for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" onclick="window.changeExpensePage(${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" data-action="change-expense-page" data-page="${i}">${i}</button>`;
   }
-  
-  html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} onclick="window.changeExpensePage(${currentExpensePage + 1})">▶</button>`;
+
+  html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage + 1}">▶</button>`;
   container.innerHTML = html;
 }
 
-window.changeExpensePage = (page) => {
+const changeExpensePage = (page) => {
   const total = getExpenses().length;
   const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
-  
+
   if (page < 1 || page > totalPages) return;
-  
+
   currentExpensePage = page;
   renderExpenses();
-  
+
   const tableBody = document.getElementById('expensesTableBody');
   if (tableBody) {
     tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 };
 
-window.realiseExpense = async (expenseId) => {
+const realiseExpense = async (expenseId) => {
   const expenses = getExpenses();
   const expense = expenses.find(e => e.id === expenseId);
-  
+
   if (!expense || expense.type !== 'planned') return;
-  
+
   expense.type = 'normal';
   expense.date = getWarsawDateString();
   expense.time = getCurrentTimeString();
   expense.wasPlanned = true;
-  
+
   try {
     await saveExpenses(expenses);
     await updateDailyEnvelope();
-    
+
     const budgetUserName = getBudgetUserName(expense.userId);
     await log('EXPENSE_REALISE', {
       amount: expense.amount,
@@ -1400,7 +1402,7 @@ window.realiseExpense = async (expenseId) => {
       description: expense.description,
       budgetUser: budgetUserName
     });
-    
+
     showSuccessMessage('Wydatek zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji wydatku:', error);
@@ -1450,9 +1452,9 @@ function renderSources() {
       </td>
       <td class="actions">
          ${!isCorrection && inc.type === 'planned' ? `
-           <button class="btn-icon" onclick="window.realiseIncome('${inc.id}')" title="Zrealizuj teraz">✅</button>
-           <button class="btn-icon" onclick="window.editIncome('${inc.id}')" title="Edytuj">✏️</button>
-           <button class="btn-icon" onclick="window.deleteIncome('${inc.id}')" title="Usuń">🗑️</button>
+           <button class="btn-icon" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj teraz">✅</button>
+           <button class="btn-icon" data-action="edit-income" data-id="${inc.id}" title="Edytuj">✏️</button>
+           <button class="btn-icon" data-action="delete-income" data-id="${inc.id}" title="Usuń">🗑️</button>
          ` : '<span class="no-actions">-</span>'}
       </td>
     </tr>
@@ -1473,21 +1475,21 @@ function renderIncomesPagination(total) {
   }
 
   let html = '';
-  html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage - 1})">◀</button>`;
-  
+  html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage - 1}">◀</button>`;
+
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentIncomePage - Math.floor(maxButtons / 2));
   let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-  
+
   if (endPage - startPage + 1 < maxButtons) {
     startPage = Math.max(1, endPage - maxButtons + 1);
   }
-  
+
   for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" onclick="window.changeIncomePage(${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" data-action="change-income-page" data-page="${i}">${i}</button>`;
   }
-  
-  html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} onclick="window.changeIncomePage(${currentIncomePage + 1})">▶</button>`;
+
+  html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage + 1}">▶</button>`;
   container.innerHTML = html;
 }
 
@@ -1514,8 +1516,8 @@ function renderPurposeBudgets() {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h4 style="margin: 0;">${budget.name}</h4>
           <div>
-            <button class="btn-icon" onclick="editPurposeBudget('${budget.id}')" title="Edytuj">✏️</button>
-            <button class="btn-icon" onclick="deletePurposeBudget('${budget.id}')" title="Usuń">🗑️</button>
+            <button class="btn-icon" data-action="edit-purpose-budget" data-id="${budget.id}" title="Edytuj">✏️</button>
+            <button class="btn-icon" data-action="delete-purpose-budget" data-id="${budget.id}" title="Usuń">🗑️</button>
           </div>
         </div>
         <div style="margin-bottom: 8px;">
@@ -1541,7 +1543,7 @@ function renderPurposeBudgets() {
 // Globalnie dostępne funkcje do zarządzania budżetami celowymi
 window.renderPurposeBudgets = renderPurposeBudgets;
 
-window.editPurposeBudget = async (budgetId) => {
+const editPurposeBudget = async (budgetId) => {
   const budgets = getPurposeBudgets();
   const budget = budgets.find(b => b.id === budgetId);
   if (budget) {
@@ -1550,7 +1552,7 @@ window.editPurposeBudget = async (budgetId) => {
   }
 };
 
-window.deletePurposeBudget = async (budgetId) => {
+const deletePurposeBudget = async (budgetId) => {
   const budgets = getPurposeBudgets();
   const budget = budgets.find(b => b.id === budgetId);
   if (!budget) return;
@@ -1583,12 +1585,12 @@ window.deletePurposeBudget = async (budgetId) => {
   }
 };
 
-window.showPurposeBudgetModal = async (budget = null) => {
-  const { showPurposeBudgetModal } = await import('./components/modals.js');
-  await showPurposeBudgetModal(budget);
+const showPurposeBudgetModal = async (budget = null) => {
+  const { showPurposeBudgetModal: modalFunc } = await import('./components/modals.js');
+  await modalFunc(budget);
 };
 
-window.changeIncomePage = (page) => {
+const changeIncomePage = (page) => {
   const total = getIncomes().length;
   const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
   
@@ -1603,7 +1605,7 @@ window.changeIncomePage = (page) => {
   }
 };
 
-window.realiseIncome = async (incomeId) => {
+const realiseIncome = async (incomeId) => {
   const incomes = getIncomes();
   const income = incomes.find(i => i.id === incomeId);
   
@@ -1635,7 +1637,7 @@ window.realiseIncome = async (incomeId) => {
   }
 };
 
-window.editIncome = (incomeId) => {
+const editIncome = (incomeId) => {
   const income = getIncomes().find(i => i.id === incomeId);
   if (!income) return;
   
@@ -1670,7 +1672,7 @@ window.editIncome = (incomeId) => {
   });
 };
 
-window.deleteIncome = async (incomeId) => {
+const deleteIncome = async (incomeId) => {
   const confirmed = await showPasswordModal(
     'Usuwanie przychodu',
     'Czy na pewno chcesz usunąć ten przychód? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
@@ -1709,7 +1711,7 @@ window.deleteIncome = async (incomeId) => {
   }
 };
 
-window.addCategory = async () => {
+const addCategory = async () => {
   const input = document.getElementById('newCategoryName');
   const name = input.value.trim();
 
@@ -1719,7 +1721,7 @@ window.addCategory = async () => {
   }
 
   const categories = getCategories();
-  
+
   if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
     showErrorMessage('Kategoria o tej nazwie już istnieje');
     return;
@@ -1727,7 +1729,7 @@ window.addCategory = async () => {
 
   const newCategory = {
     id: `cat_${Date.now()}`,
-    name: name,
+    name: escapeHTML(name.trim()),
     icon: getCategoryIcon(name)
   };
 
@@ -1752,11 +1754,11 @@ window.addCategory = async () => {
   }
 };
 
-window.editCategory = async (categoryId, currentName) => {
+const editCategory = async (categoryId, currentName) => {
   showEditCategoryModal(categoryId, currentName);
 };
 
-window.deleteCategory = async (categoryId, categoryName) => {
+const deleteCategory = async (categoryId, categoryName) => {
   const expenses = getExpenses();
   const count = expenses.filter(e => e.category === categoryName).length;
   
@@ -1802,19 +1804,19 @@ window.deleteCategory = async (categoryId, categoryName) => {
 };
 
 // Rozpocznij proces scalania kategorii
-window.startMergeCategory = (categoryId) => {
+const startMergeCategory = (categoryId) => {
   mergingCategoryId = categoryId;
   renderCategories();
 };
 
 // Anuluj scalanie kategorii
-window.cancelMergeCategory = () => {
+const cancelMergeCategory = () => {
   mergingCategoryId = null;
   renderCategories();
 };
 
 // Wybierz kategorię docelową i wykonaj scalanie
-window.selectMergeTarget = async (targetCategoryId) => {
+const selectMergeTarget = async (targetCategoryId) => {
   if (!mergingCategoryId) return;
 
   const categories = getCategories();
@@ -1929,7 +1931,7 @@ window.addExpense = async (e) => {
   if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
     const newCategory = {
       id: `cat_${Date.now()}`,
-      name: category,
+      name: escapeHTML(category),
       icon: getCategoryIcon(category)
     };
     const updatedCategories = [...categories, newCategory];
@@ -1954,8 +1956,8 @@ window.addExpense = async (e) => {
     time,
     userId,
     purposeBudgetId,
-    category,
-    description,
+    category: escapeHTML(category),
+    description: escapeHTML(description),
     timestamp: editingExpenseId ? getExpenses().find(e => e.id === editingExpenseId)?.timestamp : getCurrentTimeString()
   };
 
@@ -1997,7 +1999,7 @@ window.addExpense = async (e) => {
   }
 };
 
-window.editExpense = (expenseId) => {
+const editExpense = (expenseId) => {
   const expense = getExpenses().find(e => e.id === expenseId);
   if (!expense) return;
   
@@ -2030,7 +2032,7 @@ window.editExpense = (expenseId) => {
   });
 };
 
-window.deleteExpense = async (expenseId) => {
+const deleteExpense = async (expenseId) => {
   const confirmed = await showPasswordModal(
     'Usuwanie wydatku',
     'Czy na pewno chcesz usunąć ten wydatek? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
@@ -2103,7 +2105,7 @@ window.addIncome = async (e) => {
     type,
     time,
     userId,
-    source,
+    source: escapeHTML(source),
     timestamp: editingIncomeId ? getIncomes().find(i => i.id === editingIncomeId)?.timestamp : getCurrentTimeString()
   };
 
@@ -2290,8 +2292,8 @@ window.saveSettings = async (e) => {
   }
 };
 
-// Eksport danych budżetowych do analizy LLM
-window.exportBudgetDataForLLM = async (format = 'json') => {
+// Eksport danych budżetowych do analizy LLM - wrapper dla event delegation
+const handleExportBudgetData = async (format = 'json') => {
   try {
     console.log(`📊 Eksport danych w formacie: ${format}`);
 
@@ -2399,26 +2401,26 @@ function renderLogsPagination(totalPages) {
   }
 
   let html = '';
-  html += `<button class="pagination-btn" ${currentLogPage === 1 ? 'disabled' : ''} onclick="window.changeLogPage(${currentLogPage - 1})">◀</button>`;
-  
+  html += `<button class="pagination-btn" ${currentLogPage === 1 ? 'disabled' : ''} data-action="change-log-page" data-page="${currentLogPage - 1}">◀</button>`;
+
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentLogPage - Math.floor(maxButtons / 2));
   let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-  
+
   if (endPage - startPage + 1 < maxButtons) {
     startPage = Math.max(1, endPage - maxButtons + 1);
   }
-  
+
   for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentLogPage ? 'active' : ''}" onclick="window.changeLogPage(${i})">${i}</button>`;
+    html += `<button class="pagination-btn ${i === currentLogPage ? 'active' : ''}" data-action="change-log-page" data-page="${i}">${i}</button>`;
   }
-  
-  html += `<button class="pagination-btn" ${currentLogPage === totalPages ? 'disabled' : ''} onclick="window.changeLogPage(${currentLogPage + 1})">▶</button>`;
+
+  html += `<button class="pagination-btn" ${currentLogPage === totalPages ? 'disabled' : ''} data-action="change-log-page" data-page="${currentLogPage + 1}">▶</button>`;
   
   paginationContainer.innerHTML = html;
 }
 
-window.changeLogPage = async (page) => {
+const changeLogPage = async (page) => {
   const logs = await getLogs();
   const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
   
@@ -2433,14 +2435,14 @@ window.changeLogPage = async (page) => {
   }
 };
 
-window.clearLogs = async () => {
+const clearLogs = async () => {
   const confirmed = await showPasswordModal(
     'Czyszczenie logów',
     'Czy na pewno chcesz wyczyścić wszystkie logi? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
   );
-  
+
   if (!confirmed) return;
-  
+
   try {
     await clearAllLogs('System');
     currentLogPage = 1;
@@ -2452,7 +2454,7 @@ window.clearLogs = async () => {
   }
 };
 
-window.showSection = (sectionId) => {
+const showSection = (sectionId) => {
   document.querySelectorAll('.section').forEach(section => {
     section.classList.remove('active');
   });
@@ -2465,12 +2467,12 @@ window.showSection = (sectionId) => {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  
-  const activeBtn = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+
+  const activeBtn = document.querySelector(`[data-action="show-section"][data-section="${sectionId}"]`);
   if (activeBtn) {
     activeBtn.classList.add('active');
   }
-  
+
   if (window.innerWidth <= 768) {
     const navMenu = document.getElementById('navMenu');
     const hamburger = document.querySelector('.nav-hamburger');
@@ -2479,12 +2481,12 @@ window.showSection = (sectionId) => {
       hamburger.classList.remove('active');
     }
   }
-  
+
   if (sectionId === 'settingsSection') {
     currentLogPage = 1;
     renderLogs();
   }
-  
+
   if (sectionId === 'analyticsSection') {
     setTimeout(() => {
       const breakdown = getCategoriesBreakdown();
@@ -2498,7 +2500,7 @@ window.showSection = (sectionId) => {
 // Otwiera formularz wydatku z pre-wybranym budżetem celowym
 window.openExpenseFormWithBudget = (budgetId) => {
   // Otwórz sekcję wydatków
-  window.showSection('expensesSection');
+  showSection('expensesSection');
 
   // Ustaw wybrany budżet celowy
   setTimeout(() => {
@@ -2515,7 +2517,7 @@ window.openExpenseFormWithBudget = (budgetId) => {
   }, 100);
 };
 
-window.openProfile = () => {
+const openProfile = () => {
   showProfileModal();
 };
 
@@ -2580,7 +2582,7 @@ window.handleRegister = async (e) => {
   }
 };
 
-window.handleLogout = async () => {
+const handleLogout = async () => {
   const confirmed = await showConfirmModal(
     'Wylogowanie',
     'Czy na pewno chcesz się wylogować?',
@@ -2717,6 +2719,103 @@ document.addEventListener('DOMContentLoaded', () => {
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
 
+  // Funkcja do przełączania zakładek autoryzacji
+  const showAuthTab = (tabName) => {
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+    const tabButtons = document.querySelectorAll('.auth-tabs .tab-btn');
+
+    // Ukryj wszystkie zakładki
+    loginTab.classList.remove('active');
+    registerTab.classList.remove('active');
+
+    // Pokaż wybraną zakładkę
+    if (tabName === 'login') {
+      loginTab.classList.add('active');
+    } else if (tabName === 'register') {
+      registerTab.classList.add('active');
+    }
+
+    // Aktualizuj przyciski
+    tabButtons.forEach(btn => {
+      btn.classList.remove('active');
+      const btnTab = btn.dataset.tab;
+      if (btnTab === tabName) {
+        btn.classList.add('active');
+      }
+    });
+  };
+
+  // Inicjalizuj event delegation dla bezpiecznej obsługi kliknięć
+  initClickDelegation({
+    // Kategorie
+    'cancel-merge-category': () => cancelMergeCategory(),
+    'start-merge-category': (el) => startMergeCategory(getDataAttributes(el).id),
+    'edit-category': (el) => {
+      const data = getDataAttributes(el);
+      editCategory(data.id, data.name);
+    },
+    'delete-category': (el) => {
+      const data = getDataAttributes(el);
+      deleteCategory(data.id, data.name);
+    },
+    'select-merge-target': (el) => selectMergeTarget(getDataAttributes(el).id),
+    'change-category-page': (el) => changeCategoryPage(parseInt(getDataAttributes(el).page, 10)),
+
+    // Wydatki - quick buttons i suggestions
+    'select-description': (el) => selectDescription(getDataAttributes(el).description),
+    'select-category': (el) => selectCategory(getDataAttributes(el).name),
+
+    // Wydatki - akcje
+    'realise-expense': (el) => realiseExpense(getDataAttributes(el).id),
+    'edit-expense': (el) => editExpense(getDataAttributes(el).id),
+    'delete-expense': (el) => deleteExpense(getDataAttributes(el).id),
+    'change-expense-page': (el) => changeExpensePage(parseInt(getDataAttributes(el).page, 10)),
+
+    // Przychody - quick buttons
+    'select-source': (el) => selectSource(getDataAttributes(el).source),
+
+    // Przychody - akcje
+    'realise-income': (el) => realiseIncome(getDataAttributes(el).id),
+    'edit-income': (el) => editIncome(getDataAttributes(el).id),
+    'delete-income': (el) => deleteIncome(getDataAttributes(el).id),
+    'change-income-page': (el) => changeIncomePage(parseInt(getDataAttributes(el).page, 10)),
+
+    // Budżety celowe
+    'edit-purpose-budget': (el) => editPurposeBudget(getDataAttributes(el).id),
+    'delete-purpose-budget': (el) => deletePurposeBudget(getDataAttributes(el).id),
+
+    // Logi
+    'change-log-page': (el) => changeLogPage(parseInt(getDataAttributes(el).page, 10)),
+    'clear-logs': () => clearLogs(),
+
+    // Autoryzacja
+    'show-auth-tab': (el) => showAuthTab(el.dataset.tab),
+
+    // Nawigacja
+    'show-section': (el) => showSection(el.dataset.section),
+    'open-profile': () => openProfile(),
+    'handle-logout': () => handleLogout(),
+
+    // Kategorie - dodawanie
+    'add-category': () => addCategory(),
+
+    // Analityka
+    'select-period': (el) => {
+      const period = el.dataset.period;
+      // Konwertuj na number jeśli to liczba
+      const parsedPeriod = period === 'all' || period === 'custom' ? period : parseInt(period, 10);
+      selectPeriod(parsedPeriod);
+    },
+    'apply-custom-period': () => applyCustomPeriod(),
+
+    // Budżety celowe
+    'show-purpose-budget-modal': () => showPurposeBudgetModal(),
+
+    // Eksport danych
+    'export-budget-data': (el) => handleExportBudgetData(el.dataset.format)
+  });
+
   // Dodaj kliknięcie na kafelek "Dostępne środki"
   const availableFundsCard = document.querySelector('.stat-card.beige');
   if (availableFundsCard) {
@@ -2730,7 +2829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.openExpenseFormWithBudget(generalBudget.id);
       } else {
         // Jeśli nie ma budżetu "Ogólny", otwórz formularz bez wybranego budżetu
-        window.showSection('expensesSection');
+        showSection('expensesSection');
         setTimeout(() => {
           const expensesSection = document.getElementById('expensesSection');
           if (expensesSection) {

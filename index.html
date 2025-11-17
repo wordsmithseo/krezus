@@ -66,8 +66,8 @@
                 <h2 class="auth-form-title">Witaj ponownie! 👋</h2>
                 
                 <div class="auth-tabs">
-                    <button class="tab-btn active" onclick="showAuthTab('login')">Logowanie</button>
-                    <button class="tab-btn" onclick="showAuthTab('register')">Rejestracja</button>
+                    <button class="tab-btn active" data-action="show-auth-tab" data-tab="login">Logowanie</button>
+                    <button class="tab-btn" data-action="show-auth-tab" data-tab="register">Rejestracja</button>
                 </div>
 
                 <div id="loginTab" class="tab-content active">
@@ -124,8 +124,8 @@
                     <div class="user-info">
                         <span id="username"></span>
                     </div>
-                    <button id="profileBtn" class="btn-profile" onclick="openProfile()">👤 Profil</button>
-                    <button class="btn-logout" onclick="handleLogout()">Wyloguj</button>
+                    <button id="profileBtn" class="btn-profile" data-action="open-profile">👤 Profil</button>
+                    <button class="btn-logout" data-action="handle-logout">Wyloguj</button>
                 </div>
             </div>
         </header>
@@ -133,13 +133,13 @@
         <nav class="app-nav">
             <div class="nav-container">
                 <div class="nav-menu" id="navMenu">
-                    <button class="nav-btn active" onclick="showSection('summarySection')">📊 Podsumowanie</button>
-                    <button class="nav-btn" onclick="showSection('envelopeSection')">📩 Koperta dnia</button>
-                    <button class="nav-btn" onclick="showSection('sourcesSection')">💰 Przychody</button>
-                    <button class="nav-btn" onclick="showSection('expensesSection')">💸 Wydatki</button>
-                    <button class="nav-btn" onclick="showSection('categoriesSection')">🏷️ Kategorie</button>
-                    <button class="nav-btn" onclick="showSection('analyticsSection')">📈 Analityka</button>
-                    <button class="nav-btn" onclick="showSection('settingsSection')">⚙️ Ustawienia</button>
+                    <button class="nav-btn active" data-action="show-section" data-section="summarySection">📊 Podsumowanie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="envelopeSection">📩 Koperta dnia</button>
+                    <button class="nav-btn" data-action="show-section" data-section="sourcesSection">💰 Przychody</button>
+                    <button class="nav-btn" data-action="show-section" data-section="expensesSection">💸 Wydatki</button>
+                    <button class="nav-btn" data-action="show-section" data-section="categoriesSection">🏷️ Kategorie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="analyticsSection">📈 Analityka</button>
+                    <button class="nav-btn" data-action="show-section" data-section="settingsSection">⚙️ Ustawienia</button>
                 </div>
             </div>
         </nav>
@@ -395,7 +395,7 @@
                         <label>Nowa kategoria</label>
                         <div style="display: flex; gap: 10px;">
                             <input type="text" id="newCategoryName" placeholder="Nazwa kategorii" style="flex: 1;">
-                            <button class="btn btn-success" onclick="addCategory()">Dodaj</button>
+                            <button class="btn btn-success" data-action="add-category">Dodaj</button>
                         </div>
                     </div>
                     <div class="mt-20">
@@ -412,12 +412,12 @@
                         <div class="form-group">
                             <label>Wybierz okres</label>
                             <div class="period-buttons">
-                                <button class="period-btn active" onclick="selectPeriod('all')">📊 Wszystko</button>
-                                <button class="period-btn" onclick="selectPeriod(7)">7 dni</button>
-                                <button class="period-btn" onclick="selectPeriod(14)">14 dni</button>
-                                <button class="period-btn" onclick="selectPeriod(30)">30 dni</button>
-                                <button class="period-btn" onclick="selectPeriod(90)">90 dni</button>
-                                <button class="period-btn" onclick="selectPeriod('custom')">Własny</button>
+                                <button class="period-btn active" data-action="select-period" data-period="all">📊 Wszystko</button>
+                                <button class="period-btn" data-action="select-period" data-period="7">7 dni</button>
+                                <button class="period-btn" data-action="select-period" data-period="14">14 dni</button>
+                                <button class="period-btn" data-action="select-period" data-period="30">30 dni</button>
+                                <button class="period-btn" data-action="select-period" data-period="90">90 dni</button>
+                                <button class="period-btn" data-action="select-period" data-period="custom">Własny</button>
                             </div>
                         </div>
                         <div id="customPeriodInputs" class="custom-period" style="display: none;">
@@ -431,7 +431,7 @@
                                     <input type="date" id="analyticsDateTo">
                                 </div>
                                 <div class="form-group" style="display: flex; align-items: flex-end;">
-                                    <button class="btn btn-primary" onclick="applyCustomPeriod()">Zastosuj</button>
+                                    <button class="btn btn-primary" data-action="apply-custom-period">Zastosuj</button>
                                 </div>
                             </div>
                         </div>
@@ -517,7 +517,7 @@
                     <p class="text-muted" style="margin-bottom: 15px;">
                         Zarządzaj budżetami celowymi - przypisuj środki do konkretnych celów (np. wakacje, remont, prezenty).
                     </p>
-                    <button class="btn btn-success mb-20" onclick="showPurposeBudgetModal()">➕ Dodaj budżet celowy</button>
+                    <button class="btn btn-success mb-20" data-action="show-purpose-budget-modal">➕ Dodaj budżet celowy</button>
                     <div id="purposeBudgetsList"></div>
                 </div>
 
@@ -528,10 +528,10 @@
                         Eksport zawiera wszystkie szczegóły: przychody, wydatki, kategorie, limity, historię transakcji z dokładnym osadzeniem w czasie.
                     </p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn btn-success" onclick="exportBudgetDataForLLM('json')">
+                        <button class="btn btn-success" data-action="export-budget-data" data-format="json">
                             📥 Eksportuj jako JSON
                         </button>
-                        <button class="btn btn-success" onclick="exportBudgetDataForLLM('txt')">
+                        <button class="btn btn-success" data-action="export-budget-data" data-format="txt">
                             📄 Eksportuj jako TXT (czytelny)
                         </button>
                     </div>
@@ -543,7 +543,7 @@
                         <p><strong>Rozmiar logów:</strong> <span id="logsSize">0 KB</span></p>
                         <p><strong>Liczba wpisów:</strong> <span id="logsCount">0</span></p>
                     </div>
-                    <button class="btn btn-danger mt-20" onclick="clearLogs()">🗑️ Wyczyść logi</button>
+                    <button class="btn btn-danger mt-20" data-action="clear-logs">🗑️ Wyczyść logi</button>
                     <div class="mt-20">
                         <h3>📋 Ostatnie wpisy</h3>
                         <div id="logsList" class="logs-list"></div>

@@ -390,13 +390,15 @@ window.handleEditCategory = async (e) => {
     return;
   }
 
+  const sanitizedName = escapeHTML(newName);
+
   const updatedCategories = categories.map(c =>
-    c.id === categoryId ? { ...c, name: newName, icon: newIcon || getCategoryIcon(newName) } : c
+    c.id === categoryId ? { ...c, name: sanitizedName, icon: newIcon || getCategoryIcon(newName) } : c
   );
 
   const expenses = getExpenses();
   const updatedExpenses = expenses.map(e =>
-    e.category === oldName ? { ...e, category: newName } : e
+    e.category === oldName ? { ...e, category: sanitizedName } : e
   );
 
   try {
@@ -462,8 +464,8 @@ export async function showEditExpenseModal(expense, budgetUsers, onSave) {
     const type = document.getElementById('editExpenseType').value;
     const userId = document.getElementById('editExpenseUser').value;
     const purposeBudgetId = document.getElementById('editExpensePurposeBudget').value;
-    const category = document.getElementById('editExpenseCategory').value.trim();
-    const description = document.getElementById('editExpenseDescription').value.trim();
+    const category = escapeHTML(document.getElementById('editExpenseCategory').value.trim());
+    const description = escapeHTML(document.getElementById('editExpenseDescription').value.trim());
 
     if (!validateAmount(amount)) {
       showErrorMessage('Kwota musi być większa od 0');
@@ -637,7 +639,7 @@ export function showEditIncomeModal(income, budgetUsers, onSave) {
     const amount = parseFloat(document.getElementById('editIncomeAmount').value);
     const type = document.getElementById('editIncomeType').value;
     const userId = document.getElementById('editIncomeUser').value;
-    const source = document.getElementById('editIncomeSource').value.trim();
+    const source = escapeHTML(document.getElementById('editIncomeSource').value.trim());
     
     if (!validateAmount(amount)) {
       showErrorMessage('Kwota musi być większa od 0');
