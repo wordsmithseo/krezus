@@ -3,7 +3,7 @@
 import { ref, get, set, update, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
-import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
+import { getWarsawDateString, getCurrentTimeString, shouldBeRealisedNow, getWarsawTimeString } from '../utils/dateHelpers.js';
 import { getCategoryIcon } from '../utils/iconMapper.js';
 
 let categoriesCache = [];
@@ -568,47 +568,47 @@ export async function fetchAllData() {
  * Automatycznie realizuj planowane transakcje z przeszłości
  */
 export async function autoRealiseDueTransactions() {
-  const today = getWarsawDateString();
-  
   let incomesUpdated = false;
   let expensesUpdated = false;
-  
+
   incomesCache.forEach(inc => {
-    if (inc && inc.type === 'planned' && inc.date <= today) {
+    if (shouldBeRealisedNow(inc)) {
       inc.type = 'normal';
       inc.wasPlanned = true;
 
+      // Jeśli transakcja nie miała czasu, ustaw aktualny czas Warsaw
       if (!inc.time || inc.time.trim() === '') {
-        inc.time = getCurrentTimeString();
+        inc.time = getWarsawTimeString();
       }
 
       incomesUpdated = true;
-      console.log('🔄 Auto-realizacja przychodu:', inc.id);
+      console.log('🔄 Auto-realizacja przychodu:', inc.id, `(${inc.date} ${inc.time})`);
     }
   });
 
   expensesCache.forEach(exp => {
-    if (exp && exp.type === 'planned' && exp.date <= today) {
+    if (shouldBeRealisedNow(exp)) {
       exp.type = 'normal';
       exp.wasPlanned = true;
 
+      // Jeśli transakcja nie miała czasu, ustaw aktualny czas Warsaw
       if (!exp.time || exp.time.trim() === '') {
-        exp.time = getCurrentTimeString();
+        exp.time = getWarsawTimeString();
       }
 
       expensesUpdated = true;
-      console.log('🔄 Auto-realizacja wydatku:', exp.id);
+      console.log('🔄 Auto-realizacja wydatku:', exp.id, `(${exp.date} ${exp.time})`);
     }
   });
-  
+
   if (incomesUpdated) {
     await saveIncomes(incomesCache);
   }
-  
+
   if (expensesUpdated) {
     await saveExpenses(expensesCache);
   }
-  
+
   return { incomesUpdated, expensesUpdated };
 }
 
