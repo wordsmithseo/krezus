@@ -767,30 +767,6 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
     }
   });
 
-  // PurposeBudgets
-  const purposeBudgetsRef = ref(db, getUserBudgetPath('purposeBudgets'));
-  activeListeners.purposeBudgets = onValue(purposeBudgetsRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const newData = Object.values(data);
-
-    const uniqueData = [];
-    const seenIds = new Set();
-    newData.forEach(item => {
-      if (item && item.id && !seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        uniqueData.push(item);
-      }
-    });
-
-    if (JSON.stringify(purposeBudgetsCache) !== JSON.stringify(uniqueData)) {
-      purposeBudgetsCache = uniqueData;
-      console.log('🔄 Budżety celowe zaktualizowane:', purposeBudgetsCache.length);
-      if (callbacks.onPurposeBudgetsChange) {
-        callbacks.onPurposeBudgetsChange(purposeBudgetsCache);
-      }
-    }
-  });
-
   // DailyEnvelope
   const todayStr = getWarsawDateString();
   const envelopeRef = ref(db, getUserBudgetPath(`daily_envelope/${todayStr}`));
