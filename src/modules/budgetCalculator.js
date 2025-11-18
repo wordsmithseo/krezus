@@ -35,13 +35,25 @@ function getLimitsCache() {
         const today = getWarsawDateString();
 
         // Sprawdź czy cache jest z dzisiaj
-        if (cache.calculatedDate === today) {
-            console.log('✅ Używam cache limitów z:', cache.calculatedAt);
-            return cache;
-        } else {
-            console.log('⚠️ Cache limitów nieaktualny, obliczam na nowo');
+        if (cache.calculatedDate !== today) {
+            console.log('⚠️ Cache limitów nieaktualny (stara data), obliczam na nowo');
             return null;
         }
+
+        // Sprawdź czy cache ma nową strukturę z realLimit i plannedLimit
+        if (!cache.limits || !Array.isArray(cache.limits.limits)) {
+            console.log('⚠️ Cache limitów ma starą strukturę, obliczam na nowo');
+            return null;
+        }
+
+        const firstLimit = cache.limits.limits[0];
+        if (firstLimit && (firstLimit.realLimit === undefined || firstLimit.plannedLimit === undefined)) {
+            console.log('⚠️ Cache limitów nie ma nowych pól (realLimit/plannedLimit), obliczam na nowo');
+            return null;
+        }
+
+        console.log('✅ Używam cache limitów z:', cache.calculatedAt);
+        return cache;
     } catch (e) {
         console.error('❌ Błąd odczytu cache limitów:', e);
         return null;
