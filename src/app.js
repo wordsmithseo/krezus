@@ -138,7 +138,8 @@ let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 let mergingCategoryId = null;  // ID kategorii która ma być scalona
 
-const APP_VERSION = '1.3.0';
+// Wersja pobierana automatycznie z package.json podczas build
+const APP_VERSION = __APP_VERSION__;
 const LOGS_PER_PAGE = 20;
 
 console.log('🚀 Aplikacja Krezus uruchomiona');

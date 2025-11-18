@@ -1,6 +1,10 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import { readFileSync } from 'fs';
+
+// Wczytaj wersję z package.json
+const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 export default defineConfig({
   // Base public path
@@ -89,6 +93,7 @@ export default defineConfig({
 
   // Security headers (for production)
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    '__APP_VERSION__': JSON.stringify(packageJson.version)
   }
 });
