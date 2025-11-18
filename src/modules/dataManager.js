@@ -9,7 +9,6 @@ import { getCategoryIcon } from '../utils/iconMapper.js';
 let categoriesCache = [];
 let incomesCache = [];
 let expensesCache = [];
-let purposeBudgetsCache = []; // Budżety celowe
 let endDate1Cache = '';
 let endDate2Cache = '';
 let savingGoalCache = 0;
@@ -65,7 +64,6 @@ function clearCacheInternal() {
   categoriesCache = [];
   incomesCache = [];
   expensesCache = [];
-  purposeBudgetsCache = [];
   endDate1Cache = '';
   endDate2Cache = '';
   savingGoalCache = 0;
@@ -529,11 +527,10 @@ export async function fetchAllData() {
     const userId = getUserId();
     console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
 
-    const [categories, expenses, incomes, purposeBudgets, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
+    const [categories, expenses, incomes, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
       loadIncomes(),
-      loadPurposeBudgets(),
       loadEndDates(),
       loadSavingGoal(),
       loadEnvelopePeriod(),
@@ -547,7 +544,6 @@ export async function fetchAllData() {
       categories: categories.length,
       expenses: expenses.length,
       incomes: incomes.length,
-      purposeBudgets: purposeBudgets.length,
       userId
     });
 
@@ -555,7 +551,6 @@ export async function fetchAllData() {
       categories,
       expenses,
       incomes,
-      purposeBudgets,
       endDates,
       savingGoal,
       dailyEnvelope: dailyEnvelopeCache
@@ -768,30 +763,6 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
       savingGoalCache = newGoal;
       if (callbacks.onSavingGoalChange) {
         callbacks.onSavingGoalChange(savingGoalCache);
-      }
-    }
-  });
-
-  // PurposeBudgets
-  const purposeBudgetsRef = ref(db, getUserBudgetPath('purposeBudgets'));
-  activeListeners.purposeBudgets = onValue(purposeBudgetsRef, (snapshot) => {
-    const data = snapshot.val() || {};
-    const newData = Object.values(data);
-
-    const uniqueData = [];
-    const seenIds = new Set();
-    newData.forEach(item => {
-      if (item && item.id && !seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        uniqueData.push(item);
-      }
-    });
-
-    if (JSON.stringify(purposeBudgetsCache) !== JSON.stringify(uniqueData)) {
-      purposeBudgetsCache = uniqueData;
-      console.log('🔄 Budżety celowe zaktualizowane:', purposeBudgetsCache.length);
-      if (callbacks.onPurposeBudgetsChange) {
-        callbacks.onPurposeBudgetsChange(purposeBudgetsCache);
       }
     }
   });
