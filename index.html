@@ -38,11 +38,6 @@
                         <p>Algorytm dostosowany do Twojej historii wydatków z dynamicznymi limitami</p>
                     </div>
                     <div class="feature-item">
-                        <div class="feature-icon">💰</div>
-                        <h3>Budżety celowe</h3>
-                        <p>Alokuj środki na konkretne cele i śledź ich realizację</p>
-                    </div>
-                    <div class="feature-item">
                         <div class="feature-icon">📅</div>
                         <h3>Planowanie transakcji</h3>
                         <p>Zaplanuj przyszłe wpływy i wydatki z automatyczną aktualizacją budżetu</p>
@@ -170,9 +165,6 @@
                             <div class="stat-value"><span id="monthExpenses">0.00</span><span class="stat-unit">zł</span></div>
                         </div>
                     </div>
-
-                    <h3>💰 Budżety celowe</h3>
-                    <div id="summaryPurposeBudgets"></div>
 
                     <h3>📊 Limity dzienne</h3>
                     <div class="stats-grid">
@@ -346,12 +338,6 @@
                                     <option value="">Wybierz użytkownika</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Budżet celowy</label>
-                                <select id="expensePurposeBudget" name="expensePurposeBudget" required>
-                                    <option value="">Ładowanie...</option>
-                                </select>
-                            </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -510,15 +496,6 @@
 
                         <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
                     </form>
-                </div>
-
-                <div class="section-card">
-                    <h2>💰 Budżety celowe</h2>
-                    <p class="text-muted" style="margin-bottom: 15px;">
-                        Zarządzaj budżetami celowymi - przypisuj środki do konkretnych celów (np. wakacje, remont, prezenty).
-                    </p>
-                    <button class="btn btn-success mb-20" data-action="show-purpose-budget-modal">➕ Dodaj budżet celowy</button>
-                    <div id="purposeBudgetsList"></div>
                 </div>
 
                 <div class="section-card">
