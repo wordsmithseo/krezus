@@ -217,9 +217,8 @@ export function calculateCurrentLimits() {
     const { periods, date1, date2, daysLeft1, daysLeft2 } = spendingPeriods;
     const plannedTotals = calculatePlannedTransactionsTotals();
 
-    console.log('💰 === OBLICZANIE LIMITÓW Z ZABEZPIECZENIAMI ===');
-    console.log('💰 Dostępne środki (available z calculateAvailableFunds):', available.toFixed(2), 'zł');
-    console.log('💰 toSpend:', toSpend.toFixed(2), 'zł');
+    console.log('💰 === OBLICZANIE LIMITÓW ===');
+    console.log('💰 Dostępne środki (available):', available.toFixed(2), 'zł');
 
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map((period, index) => {
@@ -227,82 +226,38 @@ export function calculateCurrentLimits() {
             return {
                 date: period.date,
                 name: period.name,
+                amount: period.amount,
                 daysLeft: period.daysLeft,
-                currentLimit: 0,
-                appliedMeasures: []
+                realLimit: 0,
+                plannedLimit: 0
             };
         }
 
         const periodTotal = plannedTotals.periodTotals[index];
-        const plannedExpenses = periodTotal?.futureExpense || 0;
+        const futureIncome = periodTotal?.futureIncome || 0;
+        const futureExpense = periodTotal?.futureExpense || 0;
 
         console.log(`\n📊 Okres: ${period.name} (${period.daysLeft} dni)`);
-        console.log('  💸 Planowane wydatki:', plannedExpenses.toFixed(2), 'zł');
+        console.log('  💰 Dostępne środki:', available.toFixed(2), 'zł');
+        console.log('  📥 Planowane przychody (bez końcowego wpływu):', futureIncome.toFixed(2), 'zł');
+        console.log('  📤 Planowane wydatki:', futureExpense.toFixed(2), 'zł');
 
-        // Krok 1: Odejmij planowane wydatki
-        let adjustedAmount = toSpend - plannedExpenses;
-        console.log('  💰 Po odjęciu planowanych wydatków:', adjustedAmount.toFixed(2), 'zł');
+        // Limit realny = available / daysLeft (bez modyfikatorów)
+        const realLimit = Math.max(0, available / period.daysLeft);
 
-        const appliedMeasures = [];
+        // Limit planowany = (available + futureIncome - futureExpense) / daysLeft
+        const plannedLimit = Math.max(0, (available + futureIncome - futureExpense) / period.daysLeft);
 
-        if (plannedExpenses > 0) {
-            appliedMeasures.push({
-                type: 'planned-expenses',
-                description: `Odjęto planowane wydatki: ${plannedExpenses.toFixed(2)} zł`,
-                impact: -plannedExpenses
-            });
-        }
-
-        // Krok 2: Progresywne ograniczanie dla małej liczby dni
-        let conservativeFactor = 1.0;
-        if (period.daysLeft <= 7) {
-            conservativeFactor = 0.7;
-            appliedMeasures.push({
-                type: 'progressive-limit',
-                description: `Zachowawczy limit (≤7 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
-                impact: adjustedAmount * (1 - conservativeFactor)
-            });
-        }
-        if (period.daysLeft <= 3) {
-            conservativeFactor = 0.5;
-            appliedMeasures.push({
-                type: 'progressive-limit',
-                description: `Zachowawczy limit (≤3 dni): ${(conservativeFactor * 100).toFixed(0)}%`,
-                impact: adjustedAmount * (1 - conservativeFactor)
-            });
-        }
-        if (period.daysLeft <= 1) {
-            conservativeFactor = 0.3;
-            appliedMeasures.push({
-                type: 'progressive-limit',
-                description: `Zachowawczy limit (≤1 dzień): ${(conservativeFactor * 100).toFixed(0)}%`,
-                impact: adjustedAmount * (1 - conservativeFactor)
-            });
-        }
-
-        adjustedAmount = adjustedAmount * conservativeFactor;
-        console.log(`  ⚖️ Po zastosowaniu zachowawczego limitu (${(conservativeFactor * 100).toFixed(0)}%):`, adjustedAmount.toFixed(2), 'zł');
-
-        // Końcowy limit dzienny
-        const currentLimit = Math.max(0, adjustedAmount / period.daysLeft);
-        const rawLimit = toSpend / period.daysLeft;
-
-        console.log('  ✅ Końcowy limit dzienny (z zabezpieczeniami):', currentLimit.toFixed(2), 'zł/dzień');
-        console.log('  📏 LIMIT REALNY (rawLimit) - szczegóły:');
-        console.log('     toSpend (available):', toSpend.toFixed(2), 'zł');
-        console.log('     daysLeft:', period.daysLeft, 'dni');
-        console.log('     rawLimit = toSpend / daysLeft =', toSpend.toFixed(2), '/', period.daysLeft, '=', rawLimit.toFixed(2), 'zł/dzień');
-        console.log('     WERYFIKACJA: rawLimit * daysLeft =', (rawLimit * period.daysLeft).toFixed(2), 'zł');
+        console.log('  ✅ Limit realny:', realLimit.toFixed(2), 'zł/dzień');
+        console.log('  ✅ Limit planowany:', plannedLimit.toFixed(2), 'zł/dzień');
 
         return {
             date: period.date,
             name: period.name,
             amount: period.amount, // Kwota planowanego przychodu
             daysLeft: period.daysLeft,
-            currentLimit,
-            appliedMeasures,
-            rawLimit: rawLimit, // Surowy limit bez zabezpieczeń
-            adjustedAmount // Kwota po zastosowaniu wszystkich zabezpieczeń
+            realLimit: realLimit, // Limit realny bez modyfikatorów
+            plannedLimit: plannedLimit // Limit planowany z przyszłymi transakcjami
         };
     });
 
@@ -311,8 +266,8 @@ export function calculateCurrentLimits() {
     // BACKWARD COMPATIBILITY: Zachowaj stare pola dla zgodności
     return {
         limits,  // Nowa tablica limitów dla wszystkich okresów
-        currentLimit1: limits[0]?.currentLimit || 0,
-        currentLimit2: limits[1]?.currentLimit || 0,
+        currentLimit1: limits[0]?.realLimit || 0,
+        currentLimit2: limits[1]?.realLimit || 0,
         daysLeft1,
         daysLeft2,
         date1,
@@ -911,8 +866,8 @@ export function calculateSpendingDynamics() {
     // Znajdź limit dla wybranego okresu dynamiki
     const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
 
-    // Użyj surowego limitu dziennego (bez zabezpieczeń) - dynamika bazuje na rzeczywistych wydatkach
-    const targetDaily = selectedLimit?.rawLimit || 0;
+    // Użyj realnego limitu dziennego - dynamika bazuje na rzeczywistych możliwościach
+    const targetDaily = selectedLimit?.realLimit || 0;
 
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);

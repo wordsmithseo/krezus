@@ -141,11 +141,8 @@ function renderPurposeBudgetsSummary() {
     import('../modules/purposeBudgetManager.js'),
     import('../modules/budgetCalculator.js')
   ]).then(([{ getBudgetStatistics }, { calculateAvailableFunds }]) => {
-    const allBudgets = getBudgetStatistics();
+    const budgets = getBudgetStatistics();
     const { available } = calculateAvailableFunds();
-
-    // Filtruj budżety - nie pokazuj "Ogólny"
-    const budgets = allBudgets.filter(b => b.name !== 'Ogólny');
 
     if (budgets.length === 0) {
       container.innerHTML = sanitizeHTML(`
@@ -443,22 +440,10 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
   console.log('🔄 Renderowanie', limits.length, 'kafelków...');
   // Renderuj kafelek dla każdego okresu
   limits.forEach((limit, index) => {
-    console.log(`  📌 Kafelek ${index + 1}/${limits.length}: data=${limit.date}, dni=${limit.daysLeft}, limit=${limit.currentLimit.toFixed(2)}`);
+    console.log(`  📌 Kafelek ${index + 1}/${limits.length}: data=${limit.date}, dni=${limit.daysLeft}, realLimit=${limit.realLimit?.toFixed(2)}, plannedLimit=${limit.plannedLimit?.toFixed(2)}`);
 
-    const periodTotal = plannedTotals.periodTotals[index];
-    const futureIncome = periodTotal?.futureIncome || 0;
-    const futureExpense = periodTotal?.futureExpense || 0;
-
-    // Limit z zabezpieczeniami (obliczony przez calculateCurrentLimits)
-    const safeLimitDaily = limit.currentLimit || 0;
-
-    // Limit surowy (bez zabezpieczeń) dla porównania
-    const rawLimitDaily = limit.rawLimit || 0;
-
-    // Limit planowany (z przyszłymi wpływami/wydatkami PO DRODZE, bez wpływu na dacie końcowej)
-    const projectedLimit = limit.daysLeft > 0
-      ? (available + futureIncome - futureExpense) / limit.daysLeft
-      : 0;
+    const realLimit = limit.realLimit || 0;
+    const plannedLimit = limit.plannedLimit || 0;
 
     const card = document.createElement('div');
     card.className = 'stat-card';
@@ -472,116 +457,65 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
     nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
-    // Sprawdź czy są aktywne progresywne limity
-    const hasProgressiveLimits = limit.appliedMeasures &&
-      limit.appliedMeasures.some(m => m.type === 'progressive-limit');
-
-    // Limit dzienny (nazwa zależy od tego czy są zabezpieczenia)
-    const limitLabelDiv = document.createElement('div');
-    limitLabelDiv.className = 'stat-label';
-    limitLabelDiv.style.fontSize = '0.9rem';
-    limitLabelDiv.style.opacity = '0.8';
-    limitLabelDiv.style.marginTop = '8px';
-    limitLabelDiv.innerHTML = hasProgressiveLimits ? `🛡️ Bezpieczny limit dzienny` : `💰 Limit dzienny`;
-
-    const limitValueDiv = document.createElement('div');
-    limitValueDiv.className = 'stat-value';
-    limitValueDiv.style.fontSize = '1.8rem';
-    limitValueDiv.style.marginBottom = '10px';
-    const limitValueSpan = document.createElement('span');
-    limitValueSpan.textContent = '0.00';
-    const limitUnitSpan = document.createElement('span');
-    limitUnitSpan.className = 'stat-unit';
-    limitUnitSpan.textContent = 'zł/dzień';
-    limitValueDiv.appendChild(limitValueSpan);
-    limitValueDiv.appendChild(limitUnitSpan);
-
-    // Animuj wartość
-    requestAnimationFrame(() => {
-      animateNumber(limitValueSpan, safeLimitDaily);
-    });
-
-    // Surowy limit dla porównania (TYLKO gdy są zabezpieczenia)
-    let rawInfoDiv = null;
-    if (hasProgressiveLimits) {
-      rawInfoDiv = document.createElement('div');
-      rawInfoDiv.style.fontSize = '0.75rem';
-      rawInfoDiv.style.opacity = '0.7';
-      rawInfoDiv.style.marginBottom = '10px';
-      rawInfoDiv.textContent = `(bez zabezpieczeń: ${rawLimitDaily.toFixed(2)} zł/dzień)`;
-    }
-
-    // Limit planowany (z przyszłymi wpływami/wydatkami)
-    const projectedLabelDiv = document.createElement('div');
-    projectedLabelDiv.className = 'stat-label';
-    projectedLabelDiv.style.fontSize = '0.85rem';
-    projectedLabelDiv.style.opacity = '0.8';
-    projectedLabelDiv.textContent = `📊 Limit planowany`;
-
-    const projectedValueDiv = document.createElement('div');
-    projectedValueDiv.className = 'stat-value';
-    projectedValueDiv.style.fontSize = '1.2rem';
-    const projectedValueSpan = document.createElement('span');
-    projectedValueSpan.textContent = '0.00';
-    const projectedUnitSpan = document.createElement('span');
-    projectedUnitSpan.className = 'stat-unit';
-    projectedUnitSpan.textContent = 'zł/dzień';
-    projectedValueDiv.appendChild(projectedValueSpan);
-    projectedValueDiv.appendChild(projectedUnitSpan);
-
-    // Animuj wartość planowaną
-    requestAnimationFrame(() => {
-      animateNumber(projectedValueSpan, projectedLimit);
-    });
-
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';
     daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
 
+    // Limit realny
+    const realLabelDiv = document.createElement('div');
+    realLabelDiv.className = 'stat-label';
+    realLabelDiv.style.fontSize = '0.9rem';
+    realLabelDiv.style.opacity = '0.8';
+    realLabelDiv.style.marginTop = '12px';
+    realLabelDiv.textContent = `💰 Limit realny`;
+
+    const realValueDiv = document.createElement('div');
+    realValueDiv.className = 'stat-value';
+    realValueDiv.style.fontSize = '1.8rem';
+    realValueDiv.style.marginBottom = '5px';
+    const realValueSpan = document.createElement('span');
+    realValueSpan.textContent = '0.00';
+    const realUnitSpan = document.createElement('span');
+    realUnitSpan.className = 'stat-unit';
+    realUnitSpan.textContent = 'zł/dzień';
+    realValueDiv.appendChild(realValueSpan);
+    realValueDiv.appendChild(realUnitSpan);
+
+    // Animuj wartość realną
+    requestAnimationFrame(() => {
+      animateNumber(realValueSpan, realLimit);
+    });
+
+    // Limit planowany
+    const plannedLabelDiv = document.createElement('div');
+    plannedLabelDiv.className = 'stat-label';
+    plannedLabelDiv.style.fontSize = '0.9rem';
+    plannedLabelDiv.style.opacity = '0.8';
+    plannedLabelDiv.style.marginTop = '12px';
+    plannedLabelDiv.textContent = `📊 Limit planowany`;
+
+    const plannedValueDiv = document.createElement('div');
+    plannedValueDiv.className = 'stat-value';
+    plannedValueDiv.style.fontSize = '1.8rem';
+    const plannedValueSpan = document.createElement('span');
+    plannedValueSpan.textContent = '0.00';
+    const plannedUnitSpan = document.createElement('span');
+    plannedUnitSpan.className = 'stat-unit';
+    plannedUnitSpan.textContent = 'zł/dzień';
+    plannedValueDiv.appendChild(plannedValueSpan);
+    plannedValueDiv.appendChild(plannedUnitSpan);
+
+    // Animuj wartość planowaną
+    requestAnimationFrame(() => {
+      animateNumber(plannedValueSpan, plannedLimit);
+    });
+
     card.appendChild(nameDiv);
     card.appendChild(daysDiv);
-    card.appendChild(limitLabelDiv);
-    card.appendChild(limitValueDiv);
-
-    // Dodaj surowy limit TYLKO gdy są zabezpieczenia
-    if (rawInfoDiv) {
-      card.appendChild(rawInfoDiv);
-    }
-
-    card.appendChild(projectedLabelDiv);
-    card.appendChild(projectedValueDiv);
-
-    // Dodaj informacje o zastosowanych środkach zabezpieczających TYLKO gdy są aktywne
-    if (hasProgressiveLimits) {
-      const measuresDiv = document.createElement('div');
-      measuresDiv.style.marginTop = '12px';
-      measuresDiv.style.padding = '10px';
-      measuresDiv.style.background = 'rgba(0, 0, 0, 0.1)';
-      measuresDiv.style.borderRadius = '8px';
-      measuresDiv.style.fontSize = '0.8rem';
-
-      const measuresTitle = document.createElement('div');
-      measuresTitle.style.fontWeight = 'bold';
-      measuresTitle.style.marginBottom = '6px';
-      measuresTitle.style.opacity = '0.9';
-      measuresTitle.textContent = '🛡️ Zastosowane zabezpieczenia:';
-      measuresDiv.appendChild(measuresTitle);
-
-      const measuresList = document.createElement('ul');
-      measuresList.style.margin = '0';
-      measuresList.style.paddingLeft = '18px';
-      measuresList.style.opacity = '0.85';
-
-      limit.appliedMeasures.forEach(measure => {
-        const li = document.createElement('li');
-        li.textContent = measure.description;
-        li.style.marginBottom = '3px';
-        measuresList.appendChild(li);
-      });
-
-      measuresDiv.appendChild(measuresList);
-      card.appendChild(measuresDiv);
-    }
+    card.appendChild(realLabelDiv);
+    card.appendChild(realValueDiv);
+    card.appendChild(plannedLabelDiv);
+    card.appendChild(plannedValueDiv);
 
     statsGrid.appendChild(card);
     console.log(`  ✅ Kafelek ${index + 1} dodany do DOM`);

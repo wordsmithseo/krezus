@@ -39,7 +39,7 @@ import {
 
 } from './modules/dataManager.js';
 
-import { ensureDefaultBudget, getBudgetStatistics, validateBudgetAllocation } from './modules/purposeBudgetManager.js';
+import { getBudgetStatistics, validateBudgetAllocation } from './modules/purposeBudgetManager.js';
 
 import {
   calculateRealisedTotals,
@@ -283,7 +283,6 @@ async function loadAllData() {
 
     await clearCache();
     await fetchAllData(userId);
-    await ensureDefaultBudget(); // Upewnij się że istnieje domyślny budżet "Ogólny"
 
     // Waliduj alokację budżetów
     const validation = await validateBudgetAllocation();
@@ -408,26 +407,31 @@ function setupPurposeBudgetSelect() {
   if (!select) return;
 
   const currentValue = select.value;
-  const allBudgets = getBudgetStatistics();
+  const budgets = getBudgetStatistics();
+  const hasBudgets = budgets.length > 0;
 
-  // Sprawdź czy są jakiekolwiek budżety celowe (poza "Ogólny")
-  const purposeBudgets = allBudgets.filter(b => b.name !== 'Ogólny');
-  const hasPurposeBudgets = purposeBudgets.length > 0;
+  // Znajdź kontener z polem budżetu (form-group)
+  const formGroup = select.closest('.form-group');
 
-  // Jeśli są budżety celowe, ukryj "Ogólny" z listy
-  const budgets = hasPurposeBudgets
-    ? purposeBudgets
-    : allBudgets;
+  if (!hasBudgets) {
+    // Ukryj pole wyboru budżetu gdy nie ma budżetów celowych
+    if (formGroup) {
+      formGroup.style.display = 'none';
+    }
+    select.removeAttribute('required');
+    select.innerHTML = '';
+    return;
+  }
 
-  // Jeśli nie ma budżetów celowych, pobierz całkowite dostępne środki
-  const { available: totalAvailable } = calculateAvailableFunds();
+  // Pokaż pole wyboru budżetu gdy są budżety celowe
+  if (formGroup) {
+    formGroup.style.display = 'block';
+  }
+  select.setAttribute('required', 'required');
 
   // Opcje selecta z informacją o dostępnych środkach
   const optionsHTML = budgets.map(budget => {
-    // Jeśli nie ma budżetów celowych i to jest "Ogólny", pokaż całkowite dostępne środki
-    const available = (!hasPurposeBudgets && budget.name === 'Ogólny')
-      ? totalAvailable.toFixed(2)
-      : budget.remaining.toFixed(2);
+    const available = budget.remaining.toFixed(2);
     return `<option value="${budget.id}">${budget.name} (dostępne: ${available} zł)</option>`;
   }).join('');
 
@@ -1920,7 +1924,7 @@ window.addExpense = async (e) => {
   const amount = parseFloat(form.expenseAmount.value);
   const type = form.expenseType.value;
   const userId = form.expenseUser.value;
-  const purposeBudgetId = form.expensePurposeBudget.value;
+  const purposeBudgetId = form.expensePurposeBudget.value || null;
   const category = form.expenseCategory.value.trim();
   const description = form.expenseDescription.value.trim();
 
@@ -1934,18 +1938,22 @@ window.addExpense = async (e) => {
     return;
   }
 
-  if (!purposeBudgetId) {
-    showErrorMessage('Wybierz budżet celowy');
-    return;
-  }
-
-  // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
-  if (type === 'normal') {
-    const { canSpendFromBudget } = await import('./modules/purposeBudgetManager.js');
-    const validation = canSpendFromBudget(purposeBudgetId, amount);
-    if (!validation.canSpend) {
-      showErrorMessage(validation.message);
+  // Waliduj budżet celowy tylko gdy są jakieś budżety celowe
+  const budgets = getBudgetStatistics();
+  if (budgets.length > 0) {
+    if (!purposeBudgetId) {
+      showErrorMessage('Wybierz budżet celowy');
       return;
+    }
+
+    // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
+    if (type === 'normal') {
+      const { canSpendFromBudget } = await import('./modules/purposeBudgetManager.js');
+      const validation = canSpendFromBudget(purposeBudgetId, amount);
+      if (!validation.canSpend) {
+        showErrorMessage(validation.message);
+        return;
+      }
     }
   }
 

@@ -445,10 +445,26 @@ export async function showEditExpenseModal(expense, budgetUsers, onSave) {
   const { getBudgetStatistics } = await import('../modules/purposeBudgetManager.js');
   const budgets = getBudgetStatistics();
   const budgetSelect = document.getElementById('editExpensePurposeBudget');
-  budgetSelect.innerHTML = budgets.map(budget => {
-    const available = budget.remaining.toFixed(2);
-    return `<option value="${budget.id}" ${budget.id === expense.purposeBudgetId ? 'selected' : ''}>${budget.name} (dostępne: ${available} zł)</option>`;
-  }).join('');
+  const budgetFormGroup = budgetSelect.closest('.form-group');
+
+  if (budgets.length === 0) {
+    // Ukryj pole wyboru budżetu gdy nie ma budżetów celowych
+    if (budgetFormGroup) {
+      budgetFormGroup.style.display = 'none';
+    }
+    budgetSelect.removeAttribute('required');
+    budgetSelect.innerHTML = '';
+  } else {
+    // Pokaż pole wyboru budżetu gdy są budżety celowe
+    if (budgetFormGroup) {
+      budgetFormGroup.style.display = 'block';
+    }
+    budgetSelect.setAttribute('required', 'required');
+    budgetSelect.innerHTML = budgets.map(budget => {
+      const available = budget.remaining.toFixed(2);
+      return `<option value="${budget.id}" ${budget.id === expense.purposeBudgetId ? 'selected' : ''}>${budget.name} (dostępne: ${available} zł)</option>`;
+    }).join('');
+  }
 
   const categoriesDatalist = document.getElementById('editExpenseCategoriesDatalist');
   const categories = getCategories();
@@ -463,7 +479,7 @@ export async function showEditExpenseModal(expense, budgetUsers, onSave) {
     const amount = parseFloat(document.getElementById('editExpenseAmount').value);
     const type = document.getElementById('editExpenseType').value;
     const userId = document.getElementById('editExpenseUser').value;
-    const purposeBudgetId = document.getElementById('editExpensePurposeBudget').value;
+    const purposeBudgetId = document.getElementById('editExpensePurposeBudget').value || null;
     const category = escapeHTML(document.getElementById('editExpenseCategory').value.trim());
     const description = escapeHTML(document.getElementById('editExpenseDescription').value.trim());
 
@@ -477,18 +493,21 @@ export async function showEditExpenseModal(expense, budgetUsers, onSave) {
       return;
     }
 
-    if (!purposeBudgetId) {
-      showErrorMessage('Wybierz budżet celowy');
-      return;
-    }
-
-    // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
-    if (type === 'normal') {
-      const { canSpendFromBudget } = await import('../modules/purposeBudgetManager.js');
-      const validation = canSpendFromBudget(purposeBudgetId, amount, expense.id);
-      if (!validation.canSpend) {
-        showErrorMessage(validation.message);
+    // Waliduj budżet celowy tylko gdy są jakieś budżety celowe
+    if (budgets.length > 0) {
+      if (!purposeBudgetId) {
+        showErrorMessage('Wybierz budżet celowy');
         return;
+      }
+
+      // Waliduj dostępność środków w budżecie celowym (tylko dla normalnych wydatków)
+      if (type === 'normal') {
+        const { canSpendFromBudget } = await import('../modules/purposeBudgetManager.js');
+        const validation = canSpendFromBudget(purposeBudgetId, amount, expense.id);
+        if (!validation.canSpend) {
+          showErrorMessage(validation.message);
+          return;
+        }
       }
     }
 
