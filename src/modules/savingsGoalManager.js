@@ -2,6 +2,7 @@
 import { ref, set, onValue, off, get } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
+import { log } from './logger.js';
 
 // === CACHE CELÓW OSZCZĘDZANIA ===
 let savingsGoalsCache = [];
@@ -204,6 +205,15 @@ export async function addSavingsGoal(goalData, userId) {
     goals.push(newGoal);
     await saveSavingsGoals(goals, userId);
 
+    // Logowanie
+    await log('SAVINGS_GOAL_ADD', {
+        name: newGoal.name,
+        targetAmount: newGoal.targetAmount,
+        targetDate: newGoal.targetDate,
+        priority: newGoal.priority,
+        budgetUser: 'System'
+    });
+
     return newGoal;
 }
 
@@ -230,6 +240,13 @@ export async function updateSavingsGoal(goalId, updates, userId) {
 
     await saveSavingsGoals(goals, userId);
 
+    // Logowanie
+    await log('SAVINGS_GOAL_EDIT', {
+        name: goals[index].name,
+        targetAmount: goals[index].targetAmount,
+        budgetUser: 'System'
+    });
+
     return goals[index];
 }
 
@@ -242,6 +259,7 @@ export async function deleteSavingsGoal(goalId, userId) {
     }
 
     const goals = getSavingsGoals();
+    const goalToDelete = goals.find(g => g.id === goalId);
     const filtered = goals.filter(g => g.id !== goalId);
 
     if (filtered.length === goals.length) {
@@ -254,6 +272,12 @@ export async function deleteSavingsGoal(goalId, userId) {
     const contributions = getSavingsContributions();
     const filteredContributions = contributions.filter(c => c.goalId !== goalId);
     await saveSavingsContributions(filteredContributions, userId);
+
+    // Logowanie
+    await log('SAVINGS_GOAL_DELETE', {
+        name: goalToDelete ? goalToDelete.name : 'Nieznany cel',
+        budgetUser: 'System'
+    });
 
     return true;
 }
@@ -308,6 +332,13 @@ export async function addContribution(goalId, amount, userId) {
 
     await updateSavingsGoal(goalId, updatedGoal, userId);
 
+    // Logowanie
+    await log('SAVINGS_CONTRIBUTION_ADD', {
+        amount: amount,
+        goalName: goal.name,
+        budgetUser: 'System'
+    });
+
     return {
         contribution: newContribution,
         goal: updatedGoal
@@ -353,6 +384,13 @@ export async function removeContribution(contributionId, userId) {
 
     await updateSavingsGoal(contribution.goalId, updatedGoal, userId);
 
+    // Logowanie
+    await log('SAVINGS_CONTRIBUTION_REMOVE', {
+        amount: contribution.amount,
+        goalName: goal.name,
+        budgetUser: 'System'
+    });
+
     return {
         contribution,
         goal: updatedGoal
@@ -381,6 +419,12 @@ export async function rejectSuggestion(goalId, userId) {
     };
 
     await updateSavingsGoal(goalId, updatedGoal, userId);
+
+    // Logowanie
+    await log('SAVINGS_SUGGESTION_REJECT', {
+        goalName: goal.name,
+        budgetUser: 'System'
+    });
 
     return updatedGoal;
 }
