@@ -111,10 +111,10 @@ function createAddSavingsGoalModal() {
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal('addSavingsGoalModal')">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addSavingsGoalModal')">
                         Anuluj
                     </button>
-                    <button type="submit" class="btn-primary">
+                    <button type="submit" class="btn btn-primary">
                         ➕ Dodaj cel
                     </button>
                 </div>
@@ -278,10 +278,10 @@ function createEditSavingsGoalModal() {
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal('editSavingsGoalModal')">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editSavingsGoalModal')">
                         Anuluj
                     </button>
-                    <button type="submit" class="btn-primary">
+                    <button type="submit" class="btn btn-primary">
                         💾 Zapisz zmiany
                     </button>
                 </div>
@@ -509,7 +509,7 @@ function createGoalHistoryModal() {
             <div id="goalHistoryContent"></div>
 
             <div class="modal-actions">
-                <button type="button" class="btn-secondary" onclick="closeModal('goalHistoryModal')">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('goalHistoryModal')">
                     Zamknij
                 </button>
             </div>

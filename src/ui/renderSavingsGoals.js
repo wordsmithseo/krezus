@@ -277,10 +277,10 @@ function renderSavingsGoalCard(goal, suggestion) {
                     ${sug.details.map(d => `<div class="suggestion-detail">• ${sanitizeHTML(d)}</div>`).join('')}
                 </div>
                 <div class="suggestion-actions">
-                    <button class="btn-success" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
+                    <button class="btn btn-success" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
                         ✅ Zaakceptuj
                     </button>
-                    <button class="btn-secondary" onclick="window.rejectSuggestion('${goal.id}')">
+                    <button class="btn btn-secondary" onclick="window.rejectSuggestion('${goal.id}')">
                         ❌ Odrzuć
                     </button>
                 </div>
