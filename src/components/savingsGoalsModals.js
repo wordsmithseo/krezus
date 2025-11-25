@@ -5,6 +5,7 @@ import {
     updateSavingsGoal,
     deleteSavingsGoal,
     addContribution,
+    removeContribution,
     rejectSuggestion,
     getSavingsGoals
 } from '../modules/savingsGoalManager.js';
@@ -74,6 +75,16 @@ function createAddSavingsGoalModal() {
                 </div>
 
                 <div class="form-group">
+                    <label for="savingsGoalTargetDate">Data końcowa (opcjonalnie)</label>
+                    <input
+                        type="date"
+                        id="savingsGoalTargetDate"
+                        placeholder="RRRR-MM-DD"
+                    >
+                    <small class="form-hint">Jeśli określisz deadline, algorytm będzie bardziej agresywny w sugestiach</small>
+                </div>
+
+                <div class="form-group">
                     <label for="savingsGoalPriority">Priorytet</label>
                     <select id="savingsGoalPriority">
                         <option value="1">🔴 Wysoki</option>
@@ -130,6 +141,7 @@ window.handleAddSavingsGoal = async (e) => {
     const name = document.getElementById('savingsGoalName').value.trim();
     const description = document.getElementById('savingsGoalDescription').value.trim();
     const amount = parseFloat(document.getElementById('savingsGoalAmount').value);
+    const targetDate = document.getElementById('savingsGoalTargetDate').value || null;
     const priority = parseInt(document.getElementById('savingsGoalPriority').value);
     const icon = document.getElementById('savingsGoalIcon').value.trim() || '🎯';
 
@@ -148,6 +160,7 @@ window.handleAddSavingsGoal = async (e) => {
             name,
             description,
             targetAmount: amount,
+            targetDate,
             priority,
             icon
         }, user.uid);
@@ -180,6 +193,7 @@ export function showEditSavingsGoalModal(goalId) {
     document.getElementById('editSavingsGoalName').value = goal.name;
     document.getElementById('editSavingsGoalDescription').value = goal.description || '';
     document.getElementById('editSavingsGoalAmount').value = goal.targetAmount;
+    document.getElementById('editSavingsGoalTargetDate').value = goal.targetDate || '';
     document.getElementById('editSavingsGoalPriority').value = goal.priority;
     document.getElementById('editSavingsGoalIcon').value = goal.icon;
 
@@ -235,6 +249,16 @@ function createEditSavingsGoalModal() {
                 </div>
 
                 <div class="form-group">
+                    <label for="editSavingsGoalTargetDate">Data końcowa (opcjonalnie)</label>
+                    <input
+                        type="date"
+                        id="editSavingsGoalTargetDate"
+                        placeholder="RRRR-MM-DD"
+                    >
+                    <small class="form-hint">Jeśli określisz deadline, algorytm będzie bardziej agresywny w sugestiach</small>
+                </div>
+
+                <div class="form-group">
                     <label for="editSavingsGoalPriority">Priorytet</label>
                     <select id="editSavingsGoalPriority">
                         <option value="1">🔴 Wysoki</option>
@@ -285,6 +309,7 @@ window.handleEditSavingsGoal = async (e) => {
     const name = document.getElementById('editSavingsGoalName').value.trim();
     const description = document.getElementById('editSavingsGoalDescription').value.trim();
     const amount = parseFloat(document.getElementById('editSavingsGoalAmount').value);
+    const targetDate = document.getElementById('editSavingsGoalTargetDate').value || null;
     const priority = parseInt(document.getElementById('editSavingsGoalPriority').value);
     const icon = document.getElementById('editSavingsGoalIcon').value.trim() || '🎯';
 
@@ -303,6 +328,7 @@ window.handleEditSavingsGoal = async (e) => {
             name,
             description,
             targetAmount: amount,
+            targetDate,
             priority,
             icon
         }, user.uid);
@@ -432,7 +458,12 @@ window.showGoalHistory = (goalId) => {
                         <div class="contribution-date">${contrib.date} ${contrib.time}</div>
                         <div class="contribution-type">${contrib.type === 'suggestion-accepted' ? '💡 Sugestia zaakceptowana' : '➕ Ręczna wpłata'}</div>
                     </div>
-                    <div class="contribution-amount">+${contrib.amount.toFixed(2)} zł</div>
+                    <div class="contribution-right">
+                        <div class="contribution-amount">+${contrib.amount.toFixed(2)} zł</div>
+                        <button class="btn-danger-small" onclick="window.removeContributionConfirm('${contrib.id}', '${goalId}')" title="Wycofaj wpłatę">
+                            ↩️ Wycofaj
+                        </button>
+                    </div>
                 </div>
             `;
         });
@@ -488,6 +519,38 @@ function createGoalHistoryModal() {
     document.body.appendChild(modal);
     return modal;
 }
+
+/**
+ * Wycofuje wpłatę z potwierdzeniem
+ */
+window.removeContributionConfirm = async (contributionId, goalId) => {
+    const user = getCurrentUser();
+    if (!user) {
+        showErrorMessage('Musisz być zalogowany');
+        return;
+    }
+
+    const confirmed = await showConfirmModal(
+        'Czy na pewno chcesz wycofać tę wpłatę?',
+        'Kwota zostanie odjęta od bieżącej sumy odłożonej na cel. Tej operacji nie można cofnąć.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+        const result = await removeContribution(contributionId, user.uid);
+        showSavingsSuccessMessage(`Wycofano wpłatę: ${result.contribution.amount.toFixed(2)} zł`);
+
+        // Odśwież modal historii
+        window.showGoalHistory(goalId);
+
+        // Odśwież główną sekcję
+        renderSavingsGoals();
+    } catch (error) {
+        console.error('❌ Błąd wycofania wpłaty:', error);
+        showErrorMessage('Nie udało się wycofać wpłaty');
+    }
+};
 
 /**
  * Wrapper dla window funkcji używanych w innych miejscach

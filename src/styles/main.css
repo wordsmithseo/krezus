@@ -2156,6 +2156,43 @@ tr.correction {
   font-size: 0.95rem;
 }
 
+/* Deadline */
+.goal-deadline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+.goal-deadline.deadline-normal {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.goal-deadline.deadline-soon {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.goal-deadline.deadline-urgent {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.deadline-icon {
+  font-size: 1.2rem;
+}
+
+.deadline-text strong {
+  font-weight: 600;
+}
+
 /* Info celu */
 .goal-info {
   display: grid;
@@ -2367,10 +2404,34 @@ tr.correction {
   font-weight: 500;
 }
 
+.contribution-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .contribution-amount {
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--success);
+}
+
+.btn-danger-small {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-danger-small:hover {
+  background: #fecaca;
+  border-color: #f87171;
 }
 
 .contributions-summary {

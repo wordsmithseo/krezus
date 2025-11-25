@@ -230,6 +230,40 @@ export function calculateSafeSavingsAmount(goalId) {
     console.log('🎯 Priorytet celu:', goal.priority, '(mnożnik:', priorityMultiplier, ')');
     console.log('💰 Sugerowana kwota (po uwzględnieniu priorytetu):', suggestedAmount.toFixed(2), 'zł');
 
+    // Uwzględnij deadline (targetDate)
+    let deadlineMultiplier = 1.0;
+    let daysToDeadline = null;
+
+    if (goal.targetDate) {
+        const targetDateObj = new Date(goal.targetDate);
+        const todayObj = new Date(today);
+        daysToDeadline = Math.max(0, Math.floor((targetDateObj - todayObj) / (1000 * 60 * 60 * 24)));
+
+        console.log('📅 Data końcowa celu:', goal.targetDate);
+        console.log('📅 Dni do deadline:', daysToDeadline);
+
+        if (daysToDeadline < 7) {
+            deadlineMultiplier = 1.8; // +80% - bardzo blisko deadline!
+            console.log('⏰ PILNE! Zostało mniej niż 7 dni do deadline!');
+        } else if (daysToDeadline < 15) {
+            deadlineMultiplier = 1.5; // +50% - blisko deadline
+            console.log('⏰ Blisko deadline (< 15 dni)');
+        } else if (daysToDeadline < 30) {
+            deadlineMultiplier = 1.3; // +30% - zbliża się deadline
+            console.log('⏰ Zbliża się deadline (< 30 dni)');
+        } else if (daysToDeadline < 60) {
+            deadlineMultiplier = 1.15; // +15% - umiarkowanie blisko
+            console.log('⏰ Umiarkowanie blisko deadline (< 60 dni)');
+        } else {
+            deadlineMultiplier = 1.0; // bez zmiany - dużo czasu
+            console.log('✅ Dużo czasu do deadline (≥ 60 dni)');
+        }
+
+        suggestedAmount = suggestedAmount * deadlineMultiplier;
+        console.log('🎯 Mnożnik deadline:', deadlineMultiplier);
+        console.log('💰 Sugerowana kwota (po uwzględnieniu deadline):', suggestedAmount.toFixed(2), 'zł');
+    }
+
     // KROK 5: Zaokrąglij do pełnych złotych
     suggestedAmount = Math.floor(suggestedAmount);
 
@@ -257,20 +291,35 @@ export function calculateSafeSavingsAmount(goalId) {
     console.log('💵 Po odłożeniu zostanie:', (available - suggestedAmount).toFixed(2), 'zł');
     console.log('📊 To', ((suggestedAmount / available) * 100).toFixed(1), '% dostępnych środków');
 
+    // Buduj details z uwzględnieniem deadline
+    const details = [
+        `💰 Dostępne środki: ${available.toFixed(2)} zł`,
+        `🛡️ Bufor bezpieczeństwa: ${safetyBuffer.toFixed(2)} zł`,
+        `📤 Planowane wydatki: ${plannedExpenses.toFixed(2)} zł`,
+        `💡 Potencjalna nadwyżka: ${potentialSurplus.toFixed(2)} zł`,
+        `📊 Sugerowana kwota: ${suggestedAmount.toFixed(2)} zł (${((suggestedAmount / available) * 100).toFixed(1)}% dostępnych środków)`,
+        `🎯 Po odłożeniu zostanie: ${(available - suggestedAmount).toFixed(2)} zł`,
+        `📅 Dni do następnego przychodu: ${daysLeft}`,
+        `📈 Średnie dzienne wydatki (30 dni): ${dailyAverageExpense.toFixed(2)} zł`
+    ];
+
+    // Dodaj informację o deadline jeśli istnieje
+    if (goal.targetDate && daysToDeadline !== null) {
+        if (daysToDeadline < 7) {
+            details.push(`⏰ PILNE! Deadline za ${daysToDeadline} dni! (${goal.targetDate})`);
+        } else if (daysToDeadline < 30) {
+            details.push(`⏰ Deadline zbliża się: ${daysToDeadline} dni (${goal.targetDate})`);
+        } else {
+            details.push(`📅 Deadline: ${daysToDeadline} dni (${goal.targetDate})`);
+        }
+        details.push(`🚀 Kwota zwiększona o ${((deadlineMultiplier - 1) * 100).toFixed(0)}% z powodu deadline`);
+    }
+
     return {
         canSuggest: true,
         amount: suggestedAmount,
         reason: 'Bezpieczna kwota obliczona przez algorytm',
-        details: [
-            `💰 Dostępne środki: ${available.toFixed(2)} zł`,
-            `🛡️ Bufor bezpieczeństwa: ${safetyBuffer.toFixed(2)} zł`,
-            `📤 Planowane wydatki: ${plannedExpenses.toFixed(2)} zł`,
-            `💡 Potencjalna nadwyżka: ${potentialSurplus.toFixed(2)} zł`,
-            `📊 Sugerowana kwota: ${suggestedAmount.toFixed(2)} zł (${((suggestedAmount / available) * 100).toFixed(1)}% dostępnych środków)`,
-            `🎯 Po odłożeniu zostanie: ${(available - suggestedAmount).toFixed(2)} zł`,
-            `📅 Dni do następnego przychodu: ${daysLeft}`,
-            `📈 Średnie dzienne wydatki (30 dni): ${dailyAverageExpense.toFixed(2)} zł`
-        ],
+        details,
         calculation: {
             available,
             safetyBuffer,
@@ -282,7 +331,9 @@ export function calculateSafeSavingsAmount(goalId) {
             remainingAfterSaving: available - suggestedAmount,
             daysLeft,
             dailyAverageExpense,
-            priorityMultiplier
+            priorityMultiplier,
+            deadlineMultiplier,
+            daysToDeadline
         }
     };
 }

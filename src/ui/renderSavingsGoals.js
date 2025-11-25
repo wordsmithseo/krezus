@@ -138,6 +138,36 @@ function renderSavingsGoalCard(goal, suggestion) {
     const progress = calculateGoalProgress(goal.id);
     const remaining = goal.targetAmount - goal.currentAmount;
 
+    // Oblicz deadline jeśli istnieje
+    let deadlineHtml = '';
+    let daysToDeadline = null;
+    if (goal.targetDate) {
+        const targetDateObj = new Date(goal.targetDate);
+        const today = new Date();
+        daysToDeadline = Math.max(0, Math.floor((targetDateObj - today) / (1000 * 60 * 60 * 24)));
+
+        let deadlineClass = 'deadline-normal';
+        let deadlineIcon = '📅';
+
+        if (daysToDeadline < 7) {
+            deadlineClass = 'deadline-urgent';
+            deadlineIcon = '⏰';
+        } else if (daysToDeadline < 30) {
+            deadlineClass = 'deadline-soon';
+            deadlineIcon = '⏰';
+        }
+
+        const formattedDate = new Date(goal.targetDate).toLocaleDateString('pl-PL');
+        deadlineHtml = `
+            <div class="goal-deadline ${deadlineClass}">
+                <span class="deadline-icon">${deadlineIcon}</span>
+                <span class="deadline-text">
+                    <strong>Deadline:</strong> ${formattedDate} (za ${daysToDeadline} ${daysToDeadline === 1 ? 'dzień' : 'dni'})
+                </span>
+            </div>
+        `;
+    }
+
     // Ikona priorytetu
     const priorityIcons = {
         1: '🔴',  // Wysoki
@@ -228,6 +258,8 @@ function renderSavingsGoalCard(goal, suggestion) {
             ${goal.description ? `
                 <div class="goal-description">${sanitizeHTML(goal.description)}</div>
             ` : ''}
+
+            ${deadlineHtml}
 
             <div class="goal-info">
                 <div class="goal-info-item">

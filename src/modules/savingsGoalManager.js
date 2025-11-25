@@ -188,6 +188,7 @@ export async function addSavingsGoal(goalData, userId) {
         id: generateGoalId(),
         name: goalData.name || 'Nowy cel',
         targetAmount: goalData.targetAmount || 0,
+        targetDate: goalData.targetDate || null, // Opcjonalna data końcowa (YYYY-MM-DD)
         currentAmount: 0, // Zawsze zaczynamy od 0
         createdAt: getWarsawDateString() + 'T' + getCurrentTimeString(),
         status: 'active', // active, completed, paused
@@ -309,6 +310,51 @@ export async function addContribution(goalId, amount, userId) {
 
     return {
         contribution: newContribution,
+        goal: updatedGoal
+    };
+}
+
+/**
+ * Wycofuje wpłatę na cel oszczędzania
+ */
+export async function removeContribution(contributionId, userId) {
+    if (!userId) {
+        throw new Error('userId is required');
+    }
+
+    const contributions = getSavingsContributions();
+    const contribution = contributions.find(c => c.id === contributionId);
+
+    if (!contribution) {
+        throw new Error('Contribution not found');
+    }
+
+    const goals = getSavingsGoals();
+    const goal = goals.find(g => g.id === contribution.goalId);
+
+    if (!goal) {
+        throw new Error('Goal not found');
+    }
+
+    // Usuń wpłatę z listy
+    const filteredContributions = contributions.filter(c => c.id !== contributionId);
+    await saveSavingsContributions(filteredContributions, userId);
+
+    // Zaktualizuj currentAmount w celu (odejmij kwotę)
+    const updatedGoal = {
+        ...goal,
+        currentAmount: Math.max(0, (goal.currentAmount || 0) - contribution.amount)
+    };
+
+    // Jeśli cel był completed, ale po wycofaniu nie jest już ukończony, zmień status
+    if (goal.status === 'completed' && updatedGoal.currentAmount < updatedGoal.targetAmount) {
+        updatedGoal.status = 'active';
+    }
+
+    await updateSavingsGoal(contribution.goalId, updatedGoal, userId);
+
+    return {
+        contribution,
         goal: updatedGoal
     };
 }
