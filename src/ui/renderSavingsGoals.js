@@ -33,7 +33,7 @@ export function renderSavingsGoals() {
             <div class="section-card">
                 <div class="section-header-inline">
                     <h2>🎯 Oszczędzanie</h2>
-                    <button class="btn-primary" onclick="window.showAddSavingsGoalModal()">
+                    <button class="btn btn-primary mt-20" onclick="window.showAddSavingsGoalModal()">
                         ➕ Dodaj cel oszczędzania
                     </button>
                 </div>
@@ -60,7 +60,7 @@ function renderSavingsStats(stats) {
                 <p class="empty-icon">🎯</p>
                 <h3>Brak celów oszczędzania</h3>
                 <p>Dodaj swój pierwszy cel oszczędzania, a aplikacja automatycznie będzie sugerowała bezpieczne kwoty do odłożenia.</p>
-                <button class="btn-primary" onclick="window.showAddSavingsGoalModal()">
+                <button class="btn btn-primary mt-20" onclick="window.showAddSavingsGoalModal()">
                     ➕ Dodaj pierwszy cel
                 </button>
             </div>
@@ -117,7 +117,17 @@ function renderSavingsGoalsList(goals, suggestions) {
 
     let html = `
         <div class="section-card">
-            <h3 style="margin-bottom: 20px;">📋 Lista celów (${totalGoals})</h3>
+            <div class="goals-list-header">
+                <h3>📋 Lista celów (${totalGoals})</h3>
+                <div class="goals-collapse-controls">
+                    <button class="btn-link" onclick="window.collapseAllGoals()">
+                        ⬆️ Zwiń wszystkie
+                    </button>
+                    <button class="btn-link" onclick="window.expandAllGoals()">
+                        ⬇️ Rozwiń wszystkie
+                    </button>
+                </div>
+            </div>
             <div class="savings-goals-list">
     `;
 
@@ -160,6 +170,34 @@ function renderGoalsPagination(totalPages) {
 window.changeGoalsPage = function(page) {
     currentGoalsPage = page;
     renderSavingsGoals();
+};
+
+/**
+ * Przełącza collapse/expand dla celu
+ */
+window.toggleGoalCollapse = function(goalId) {
+    const card = document.querySelector(`[data-goal-id="${goalId}"]`);
+    if (!card) return;
+
+    card.classList.toggle('collapsed');
+};
+
+/**
+ * Zwija wszystkie cele
+ */
+window.collapseAllGoals = function() {
+    document.querySelectorAll('.savings-goal-card').forEach(card => {
+        card.classList.add('collapsed');
+    });
+};
+
+/**
+ * Rozwija wszystkie cele
+ */
+window.expandAllGoals = function() {
+    document.querySelectorAll('.savings-goal-card').forEach(card => {
+        card.classList.remove('collapsed');
+    });
 };
 
 /**
@@ -267,7 +305,7 @@ function renderSavingsGoalCard(goal, suggestion) {
     }
 
     return `
-        <div class="savings-goal-card ${goal.status}" data-goal-id="${goal.id}">
+        <div class="savings-goal-card ${goal.status} collapsed" data-goal-id="${goal.id}">
             <!-- Header z możliwością collapse -->
             <div class="goal-header-collapsible" onclick="window.toggleGoalCollapse('${goal.id}')">
                 <div class="goal-collapse-left">

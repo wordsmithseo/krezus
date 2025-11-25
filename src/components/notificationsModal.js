@@ -1,6 +1,6 @@
 // src/components/notificationsModal.js
 import { sanitizeHTML } from '../utils/sanitizer.js';
-import { getChangesSinceLastVisit, groupChangesByType, formatChange, updateLastSeenTimestamp } from '../modules/changeTracker.js';
+import { getChangesSinceLastVisit, groupChangesByType, formatChange, updateLastSeenTimestamp, markNotificationsAsRead } from '../modules/changeTracker.js';
 
 /**
  * Pokazuje modal z powiadomieniami o zmianach
@@ -15,11 +15,14 @@ export async function showNotificationsModal() {
         return;
     }
 
+    // Zapisz ID powiadomień do późniejszego oznaczenia jako odczytane
+    window.currentNotificationIds = changes.map(c => c.id);
+
     const groups = groupChangesByType(changes);
 
     // Utwórz modal
     const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
+    modal.className = 'modal';
     modal.innerHTML = `
         <div class="modal-content notifications-modal">
             <div class="modal-header">
@@ -34,7 +37,7 @@ export async function showNotificationsModal() {
                 ${renderChangeGroups(groups)}
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="window.closeNotificationsModal()">
+                <button class="btn btn-primary mt-20" onclick="window.closeNotificationsModal()">
                     ✅ Rozumiem, zamknij
                 </button>
             </div>
@@ -185,13 +188,19 @@ function renderChangeItem(change) {
  * Zamyka modal powiadomień i aktualizuje timestamp ostatniej wizyty
  */
 window.closeNotificationsModal = function() {
-    const modal = document.querySelector('.modal-overlay');
+    const modal = document.querySelector('.modal.active');
     if (!modal) return;
 
     modal.classList.remove('active');
     setTimeout(() => {
         modal.remove();
     }, 300);
+
+    // Oznacz powiadomienia jako odczytane
+    if (window.currentNotificationIds && window.currentNotificationIds.length > 0) {
+        markNotificationsAsRead(window.currentNotificationIds);
+        window.currentNotificationIds = [];
+    }
 
     // Aktualizuj timestamp ostatniej wizyty
     updateLastSeenTimestamp();

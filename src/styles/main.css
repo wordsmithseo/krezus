@@ -2076,6 +2076,24 @@ tr.correction {
 }
 
 /* Lista celów */
+.goals-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.goals-list-header h3 {
+  margin: 0;
+}
+
+.goals-collapse-controls {
+  display: flex;
+  gap: 10px;
+}
+
 .savings-goals-list {
   display: flex;
   flex-direction: column;
