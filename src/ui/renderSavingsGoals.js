@@ -120,10 +120,10 @@ function renderSavingsGoalsList(goals, suggestions) {
             <div class="goals-list-header">
                 <h3>📋 Lista celów (${totalGoals})</h3>
                 <div class="goals-collapse-controls">
-                    <button class="btn-link" onclick="window.collapseAllGoals()">
+                    <button class="btn btn-secondary" onclick="window.collapseAllGoals()">
                         ⬆️ Zwiń wszystkie
                     </button>
-                    <button class="btn-link" onclick="window.expandAllGoals()">
+                    <button class="btn btn-secondary" onclick="window.expandAllGoals()">
                         ⬇️ Rozwiń wszystkie
                     </button>
                 </div>

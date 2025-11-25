@@ -2785,3 +2785,165 @@ tr.correction {
     gap: 5px;
   }
 }
+
+/* === MODAL SUGESTII OSZCZĘDZANIA === */
+.savings-suggestions-modal .modal-content {
+  max-width: 800px;
+  max-height: 85vh;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.suggestion-card {
+  background: white;
+  border: 2px solid var(--light-gray);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.suggestion-card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.suggestion-card-header {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 2px solid var(--light-gray);
+}
+
+.goal-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.goal-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.goal-details {
+  flex: 1;
+}
+
+.goal-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 0 0 8px 0;
+}
+
+.goal-progress-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--gray);
+}
+
+.progress-percent {
+  font-weight: 700;
+  color: var(--success);
+}
+
+.suggestion-card-body {
+  padding: 20px;
+}
+
+.suggestion-amount-box {
+  background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.suggestion-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin-bottom: 5px;
+}
+
+.suggestion-amount-large {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.suggestion-reason-box {
+  background: var(--light-gray);
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.suggestion-reason-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.suggestion-reason-text {
+  font-size: 1rem;
+  color: var(--dark);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.suggestion-details-list {
+  margin-top: 10px;
+}
+
+.suggestion-detail-item {
+  font-size: 0.9rem;
+  color: var(--gray);
+  line-height: 1.6;
+  padding: 3px 0;
+}
+
+.suggestion-card-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.suggestion-card-actions .btn {
+  flex: 1;
+  max-width: 250px;
+}
+
+@media (max-width: 768px) {
+  .savings-suggestions-modal .modal-content {
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  .goal-icon {
+    font-size: 2rem;
+  }
+
+  .goal-name {
+    font-size: 1.1rem;
+  }
+
+  .suggestion-amount-large {
+    font-size: 1.6rem;
+  }
+
+  .suggestion-card-actions {
+    flex-direction: column;
+  }
+
+  .suggestion-card-actions .btn {
+    max-width: 100%;
+  }
+}

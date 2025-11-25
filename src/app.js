@@ -94,6 +94,7 @@ import {
 } from './modules/changeTracker.js';
 
 import { showNotificationsModal } from './components/notificationsModal.js';
+import { checkAndShowSavingsSuggestions } from './components/savingsSuggestionsModal.js';
 
 import {
   showProfileModal,
@@ -239,11 +240,19 @@ async function checkForNotifications() {
       // Odczekaj chwilę aby UI się załadował
       setTimeout(() => {
         showNotificationsModal();
+        // Po zamknięciu powiadomień sprawdź sugestie oszczędzania
+        setTimeout(() => {
+          checkAndShowSavingsSuggestions();
+        }, 2000);
       }, 1000);
     } else {
       console.log('ℹ️ Brak nowych zmian');
       // Zaktualizuj timestamp ostatniej wizyty
       updateLastSeenTimestamp();
+      // Sprawdź sugestie oszczędzania
+      setTimeout(() => {
+        checkAndShowSavingsSuggestions();
+      }, 1500);
     }
   } catch (error) {
     console.error('❌ Błąd sprawdzania powiadomień:', error);
