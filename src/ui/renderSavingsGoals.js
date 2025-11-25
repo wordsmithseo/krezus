@@ -3,6 +3,10 @@ import { sanitizeHTML } from '../utils/sanitizer.js';
 import { getSavingsGoals, getSavingsGoalsStats } from '../modules/savingsGoalManager.js';
 import { calculateAllSuggestions, calculateGoalProgress, calculateSavingsStats } from '../modules/savingsGoalCalculator.js';
 
+// Paginacja
+const GOALS_PER_PAGE = 25;
+let currentGoalsPage = 1;
+
 /**
  * Renderuje sekcję oszczędzania
  */
@@ -26,14 +30,17 @@ export function renderSavingsGoals() {
     // Generuj HTML
     let html = `
         <div class="savings-goals-section">
-            <div class="section-header">
-                <h2>🎯 Oszczędzanie</h2>
-                <button class="btn-primary" onclick="window.showAddSavingsGoalModal()">
-                    ➕ Dodaj cel oszczędzania
-                </button>
+            <div class="section-card">
+                <div class="section-header-inline">
+                    <h2>🎯 Oszczędzanie</h2>
+                    <button class="btn-primary" onclick="window.showAddSavingsGoalModal()">
+                        ➕ Dodaj cel oszczędzania
+                    </button>
+                </div>
+
+                ${renderSavingsStats(stats)}
             </div>
 
-            ${renderSavingsStats(stats)}
             ${renderSavingsGoalsList(goals, suggestions)}
         </div>
     `;
@@ -87,49 +94,73 @@ function renderSavingsStats(stats) {
 }
 
 /**
- * Renderuje listę celów oszczędzania
+ * Renderuje listę celów oszczędzania z paginacją
  */
 function renderSavingsGoalsList(goals, suggestions) {
     if (goals.length === 0) {
         return '';
     }
 
-    // Grupuj cele według statusu
-    const activeGoals = goals.filter(g => g.status === 'active');
-    const completedGoals = goals.filter(g => g.status === 'completed');
-    const pausedGoals = goals.filter(g => g.status === 'paused');
+    // Sortuj cele: aktywne na górze, potem ukończone, potem wstrzymane
+    const sortedGoals = [
+        ...goals.filter(g => g.status === 'active'),
+        ...goals.filter(g => g.status === 'completed'),
+        ...goals.filter(g => g.status === 'paused')
+    ];
 
-    let html = '<div class="savings-goals-list">';
+    // Paginacja
+    const totalGoals = sortedGoals.length;
+    const totalPages = Math.ceil(totalGoals / GOALS_PER_PAGE);
+    const startIndex = (currentGoalsPage - 1) * GOALS_PER_PAGE;
+    const endIndex = startIndex + GOALS_PER_PAGE;
+    const goalsToShow = sortedGoals.slice(startIndex, endIndex);
 
-    // Aktywne cele
-    if (activeGoals.length > 0) {
-        html += '<h3 class="goals-section-title">🎯 Aktywne cele</h3>';
-        activeGoals.forEach(goal => {
-            const suggestion = suggestions.find(s => s.goal.id === goal.id);
-            html += renderSavingsGoalCard(goal, suggestion);
-        });
-    }
+    let html = `
+        <div class="section-card">
+            <h3 style="margin-bottom: 20px;">📋 Lista celów (${totalGoals})</h3>
+            <div class="savings-goals-list">
+    `;
 
-    // Ukończone cele
-    if (completedGoals.length > 0) {
-        html += '<h3 class="goals-section-title">✅ Ukończone cele</h3>';
-        completedGoals.forEach(goal => {
-            html += renderSavingsGoalCard(goal, null);
-        });
-    }
+    // Renderuj cele jako listę
+    goalsToShow.forEach(goal => {
+        const suggestion = suggestions.find(s => s.goal.id === goal.id);
+        html += renderSavingsGoalCard(goal, suggestion);
+    });
 
-    // Wstrzymane cele
-    if (pausedGoals.length > 0) {
-        html += '<h3 class="goals-section-title">⏸️ Wstrzymane cele</h3>';
-        pausedGoals.forEach(goal => {
-            html += renderSavingsGoalCard(goal, null);
-        });
+    html += '</div>';
+
+    // Paginacja
+    if (totalPages > 1) {
+        html += renderGoalsPagination(totalPages);
     }
 
     html += '</div>';
 
     return html;
 }
+
+/**
+ * Renderuje paginację dla celów
+ */
+function renderGoalsPagination(totalPages) {
+    let html = '<div class="pagination">';
+
+    for (let i = 1; i <= totalPages; i++) {
+        const activeClass = i === currentGoalsPage ? 'active' : '';
+        html += `<button class="page-btn ${activeClass}" onclick="window.changeGoalsPage(${i})">${i}</button>`;
+    }
+
+    html += '</div>';
+    return html;
+}
+
+/**
+ * Zmienia stronę celów
+ */
+window.changeGoalsPage = function(page) {
+    currentGoalsPage = page;
+    renderSavingsGoals();
+};
 
 /**
  * Renderuje pojedynczą kartę celu oszczędzania

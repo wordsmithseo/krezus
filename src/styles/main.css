@@ -422,7 +422,7 @@ button:focus {
 }
 
 .nav-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -459,16 +459,16 @@ button:focus {
 .nav-btn {
   background: transparent;
   border: none;
-  padding: 12px 24px;
+  padding: 12px 18px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--gray);
   transition: all 0.3s;
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 500;
   flex-shrink: 0;
 }
@@ -2004,6 +2004,23 @@ tr.correction {
   padding: 20px;
 }
 
+.savings-goals-section .section-card {
+  margin-bottom: 25px;
+}
+
+.section-header-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.section-header-inline h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--dark);
+}
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -2062,7 +2079,7 @@ tr.correction {
 .savings-goals-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
 .goals-section-title {
@@ -2076,17 +2093,18 @@ tr.correction {
 
 /* Karta celu oszczędzania */
 .savings-goal-card {
-  background: white;
-  border-radius: 12px;
-  padding: 25px;
-  box-shadow: var(--shadow);
-  transition: all 0.3s ease;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
   border-left: 4px solid var(--primary);
+  transition: all 0.2s ease;
 }
 
 .savings-goal-card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
+  background: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .savings-goal-card.completed {
