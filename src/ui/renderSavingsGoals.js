@@ -267,67 +267,94 @@ function renderSavingsGoalCard(goal, suggestion) {
     }
 
     return `
-        <div class="savings-goal-card ${goal.status}">
-            <div class="goal-header">
-                <div class="goal-title-section">
+        <div class="savings-goal-card ${goal.status}" data-goal-id="${goal.id}">
+            <!-- Header z możliwością collapse -->
+            <div class="goal-header-collapsible" onclick="window.toggleGoalCollapse('${goal.id}')">
+                <div class="goal-collapse-left">
+                    <button class="collapse-toggle" title="Rozwiń/Zwiń">
+                        <span class="collapse-icon">▼</span>
+                    </button>
                     <span class="goal-icon">${sanitizeHTML(goal.icon)}</span>
                     <h3 class="goal-name">${sanitizeHTML(goal.name)}</h3>
                     ${statusBadge}
                 </div>
-                <div class="goal-actions">
-                    ${goal.status === 'active' ? `
-                        <button class="btn-icon" onclick="window.editSavingsGoal('${goal.id}')" title="Edytuj">
-                            ✏️
-                        </button>
-                    ` : ''}
-                    <button class="btn-icon" onclick="window.deleteSavingsGoal('${goal.id}')" title="Usuń">
-                        🗑️
+
+                <!-- Info widoczne gdy collapsed -->
+                <div class="goal-collapsed-info">
+                    <span class="collapsed-stat">
+                        <strong>${goal.currentAmount.toFixed(2)} zł</strong> / ${goal.targetAmount.toFixed(2)} zł
+                    </span>
+                    <span class="collapsed-progress">${progress.percentage.toFixed(0)}%</span>
+                </div>
+            </div>
+
+            <!-- Akcje zawsze widoczne -->
+            <div class="goal-actions-bar">
+                ${goal.status === 'active' ? `
+                    <button class="btn-icon" onclick="event.stopPropagation(); window.editSavingsGoal('${goal.id}')" title="Edytuj">
+                        ✏️
                     </button>
-                </div>
-            </div>
-
-            ${goal.description ? `
-                <div class="goal-description">${sanitizeHTML(goal.description)}</div>
-            ` : ''}
-
-            ${deadlineHtml}
-
-            <div class="goal-info">
-                <div class="goal-info-item">
-                    <span class="label">Priorytet:</span>
-                    <span class="value">${priorityIcon} ${priorityName}</span>
-                </div>
-                <div class="goal-info-item">
-                    <span class="label">Odłożono:</span>
-                    <span class="value">${goal.currentAmount.toFixed(2)} zł</span>
-                </div>
-                <div class="goal-info-item">
-                    <span class="label">Cel:</span>
-                    <span class="value">${goal.targetAmount.toFixed(2)} zł</span>
-                </div>
-                <div class="goal-info-item">
-                    <span class="label">Pozostało:</span>
-                    <span class="value">${remaining.toFixed(2)} zł</span>
-                </div>
-            </div>
-
-            <div class="goal-progress">
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progress.percentage}%"></div>
-                </div>
-                <div class="progress-text">${progress.percentage.toFixed(1)}%</div>
-            </div>
-
-            ${suggestionHtml}
-
-            ${goal.status === 'active' ? `
-                <button class="btn-link view-history-btn" onclick="window.showGoalHistory('${goal.id}')">
-                    📊 Zobacz historię wpłat
+                ` : ''}
+                <button class="btn-icon" onclick="event.stopPropagation(); window.deleteSavingsGoal('${goal.id}')" title="Usuń">
+                    🗑️
                 </button>
-            ` : ''}
+            </div>
+
+            <!-- Zawartość rozwijalna -->
+            <div class="goal-expandable-content">
+                ${goal.description ? `
+                    <div class="goal-description">${sanitizeHTML(goal.description)}</div>
+                ` : ''}
+
+                ${deadlineHtml}
+
+                <div class="goal-info">
+                    <div class="goal-info-item">
+                        <span class="label">Priorytet:</span>
+                        <span class="value">${priorityIcon} ${priorityName}</span>
+                    </div>
+                    <div class="goal-info-item">
+                        <span class="label">Odłożono:</span>
+                        <span class="value">${goal.currentAmount.toFixed(2)} zł</span>
+                    </div>
+                    <div class="goal-info-item">
+                        <span class="label">Cel:</span>
+                        <span class="value">${goal.targetAmount.toFixed(2)} zł</span>
+                    </div>
+                    <div class="goal-info-item">
+                        <span class="label">Pozostało:</span>
+                        <span class="value">${remaining.toFixed(2)} zł</span>
+                    </div>
+                </div>
+
+                <div class="goal-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress.percentage}%"></div>
+                    </div>
+                    <div class="progress-text">${progress.percentage.toFixed(1)}%</div>
+                </div>
+
+                ${suggestionHtml}
+
+                ${goal.status === 'active' ? `
+                    <button class="btn-link view-history-btn" onclick="window.showGoalHistory('${goal.id}')">
+                        📊 Zobacz historię wpłat
+                    </button>
+                ` : ''}
+            </div>
         </div>
     `;
 }
+
+/**
+ * Przełącza collapse/expand dla celu
+ */
+window.toggleGoalCollapse = function(goalId) {
+    const card = document.querySelector(`[data-goal-id="${goalId}"]`);
+    if (!card) return;
+
+    card.classList.toggle('collapsed');
+};
 
 /**
  * Pokazuje komunikat sukcesu

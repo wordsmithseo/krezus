@@ -345,7 +345,7 @@ button:focus {
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
@@ -575,7 +575,7 @@ button:focus {
 /* ==================== CONTAINER ==================== */
 
 .container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 20px auto;
   padding: 0 20px;
 }
@@ -2095,16 +2095,112 @@ tr.correction {
 .savings-goal-card {
   background: #fafafa;
   border-radius: 8px;
-  padding: 20px;
+  padding: 0;
   border: 1px solid #e5e7eb;
   border-left: 4px solid var(--primary);
   transition: all 0.2s ease;
+  overflow: hidden;
 }
 
 .savings-goal-card:hover {
   background: white;
   border-color: var(--primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Header z collapse */
+.goal-header-collapsible {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.goal-header-collapsible:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.goal-collapse-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.collapse-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray);
+  transition: transform 0.2s ease;
+}
+
+.savings-goal-card.collapsed .collapse-toggle .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.collapse-icon {
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+}
+
+.goal-collapsed-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-right: 15px;
+}
+
+.savings-goal-card:not(.collapsed) .goal-collapsed-info {
+  display: none;
+}
+
+.collapsed-stat {
+  font-size: 0.95rem;
+  color: var(--dark);
+}
+
+.collapsed-stat strong {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.collapsed-progress {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: rgba(107, 127, 215, 0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* Akcje */
+.goal-actions-bar {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.savings-goal-card.collapsed .goal-actions-bar {
+  display: none;
+}
+
+/* Zawartość rozwijalna */
+.goal-expandable-content {
+  padding: 20px;
+  display: block;
+}
+
+.savings-goal-card.collapsed .goal-expandable-content {
+  display: none;
 }
 
 .savings-goal-card.completed {
@@ -2133,13 +2229,15 @@ tr.correction {
 }
 
 .goal-icon {
-  font-size: 2rem;
+  font-size: 1.5rem;
+  flex-shrink: 0;
 }
 
 .goal-name {
-  font-size: 1.4rem;
+  font-size: 1.1rem;
   color: var(--dark);
   margin: 0;
+  font-weight: 600;
 }
 
 .goal-actions {
