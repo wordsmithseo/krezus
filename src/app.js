@@ -89,7 +89,8 @@ import './components/savingsGoalsModals.js';
 
 import {
   hasNewChanges,
-  updateLastSeenTimestamp
+  updateLastSeenTimestamp,
+  initializeSession
 } from './modules/changeTracker.js';
 
 import { showNotificationsModal } from './components/notificationsModal.js';
@@ -2553,6 +2554,9 @@ onAuthChange(async (user) => {
         localStorage.removeItem(key);
       }
     });
+
+    // Inicjalizuj sesję (do śledzenia własnych akcji)
+    initializeSession();
 
     console.log('📥 Rozpoczęcie ładowania danych...');
     await loadAllData();

@@ -3,6 +3,8 @@ import { getLogs } from './logger.js';
 import { getUserId } from './auth.js';
 
 const LAST_SEEN_KEY = 'krezus_last_seen_timestamp';
+const READ_NOTIFICATIONS_KEY = 'krezus_read_notifications';
+const SESSION_START_KEY = 'krezus_session_start';
 
 /**
  * Pobiera timestamp ostatniej wizyty użytkownika
@@ -30,6 +32,60 @@ export function updateLastSeenTimestamp() {
 }
 
 /**
+ * Inicjalizuje sesję - zapisuje timestamp startu sesji
+ */
+export function initializeSession() {
+    const userId = getUserId();
+    if (!userId) return;
+
+    const key = `${SESSION_START_KEY}_${userId}`;
+    const now = new Date().toISOString();
+    sessionStorage.setItem(key, now);
+    console.log('🚀 Zainicjalizowano sesję:', now);
+}
+
+/**
+ * Pobiera timestamp startu obecnej sesji
+ */
+function getSessionStart() {
+    const userId = getUserId();
+    if (!userId) return null;
+
+    const key = `${SESSION_START_KEY}_${userId}`;
+    const timestamp = sessionStorage.getItem(key);
+    return timestamp ? new Date(timestamp) : null;
+}
+
+/**
+ * Zapisuje że powiadomienia zostały odczytane
+ */
+export function markNotificationsAsRead(notificationIds) {
+    const userId = getUserId();
+    if (!userId) return;
+
+    const key = `${READ_NOTIFICATIONS_KEY}_${userId}`;
+    const existing = localStorage.getItem(key);
+    const readIds = existing ? JSON.parse(existing) : [];
+
+    const newReadIds = [...new Set([...readIds, ...notificationIds])];
+    localStorage.setItem(key, JSON.stringify(newReadIds));
+
+    console.log(`✅ Oznaczono ${notificationIds.length} powiadomień jako odczytane`);
+}
+
+/**
+ * Pobiera listę odczytanych powiadomień
+ */
+function getReadNotifications() {
+    const userId = getUserId();
+    if (!userId) return [];
+
+    const key = `${READ_NOTIFICATIONS_KEY}_${userId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : [];
+}
+
+/**
  * Pobiera zmiany które zaszły od ostatniej wizyty
  */
 export async function getChangesSinceLastVisit() {
@@ -42,13 +98,29 @@ export async function getChangesSinceLastVisit() {
             return [];
         }
 
+        // Pobierz timestamp startu tej sesji
+        const sessionStart = getSessionStart();
+
+        // Pobierz listę już odczytanych powiadomień
+        const readNotifications = getReadNotifications();
+
         // Pobierz wszystkie logi
         const allLogs = await getLogs();
 
         // Filtruj logi od ostatniej wizyty
         const newLogs = allLogs.filter(log => {
             const logTimestamp = new Date(log.timestamp);
-            return logTimestamp > lastSeen;
+
+            // Pomiń logi starsze niż ostatnia wizyta
+            if (logTimestamp <= lastSeen) return false;
+
+            // Pomiń logi z bieżącej sesji (własne akcje)
+            if (sessionStart && logTimestamp >= sessionStart) return false;
+
+            // Pomiń już odczytane powiadomienia
+            if (readNotifications.includes(log.id)) return false;
+
+            return true;
         });
 
         // Filtruj tylko istotne akcje (pomiń logowanie, wylogowanie, itp.)

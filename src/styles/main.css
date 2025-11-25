@@ -2076,6 +2076,24 @@ tr.correction {
 }
 
 /* Lista celów */
+.goals-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.goals-list-header h3 {
+  margin: 0;
+}
+
+.goals-collapse-controls {
+  display: flex;
+  gap: 10px;
+}
+
 .savings-goals-list {
   display: flex;
   flex-direction: column;
@@ -2602,6 +2620,21 @@ tr.correction {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .section-header-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .section-header-inline h2 {
+    font-size: 1.5rem;
+  }
+
+  .goals-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .savings-stats {
     grid-template-columns: 1fr;
   }
