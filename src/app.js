@@ -76,7 +76,18 @@ import {
   setBudgetUsersCache
 } from './modules/analytics.js';
 
-import { 
+import {
+  loadSavingsGoals,
+  loadSavingsContributions,
+  subscribeToSavingsGoalsUpdates,
+  clearSavingsGoalsCache
+} from './modules/savingsGoalManager.js';
+
+import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
+
+import './components/savingsGoalsModals.js';
+
+import {
   showProfileModal,
   showPasswordModal,
   showEditCategoryModal,
@@ -243,6 +254,9 @@ async function loadAllData() {
     await clearCache();
     await fetchAllData(userId);
 
+    // Ładowanie danych oszczędzania
+    await loadSavingsGoals(userId);
+    await loadSavingsContributions(userId);
 
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
@@ -294,7 +308,19 @@ async function loadAllData() {
         renderDailyEnvelope();
       }
     });
-    
+
+    // Subskrybuj zmiany w celach oszczędzania (osobny moduł)
+    subscribeToSavingsGoalsUpdates(userId, {
+      onGoalsChange: () => {
+        console.log('🔄 Zmiana w celach oszczędzania - re-render');
+        renderSavingsGoals();
+      },
+      onContributionsChange: () => {
+        console.log('🔄 Zmiana w wpłatach - re-render');
+        renderSavingsGoals();
+      }
+    });
+
     console.log('✅ Dane załadowane pomyślnie');
     
   } catch (error) {
@@ -355,6 +381,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
+  renderSavingsGoals();
   await renderLogs();
   loadSettings();
   setupCategorySuggestions();
