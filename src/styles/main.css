@@ -2620,6 +2620,12 @@ tr.correction {
 
 /* Responsive */
 @media (max-width: 768px) {
+  /* Sekcja główna */
+  .savings-goals-section {
+    padding: 10px;
+  }
+
+  /* Header */
   .section-header-inline {
     flex-direction: column;
     align-items: flex-start;
@@ -2630,35 +2636,287 @@ tr.correction {
     font-size: 1.5rem;
   }
 
+  /* Lista celów - header */
   .goals-list-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
 
+  .goals-list-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .goals-collapse-controls {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+  }
+
+  .goals-collapse-controls .btn {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  /* Statystyki */
   .savings-stats {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
+  /* Karta celu */
+  .savings-goal-card {
+    border-radius: 6px;
+  }
+
+  /* Header karty z collapse */
+  .goal-header-collapsible {
+    padding: 12px 15px;
+  }
+
+  .goal-collapse-left {
+    gap: 10px;
+  }
+
+  .goal-icon {
+    font-size: 1.3rem;
+  }
+
+  .goal-name {
+    font-size: 1rem;
+  }
+
+  /* Collapsed info */
+  .goal-collapsed-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-right: 10px;
+  }
+
+  .collapsed-stat {
+    font-size: 0.85rem;
+  }
+
+  .collapsed-progress {
+    font-size: 0.8rem;
+    padding: 3px 10px;
+  }
+
+  /* Actions bar */
+  .goal-actions-bar {
+    padding: 0 15px 12px 15px;
+    flex-wrap: wrap;
+  }
+
+  .goal-actions-bar .btn-icon {
+    font-size: 0.9rem;
+    padding: 6px 10px;
+  }
+
+  /* Expandable content */
+  .goal-expandable-content {
+    padding: 15px;
+  }
+
+  /* Goal info */
   .goal-info {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
+  .goal-info-item .label {
+    font-size: 0.8rem;
+  }
+
+  .goal-info-item .value {
+    font-size: 1rem;
+  }
+
+  /* Goal header */
   .goal-header {
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
   }
 
   .goal-title-section {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .goal-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Goal description */
+  .goal-description {
+    padding: 10px;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+  }
+
+  /* Deadline */
+  .goal-deadline {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+  }
+
+  .deadline-icon {
+    font-size: 1rem;
+  }
+
+  /* Progress bar */
+  .goal-progress {
+    margin-bottom: 20px;
+  }
+
+  .progress-bar {
+    height: 20px;
+  }
+
+  .progress-text {
+    font-size: 0.85rem;
+  }
+
+  /* Suggestion box */
+  .suggestion-box {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  .suggestion-icon {
+    font-size: 1.3rem;
+  }
+
+  .suggestion-title {
+    font-size: 1rem;
+  }
+
+  .suggestion-amount {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .suggestion-reason {
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+  }
+
+  .suggestion-details {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .suggestion-detail {
+    font-size: 0.85rem;
+    margin-bottom: 5px;
   }
 
   .suggestion-actions {
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .suggestion-actions button {
+    width: 100%;
+    padding: 10px 16px;
+    font-size: 0.95rem;
+  }
+
+  /* View history button */
+  .view-history-btn {
+    padding: 10px;
+    font-size: 0.9rem;
+  }
+
+  /* Empty state */
+  .savings-empty-state {
+    padding: 40px 15px;
+  }
+
+  .empty-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+  }
+
+  .savings-empty-state h3 {
+    font-size: 1.3rem;
+    margin-bottom: 12px;
+  }
+
+  .savings-empty-state p {
+    font-size: 1rem;
+    margin-bottom: 25px;
+  }
+
+  /* Contributions */
+  .contribution-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .contribution-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .contribution-amount {
+    font-size: 1.1rem;
+  }
+
+  .btn-danger-small {
+    font-size: 0.8rem;
+    padding: 5px 10px;
   }
 
   .contributions-summary {
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .summary-item .label {
+    font-size: 0.8rem;
+  }
+
+  .summary-item .value {
+    font-size: 1.1rem;
+  }
+
+  /* Pagination */
+  .pagination-controls {
+    margin-top: 20px;
+    gap: 5px;
+  }
+
+  .page-btn {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    min-width: 35px;
+  }
+
+  /* Section card */
+  .savings-goals-section .section-card {
+    margin-bottom: 15px;
+    padding: 15px;
+  }
+
+  /* Goals section title */
+  .goals-section-title {
+    font-size: 1.1rem;
+    padding: 8px 12px;
+    margin: 20px 0 12px 0;
+  }
+
+  /* Status badges */
+  .status-badge {
+    font-size: 0.8rem;
+    padding: 3px 10px;
   }
 }
 
