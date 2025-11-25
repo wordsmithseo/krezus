@@ -120,10 +120,10 @@ function renderSavingsGoalsList(goals, suggestions) {
             <div class="goals-list-header">
                 <h3>📋 Lista celów (${totalGoals})</h3>
                 <div class="goals-collapse-controls">
-                    <button class="btn-link" onclick="window.collapseAllGoals()">
+                    <button class="btn btn-secondary" onclick="window.collapseAllGoals()">
                         ⬆️ Zwiń wszystkie
                     </button>
-                    <button class="btn-link" onclick="window.expandAllGoals()">
+                    <button class="btn btn-secondary" onclick="window.expandAllGoals()">
                         ⬇️ Rozwiń wszystkie
                     </button>
                 </div>
@@ -277,10 +277,10 @@ function renderSavingsGoalCard(goal, suggestion) {
                     ${sug.details.map(d => `<div class="suggestion-detail">• ${sanitizeHTML(d)}</div>`).join('')}
                 </div>
                 <div class="suggestion-actions">
-                    <button class="btn-success" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
+                    <button class="btn btn-success" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
                         ✅ Zaakceptuj
                     </button>
-                    <button class="btn-secondary" onclick="window.rejectSuggestion('${goal.id}')">
+                    <button class="btn btn-secondary" onclick="window.rejectSuggestion('${goal.id}')">
                         ❌ Odrzuć
                     </button>
                 </div>
