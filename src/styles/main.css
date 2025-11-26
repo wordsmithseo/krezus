@@ -2745,55 +2745,96 @@ tr.correction {
 
   /* Header karty z collapse */
   .goal-header-collapsible {
-    padding: 12px 15px;
+    padding: 10px 12px;
+    gap: 8px;
   }
 
   .goal-collapse-left {
-    gap: 10px;
-  }
-
-  .goal-icon {
-    font-size: 1.3rem;
-  }
-
-  .goal-name {
-    font-size: 1rem;
-  }
-
-  /* Collapsed info */
-  .goal-collapsed-info {
-    flex-direction: column;
-    align-items: flex-start;
     gap: 8px;
-    margin-right: 10px;
-    padding-left: 8px;
+    flex: 1;
+    min-width: 0; /* Pozwala na skracanie długich tytułów */
   }
 
-  .collapsed-amounts {
+  .collapse-toggle {
+    padding: 4px;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .collapse-icon {
     font-size: 0.9rem;
   }
 
+  .goal-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .goal-title-section {
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .goal-name {
+    font-size: 0.85rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Status badge na mobile */
+  .status-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    white-space: nowrap;
+  }
+
+  /* Collapsed info - układ poziomy na mobile */
+  .goal-collapsed-info {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin-left: 0;
+    padding-left: 0;
+    flex-shrink: 0;
+  }
+
+  .collapsed-amounts {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
   .collapsed-current {
-    font-size: 1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
   }
 
   .collapsed-separator {
-    font-size: 0.85rem;
+    display: none; /* Ukryj / na mobile */
   }
 
   .collapsed-target {
-    font-size: 0.95rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray);
   }
 
   .collapsed-progress {
-    font-size: 0.95rem;
-    padding: 4px 10px;
-    min-width: 50px;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    min-width: 45px;
+    border-radius: 12px;
   }
 
   /* Stare klasy dla kompatybilności */
   .collapsed-stat {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
   }
 
   /* Actions bar */
