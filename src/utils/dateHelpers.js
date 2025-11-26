@@ -174,14 +174,15 @@ export function clearDateCache() {
  * Zwraca obiekt z dniami, godzinami, minutami, sekundami oraz dwiema miarami dni:
  * - totalDays: zmiennoprzecinkowa liczba dni (dokładny czas, dla wyświetlania)
  * - calendarDays: pełne dni kalendarzowe (dla obliczeń limitów)
+ * - showToday: true gdy należy wyświetlić "Dziś" (data dzisiaj i brak czasu)
  *
  * @param {string} endDateStr - Data końcowa w formacie YYYY-MM-DD
  * @param {string} endTimeStr - Opcjonalny czas końcowy w formacie HH:MM (jeśli nie podany, używa 00:00)
- * @returns {Object} { days, hours, minutes, seconds, totalDays, calendarDays, formatted, countdownFormat }
+ * @returns {Object} { days, hours, minutes, seconds, totalDays, calendarDays, formatted, countdownFormat, showToday }
  */
 export function calculateRemainingTime(endDateStr, endTimeStr = null) {
   if (!endDateStr) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: '00:00:00' };
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: null, showToday: false };
   }
 
   const now = getWarsawDateTime();
@@ -199,14 +200,14 @@ export function calculateRemainingTime(endDateStr, endTimeStr = null) {
   }
 
   if (!endDate || isNaN(endDate.getTime())) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: '00:00:00' };
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: null, showToday: false };
   }
 
   // Oblicz różnicę w milisekundach
   const diffMs = endDate - now;
 
   if (diffMs <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: '00:00:00' };
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni', countdownFormat: null, showToday: false };
   }
 
   // Oblicz składowe
@@ -232,12 +233,18 @@ export function calculateRemainingTime(endDateStr, endTimeStr = null) {
   // Sformatuj tekst
   let formatted;
   let countdownFormat;
+  let showToday = false;
 
   if (calendarDays >= 1) {
     formatted = `${calendarDays} ${calendarDays === 1 ? 'dzień' : 'dni'}`;
     countdownFormat = null; // Nie używamy countdown gdy >= 1 dzień
+  } else if (!endTimeStr || endTimeStr.trim() === '') {
+    // NOWE: Jeśli nie podano czasu i data to dzisiaj, pokaż "Dziś"
+    formatted = 'Dziś';
+    countdownFormat = null;
+    showToday = true;
   } else {
-    // Gdy zostało < 1 dzień, używamy formatu HH:MM:SS
+    // Gdy zostało < 1 dzień i podano czas, używamy formatu HH:MM:SS
     const paddedHours = String(hours).padStart(2, '0');
     const paddedMinutes = String(minutes).padStart(2, '0');
     const paddedSeconds = String(seconds).padStart(2, '0');
@@ -253,6 +260,7 @@ export function calculateRemainingTime(endDateStr, endTimeStr = null) {
     totalDays,
     calendarDays,  // NOWE: pełne dni kalendarzowe dla obliczeń limitów
     formatted,
-    countdownFormat  // NOWE: format HH:MM:SS dla countdown timera (null gdy >= 1 dzień)
+    countdownFormat,  // NOWE: format HH:MM:SS dla countdown timera (null gdy >= 1 dzień lub brak czasu)
+    showToday  // NOWE: true gdy należy pokazać "Dziś" zamiast timera
   };
 }

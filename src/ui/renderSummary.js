@@ -103,12 +103,17 @@ export function renderSpendingDynamics() {
   const dynamicsPeriodIndex = getDynamicsPeriod();
   const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
 
-  // ZMIANA: Pokazuj countdown timer (HH:MM:SS) gdy zostało mniej niż 1 dzień
+  // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
   let periodInfo;
   if (selectedPeriod) {
-    if (selectedPeriod.countdownFormat) {
-      periodInfo = `${selectedPeriod.name} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}">${selectedPeriod.countdownFormat}</span>)`;
+    if (selectedPeriod.showToday) {
+      // Gdy wpływ jest dziś i nie podano czasu
+      periodInfo = `${selectedPeriod.name} (Dziś)`;
+    } else if (selectedPeriod.countdownFormat) {
+      // Gdy zostało < 1 dzień i podano czas
+      periodInfo = `${selectedPeriod.name} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>)`;
     } else {
+      // Gdy >= 1 dzień
       periodInfo = `${selectedPeriod.name} (${selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`})`;
     }
   } else {
@@ -255,10 +260,13 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';
 
-    // ZMIANA: Pokazuj countdown timer (HH:MM:SS) gdy zostało mniej niż 1 dzień
-    if (limit.countdownFormat) {
-      // Gdy zostało < 1 dzień, używamy countdown timera
-      daysDiv.innerHTML = `Pozostało: <span class="countdown-timer" data-end-date="${limit.date}" data-countdown-format="${limit.countdownFormat}">${limit.countdownFormat}</span>`;
+    // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+    if (limit.showToday) {
+      // Gdy wpływ jest dziś i nie podano czasu, pokaż "Dziś"
+      daysDiv.textContent = `Pozostało: Dziś`;
+    } else if (limit.countdownFormat) {
+      // Gdy zostało < 1 dzień i podano czas, używamy countdown timera
+      daysDiv.innerHTML = `Pozostało: <span class="countdown-timer" data-end-date="${limit.date}" data-end-time="${limit.time || ''}">${limit.countdownFormat}</span>`;
     } else {
       // Gdy >= 1 dzień, pokazuj liczbę dni
       daysDiv.textContent = `Pozostało: ${limit.timeFormatted || `${limit.daysLeft} dni`}`;

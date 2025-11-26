@@ -22,10 +22,11 @@ export function startCountdownTimers() {
 
     timers.forEach(timer => {
       const endDate = timer.getAttribute('data-end-date');
+      const endTime = timer.getAttribute('data-end-time') || null;
       if (!endDate) return;
 
       // Oblicz pozostały czas
-      const timeInfo = calculateRemainingTime(endDate);
+      const timeInfo = calculateRemainingTime(endDate, endTime);
 
       // Jeśli czas minął, pokaż 00:00:00
       if (timeInfo.calendarDays < 0 || (timeInfo.days === 0 && timeInfo.hours === 0 && timeInfo.minutes === 0 && timeInfo.seconds === 0)) {
