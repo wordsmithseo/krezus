@@ -2882,6 +2882,7 @@ tr.correction {
     font-size: 0.8rem;
     flex-shrink: 0;
     white-space: nowrap;
+    display: block;
   }
 
   .goal-info-item .value {
@@ -2890,6 +2891,7 @@ tr.correction {
     font-weight: 700;
     overflow-wrap: break-word;
     word-break: break-word;
+    display: block;
   }
 
   /* Goal header */
