@@ -4,6 +4,40 @@ import { calculateSafeSavingsAmount } from '../modules/savingsGoalCalculator.js'
 import { sanitizeHTML } from '../utils/sanitizer.js';
 
 /**
+ * Klucz localStorage dla odrzuconych sugestii
+ */
+const DISMISSED_SUGGESTIONS_KEY = 'krezus_dismissed_suggestions';
+
+/**
+ * Sprawdza czy sugestia została już odrzucona na tym urządzeniu
+ */
+function isSuggestionDismissed(goalId, amount) {
+    try {
+        const dismissed = JSON.parse(localStorage.getItem(DISMISSED_SUGGESTIONS_KEY) || '{}');
+        const key = `${goalId}_${amount}`;
+        return dismissed[key] === true;
+    } catch (error) {
+        console.error('Błąd przy odczycie odrzuconych sugestii:', error);
+        return false;
+    }
+}
+
+/**
+ * Zapisuje informację o odrzuconej sugestii
+ */
+function markSuggestionAsDismissed(goalId, amount) {
+    try {
+        const dismissed = JSON.parse(localStorage.getItem(DISMISSED_SUGGESTIONS_KEY) || '{}');
+        const key = `${goalId}_${amount}`;
+        dismissed[key] = true;
+        localStorage.setItem(DISMISSED_SUGGESTIONS_KEY, JSON.stringify(dismissed));
+        console.log(`📝 Sugestia ${key} została oznaczona jako odrzucona`);
+    } catch (error) {
+        console.error('Błąd przy zapisie odrzuconej sugestii:', error);
+    }
+}
+
+/**
  * Sprawdza czy są jakieś sugestie oszczędzania i wyświetla modal
  */
 export async function checkAndShowSavingsSuggestions() {
@@ -22,10 +56,15 @@ export async function checkAndShowSavingsSuggestions() {
     for (const goal of activeGoals) {
         const suggestion = calculateSafeSavingsAmount(goal.id);
         if (suggestion.canSuggest && suggestion.amount > 0) {
-            suggestions.push({
-                goal,
-                suggestion
-            });
+            // Sprawdź czy ta sugestia nie została już odrzucona
+            if (!isSuggestionDismissed(goal.id, suggestion.amount)) {
+                suggestions.push({
+                    goal,
+                    suggestion
+                });
+            } else {
+                console.log(`⏭️ Pomijam sugestię dla ${goal.name} (${suggestion.amount} zł) - została już odrzucona`);
+            }
         }
     }
 
@@ -50,11 +89,18 @@ function showSavingsSuggestionsModal(suggestions) {
 
     const modal = document.createElement('div');
     modal.className = 'modal savings-suggestions-modal';
+
+    // Zapisz sugestie jako atrybut data dla późniejszego użycia
+    modal.dataset.suggestions = JSON.stringify(suggestions.map(s => ({
+        goalId: s.goal.id,
+        amount: s.suggestion.amount
+    })));
+
     modal.innerHTML = `
         <div class="modal-content notifications-modal">
             <div class="modal-header">
                 <h2>💡 Mamy sugestie oszczędzania! (${suggestions.length})</h2>
-                <button class="btn-close" onclick="window.closeSavingsSuggestionsModal()">✕</button>
+                <button class="btn-close savings-btn-close" onclick="window.closeSavingsSuggestionsModal()">✕</button>
             </div>
             <div class="modal-body">
                 <p class="notifications-intro">
@@ -62,11 +108,6 @@ function showSavingsSuggestionsModal(suggestions) {
                 </p>
 
                 ${renderSuggestionsList(suggestions)}
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="window.closeSavingsSuggestionsModal()">
-                    Zamknij
-                </button>
             </div>
         </div>
     `;
@@ -140,11 +181,23 @@ function renderSuggestionsList(suggestions) {
 }
 
 /**
- * Zamyka modal sugestii
+ * Zamyka modal sugestii i zapisuje odrzucone sugestie
  */
 window.closeSavingsSuggestionsModal = function() {
     const modal = document.querySelector('.savings-suggestions-modal.active');
     if (!modal) return;
+
+    // Pobierz sugestie z data-atrybutu
+    try {
+        const suggestionsData = JSON.parse(modal.dataset.suggestions || '[]');
+        // Oznacz wszystkie sugestie jako odrzucone
+        suggestionsData.forEach(({ goalId, amount }) => {
+            markSuggestionAsDismissed(goalId, amount);
+        });
+        console.log('📝 Wszystkie sugestie z modalu zostały oznaczone jako odrzucone');
+    } catch (error) {
+        console.error('Błąd przy zapisywaniu odrzuconych sugestii:', error);
+    }
 
     modal.classList.remove('active');
     setTimeout(() => {
@@ -158,10 +211,23 @@ window.closeSavingsSuggestionsModal = function() {
  * Akceptuje sugestię z modalu
  */
 window.acceptSuggestionFromModal = async function(goalId, amount) {
+    // Usuń tę sugestię z listy sugestii w modalu (żeby nie została oznaczona jako odrzucona)
+    const modal = document.querySelector('.savings-suggestions-modal.active');
+    if (modal) {
+        try {
+            const suggestionsData = JSON.parse(modal.dataset.suggestions || '[]');
+            const updatedSuggestions = suggestionsData.filter(s => !(s.goalId === goalId && s.amount === amount));
+            modal.dataset.suggestions = JSON.stringify(updatedSuggestions);
+            console.log(`✅ Usunięto zaakceptowaną sugestię ${goalId}_${amount} z listy do odrzucenia`);
+        } catch (error) {
+            console.error('Błąd przy aktualizacji listy sugestii:', error);
+        }
+    }
+
     // Wywołaj istniejącą funkcję akceptacji
     await window.acceptSuggestion(goalId, amount);
 
-    // Zamknij modal
+    // Zamknij modal (pozostałe sugestie zostaną odrzucone)
     window.closeSavingsSuggestionsModal();
 };
 
@@ -169,6 +235,25 @@ window.acceptSuggestionFromModal = async function(goalId, amount) {
  * Odrzuca sugestię z modalu
  */
 window.rejectSuggestionFromModal = async function(goalId) {
+    // Oznacz tę sugestię jako odrzuconą
+    const modal = document.querySelector('.savings-suggestions-modal.active');
+    if (modal) {
+        try {
+            const suggestionsData = JSON.parse(modal.dataset.suggestions || '[]');
+            const suggestion = suggestionsData.find(s => s.goalId === goalId);
+            if (suggestion) {
+                markSuggestionAsDismissed(suggestion.goalId, suggestion.amount);
+                console.log(`📝 Sugestia ${goalId}_${suggestion.amount} została natychmiast oznaczona jako odrzucona`);
+            }
+
+            // Usuń z listy sugestii w modalu
+            const updatedSuggestions = suggestionsData.filter(s => s.goalId !== goalId);
+            modal.dataset.suggestions = JSON.stringify(updatedSuggestions);
+        } catch (error) {
+            console.error('Błąd przy odrzucaniu sugestii:', error);
+        }
+    }
+
     // Wywołaj istniejącą funkcję odrzucenia
     await window.rejectSuggestion(goalId);
 
