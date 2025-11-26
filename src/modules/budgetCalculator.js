@@ -52,9 +52,9 @@ function getLimitsCache() {
             return null;
         }
 
-        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted, calendarDays)
-        if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined || firstLimit.calendarDays === undefined)) {
-            console.log('⚠️ Cache limitów nie ma pól czasu (totalDays/timeFormatted/calendarDays), obliczam na nowo');
+        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted, calendarDays, seconds, countdownFormat, showToday)
+        if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined || firstLimit.calendarDays === undefined || firstLimit.seconds === undefined || firstLimit.showToday === undefined)) {
+            console.log('⚠️ Cache limitów nie ma pól czasu (totalDays/timeFormatted/calendarDays/seconds/countdownFormat/showToday), obliczam na nowo');
             return null;
         }
 
@@ -157,6 +157,7 @@ function getNextPlannedIncomeDates() {
         .filter(inc => inc.type === 'planned' && inc.date >= today)
         .map(inc => ({
             date: inc.date,
+            time: inc.time || null,  // NOWE: zachowaj czas wpływu (null jeśli nie podano)
             name: inc.source || 'Bez nazwy',
             amount: inc.amount || 0
         }))
@@ -174,6 +175,14 @@ function getNextPlannedIncomeDates() {
             // Jeśli ta data już istnieje, dodaj amount do istniejącego wpływu
             const existing = seenDates.get(income.date);
             existing.amount += income.amount;
+
+            // NOWE: Jeśli nowy wpływ ma czas, a istniejący nie - użyj nowego czasu
+            // Jeśli oba mają czasy, wybierz wcześniejszy
+            if (income.time) {
+                if (!existing.time || income.time < existing.time) {
+                    existing.time = income.time;
+                }
+            }
         }
     }
 
@@ -189,8 +198,8 @@ export function calculateSpendingPeriods() {
 
     // Oblicz dni pozostałe dla każdej daty
     const periods = incomes.map(income => {
-        // Używamy nowej funkcji calculateRemainingTime dla dokładnego czasu
-        const timeInfo = calculateRemainingTime(income.date);
+        // ZMIANA: Przekazuj czas wpływu (jeśli został podany) do calculateRemainingTime
+        const timeInfo = calculateRemainingTime(income.date, income.time);
 
         // Dla zgodności wstecznej, zachowujemy daysLeft jako liczbę całkowitą
         const daysLeft = timeInfo.days;
@@ -198,6 +207,7 @@ export function calculateSpendingPeriods() {
         // Dodajemy nowe pola dla dokładniejszych obliczeń
         return {
             date: income.date,
+            time: income.time,  // NOWE: czas wpływu (może być null)
             name: income.name,
             amount: income.amount,
             daysLeft,  // Liczba całkowita dni (dla wyświetlania)
@@ -205,7 +215,10 @@ export function calculateSpendingPeriods() {
             calendarDays: timeInfo.calendarDays,  // Pełne dni kalendarzowe (dla obliczeń limitów)
             hours: timeInfo.hours,
             minutes: timeInfo.minutes,
-            timeFormatted: timeInfo.formatted  // Sformatowany tekst czasu
+            seconds: timeInfo.seconds,  // NOWE: sekundy dla countdown timera
+            timeFormatted: timeInfo.formatted,  // Sformatowany tekst czasu
+            countdownFormat: timeInfo.countdownFormat,  // NOWE: format HH:MM:SS dla countdown (null gdy >= 1 dzień)
+            showToday: timeInfo.showToday  // NOWE: true gdy należy pokazać "Dziś"
         };
     });
 
@@ -248,12 +261,16 @@ export function calculateCurrentLimits() {
             console.log(`\n📊 Okres: ${period.name} - BRAK CZASU (wpływ był w przeszłości)`);
             return {
                 date: period.date,
+                time: period.time,
                 name: period.name,
                 amount: period.amount,
                 daysLeft: period.daysLeft,
                 hours: period.hours,
                 minutes: period.minutes,
+                seconds: period.seconds,
                 timeFormatted: period.timeFormatted,
+                countdownFormat: period.countdownFormat,
+                showToday: period.showToday,
                 totalDays: period.totalDays,
                 calendarDays: period.calendarDays,
                 realLimit: 0,
@@ -287,12 +304,16 @@ export function calculateCurrentLimits() {
 
         return {
             date: period.date,
+            time: period.time,
             name: period.name,
             amount: period.amount, // Kwota planowanego przychodu
             daysLeft: period.daysLeft,
             hours: period.hours,
             minutes: period.minutes,
+            seconds: period.seconds,
             timeFormatted: period.timeFormatted,
+            countdownFormat: period.countdownFormat,
+            showToday: period.showToday,
             totalDays: period.totalDays,
             calendarDays: period.calendarDays,
             realLimit: realLimit, // Limit realny bez modyfikatorów
@@ -618,10 +639,14 @@ export async function updateDailyEnvelope(forDate = null) {
     const periodInfo = selectedPeriod ? {
         name: selectedPeriod.name,
         date: selectedPeriod.date,
+        time: selectedPeriod.time,
         daysLeft: selectedPeriod.daysLeft,
         hours: selectedPeriod.hours,
         minutes: selectedPeriod.minutes,
+        seconds: selectedPeriod.seconds,
         timeFormatted: selectedPeriod.timeFormatted,
+        countdownFormat: selectedPeriod.countdownFormat,
+        showToday: selectedPeriod.showToday,
         totalDays: selectedPeriod.totalDays,
         calendarDays: selectedPeriod.calendarDays
     } : null;
@@ -1008,9 +1033,23 @@ export function calculateSpendingDynamics() {
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
 
-    // ZMIANA: Pokazuj "Czas do końca okresu:" gdy zostało mniej niż 1 dzień
-    const timeLabel = activeDays < 1 ? 'Czas do końca okresu' : 'Dni do końca okresu';
-    const timeValue = selectedPeriod.timeFormatted || `${activeDays} dni`;
+    // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+    let timeLabel;
+    let timeValue;
+
+    if (selectedPeriod.showToday) {
+        // Gdy wpływ jest dziś i nie podano czasu
+        timeLabel = 'Czas do końca okresu';
+        timeValue = 'Dziś';
+    } else if (selectedPeriod.countdownFormat) {
+        // Gdy zostało < 1 dzień i podano czas, używamy countdown timera
+        timeLabel = 'Czas do końca okresu';
+        timeValue = `<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>`;
+    } else {
+        // Gdy >= 1 dzień
+        timeLabel = 'Dni do końca okresu';
+        timeValue = selectedPeriod.timeFormatted || `${activeDays} dni`;
+    }
 
     const details = [
         `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,

@@ -18,6 +18,7 @@ import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
 import { animateNumber } from '../utils/animateNumber.js';
+import { startCountdownTimers } from '../utils/countdownTimer.js';
 
 export function renderSummary() {
   const { available } = calculateAvailableFunds();
@@ -101,8 +102,23 @@ export function renderSpendingDynamics() {
   const { periods } = calculateSpendingPeriods();
   const dynamicsPeriodIndex = getDynamicsPeriod();
   const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
-  // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-  const periodInfo = selectedPeriod ? `${selectedPeriod.name} (${selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`})` : 'Brak okresu';
+
+  // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+  let periodInfo;
+  if (selectedPeriod) {
+    if (selectedPeriod.showToday) {
+      // Gdy wpływ jest dziś i nie podano czasu
+      periodInfo = `${selectedPeriod.name} (Dziś)`;
+    } else if (selectedPeriod.countdownFormat) {
+      // Gdy zostało < 1 dzień i podano czas
+      periodInfo = `${selectedPeriod.name} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>)`;
+    } else {
+      // Gdy >= 1 dzień
+      periodInfo = `${selectedPeriod.name} (${selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`})`;
+    }
+  } else {
+    periodInfo = 'Brak okresu';
+  }
 
   let statusClass = '';
   switch(dynamics.status) {
@@ -149,6 +165,9 @@ export function renderSpendingDynamics() {
   `;
 
   container.innerHTML = sanitizeHTML(html);
+
+  // Uruchom countdown timery po wyrenderowaniu
+  startCountdownTimers();
 }
 
 /**
@@ -240,8 +259,18 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';
-    // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-    daysDiv.textContent = `Pozostało: ${limit.timeFormatted || `${limit.daysLeft} dni`}`;
+
+    // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+    if (limit.showToday) {
+      // Gdy wpływ jest dziś i nie podano czasu, pokaż "Dziś"
+      daysDiv.textContent = `Pozostało: Dziś`;
+    } else if (limit.countdownFormat) {
+      // Gdy zostało < 1 dzień i podano czas, używamy countdown timera
+      daysDiv.innerHTML = `Pozostało: <span class="countdown-timer" data-end-date="${limit.date}" data-end-time="${limit.time || ''}">${limit.countdownFormat}</span>`;
+    } else {
+      // Gdy >= 1 dzień, pokazuj liczbę dni
+      daysDiv.textContent = `Pozostało: ${limit.timeFormatted || `${limit.daysLeft} dni`}`;
+    }
 
     // Limit realny
     const realLabelDiv = document.createElement('div');
@@ -305,4 +334,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
   console.log('✅ Wszystkie kafelki wyrenderowane. Dzieci w stats-grid:', statsGrid.children.length);
   console.log('🎨 renderDynamicLimits - DEBUG END');
+
+  // Uruchom countdown timery po wyrenderowaniu kafli
+  startCountdownTimers();
 }

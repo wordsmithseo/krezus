@@ -98,7 +98,10 @@ export function calculateSafeSavingsAmount(goalId) {
     const { periods } = calculateSpendingPeriods();
     const firstPeriod = periods[0];
 
-    if (!firstPeriod || firstPeriod.daysLeft <= 0) {
+    // ZMIANA: Używamy calendarDays zamiast daysLeft
+    // calendarDays = 0 oznacza "wpływ jest dziś" (OK)
+    // calendarDays < 0 oznacza "wpływ był wczoraj lub wcześniej" (NIE OK)
+    if (!firstPeriod || firstPeriod.calendarDays < 0) {
         return {
             canSuggest: false,
             amount: 0,
@@ -107,8 +110,10 @@ export function calculateSafeSavingsAmount(goalId) {
         };
     }
 
-    const daysLeft = firstPeriod.daysLeft;
-    console.log('📅 Dni do następnego przychodu:', daysLeft);
+    // ZMIANA: Dla celów oszczędności używamy calendarDays (minimum 1 dzień, nawet gdy wpływ jest dziś)
+    const daysLeft = Math.max(1, firstPeriod.calendarDays);
+    console.log('📅 Dni do następnego przychodu (dla obliczeń):', daysLeft);
+    console.log('📅 Pełne dni kalendarzowe:', firstPeriod.calendarDays);
 
     if (daysLeft < 7) {
         return {

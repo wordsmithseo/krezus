@@ -7,6 +7,7 @@ import {
 } from '../modules/budgetCalculator.js';
 
 import { sanitizeHTML } from '../utils/sanitizer.js';
+import { startCountdownTimers } from '../utils/countdownTimer.js';
 
 export function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
@@ -65,18 +66,41 @@ export function renderDailyEnvelope() {
         hour: '2-digit',
         minute: '2-digit'
       });
-      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+      let timeText;
+      if (envelope.period.showToday) {
+        // Gdy wpływ jest dziś i nie podano czasu
+        timeText = 'Dziś';
+      } else if (envelope.period.countdownFormat) {
+        // Gdy zostało < 1 dzień i podano czas
+        timeText = `<span class="countdown-timer" data-end-date="${envelope.period.date}" data-end-time="${envelope.period.time || ''}">${envelope.period.countdownFormat}</span>`;
+      } else {
+        // Gdy >= 1 dzień
+        timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      }
       const periodText = `📅 Okres: ${envelope.period.name} (${timeText}) | 🕐 Wyliczono: ${formattedDate}`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else if (envelope.period) {
-      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+      let timeText;
+      if (envelope.period.showToday) {
+        // Gdy wpływ jest dziś i nie podano czasu
+        timeText = 'Dziś';
+      } else if (envelope.period.countdownFormat) {
+        // Gdy zostało < 1 dzień i podano czas
+        timeText = `<span class="countdown-timer" data-end-date="${envelope.period.date}" data-end-time="${envelope.period.time || ''}">${envelope.period.countdownFormat}</span>`;
+      } else {
+        // Gdy >= 1 dzień
+        timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      }
       const periodText = `📅 Okres: ${envelope.period.name} (${timeText})`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else {
       envelopePeriodInfoEl.innerHTML = '';
     }
+
+    // Uruchom countdown timery po wyrenderowaniu
+    startCountdownTimers();
   }
 
   if (spendingGaugeEl) {
