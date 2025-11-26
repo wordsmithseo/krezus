@@ -241,11 +241,10 @@ export function calculateCurrentLimits() {
 
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map((period, index) => {
-        // ZMIANA: Używamy totalDays (zmiennoprzecinkowa) zamiast daysLeft gdy jest < 1 dzień
-        // To pozwala na poprawne obliczanie limitów nawet gdy zostało np. 12 godzin (0.5 dnia)
-        const daysForCalculation = period.totalDays > 0 ? period.totalDays : 0;
-
-        if (daysForCalculation <= 0) {
+        // ZMIANA: Gdy zostało < 1 dzień, używamy minimum 1 dzień dla obliczeń limitów
+        // To zapewnia że limity są sensowne nawet gdy zostało tylko kilka godzin
+        // Jeśli totalDays <= 0 (wpływ dzisiaj lub w przeszłości), zwracamy limity = 0
+        if (period.totalDays <= 0) {
             console.log(`\n📊 Okres: ${period.name} - BRAK CZASU (wpływ dzisiaj lub w przeszłości)`);
             return {
                 date: period.date,
@@ -260,6 +259,9 @@ export function calculateCurrentLimits() {
                 plannedLimit: 0
             };
         }
+
+        // Dla obliczeń limitów: jeśli zostało < 1 dzień, traktuj jako 1 dzień
+        const daysForCalculation = Math.max(1, period.totalDays);
 
         const periodTotal = plannedTotals.periodTotals[index];
         const futureIncome = periodTotal?.futureIncome || 0;
@@ -552,6 +554,9 @@ export async function updateDailyEnvelope(forDate = null) {
         console.log('⚠️ Brak czasu do końca okresu (wpływ dzisiaj lub w przeszłości)!');
         smartLimit = 0;
     } else {
+        // Dla obliczeń koperty: jeśli zostało < 1 dzień, traktuj jako 1 dzień
+        const daysForCalculation = Math.max(1, selectedPeriod.totalDays);
+        console.log('⏱️  Dni do obliczeń (min 1):', daysForCalculation.toFixed(3));
         const d30 = new Date();
         d30.setDate(d30.getDate() - 30);
         const date30str = getWarsawDateString(d30);
@@ -566,8 +571,8 @@ export async function updateDailyEnvelope(forDate = null) {
 
         console.log('💰 Całkowite środki do wydania dziś:', totalAvailableToday.toFixed(2), 'PLN');
 
-        // ZMIANA: Używamy totalDays dla dokładnych obliczeń (obsługa < 1 dnia)
-        const dailyLimit = totalAvailableToday / selectedPeriod.totalDays;
+        // ZMIANA: Używamy daysForCalculation (minimum 1 dzień) dla obliczeń
+        const dailyLimit = totalAvailableToday / daysForCalculation;
         console.log('📊 Limit dzienny dla wybranego okresu:', dailyLimit.toFixed(2), 'zł');
 
         if (dailyLimit <= 0) {
@@ -701,7 +706,9 @@ export function getEnvelopeCalculationInfo() {
     } else {
         const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
 
-        const dailyLimit = totalAvailableToday / selectedPeriod.totalDays;
+        // Dla obliczeń: jeśli zostało < 1 dzień, traktuj jako 1 dzień
+        const daysForCalculation = Math.max(1, selectedPeriod.totalDays);
+        const dailyLimit = totalAvailableToday / daysForCalculation;
         const limitSource = `${selectedPeriod.name} (${selectedPeriod.timeFormatted})`;
 
         if (dailyLimit <= 0) {
@@ -903,14 +910,24 @@ export function calculateSpendingDynamics() {
         };
     }
 
-    // ZMIANA: Używamy totalDays (zmiennoprzecinkowa) dla dokładnych obliczeń
+    // ZMIANA: Używamy totalDays, ale minimum 1 dzień dla obliczeń prognoz
+    // Dla prognozy używamy rzeczywistego totalDays (może być < 1)
     const activeDays = selectedPeriod.totalDays;
+
+    // Dla obliczeń limitu dziennego: minimum 1 dzień
+    const daysForLimitCalculation = Math.max(1, selectedPeriod.totalDays);
 
     // Znajdź limit dla wybranego okresu dynamiki
     const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
 
     // Użyj realnego limitu dziennego - dynamika bazuje na rzeczywistych możliwościach
-    const targetDaily = selectedLimit?.realLimit || 0;
+    let targetDaily = selectedLimit?.realLimit || 0;
+
+    // Jeśli limit jest 0 a są środki dostępne, oblicz limit bezpośrednio (minimum 1 dzień)
+    if (targetDaily === 0 && toSpend > 0 && selectedPeriod.totalDays > 0) {
+        targetDaily = toSpend / daysForLimitCalculation;
+        console.log('⚠️ Brak limitu w cache, obliczam bezpośrednio:', targetDaily.toFixed(2), 'zł');
+    }
 
     const d7 = new Date();
     d7.setDate(d7.getDate() - 7);
