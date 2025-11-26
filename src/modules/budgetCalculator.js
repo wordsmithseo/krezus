@@ -1033,9 +1033,23 @@ export function calculateSpendingDynamics() {
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
 
-    // ZMIANA: Pokazuj "Czas do końca okresu:" gdy zostało mniej niż 1 dzień
-    const timeLabel = activeDays < 1 ? 'Czas do końca okresu' : 'Dni do końca okresu';
-    const timeValue = selectedPeriod.timeFormatted || `${activeDays} dni`;
+    // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
+    let timeLabel;
+    let timeValue;
+
+    if (selectedPeriod.showToday) {
+        // Gdy wpływ jest dziś i nie podano czasu
+        timeLabel = 'Czas do końca okresu';
+        timeValue = 'Dziś';
+    } else if (selectedPeriod.countdownFormat) {
+        // Gdy zostało < 1 dzień i podano czas, używamy countdown timera
+        timeLabel = 'Czas do końca okresu';
+        timeValue = `<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>`;
+    } else {
+        // Gdy >= 1 dzień
+        timeLabel = 'Dni do końca okresu';
+        timeValue = selectedPeriod.timeFormatted || `${activeDays} dni`;
+    }
 
     const details = [
         `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,
