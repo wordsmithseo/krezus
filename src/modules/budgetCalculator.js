@@ -243,9 +243,9 @@ export function calculateCurrentLimits() {
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map((period, index) => {
         // ZMIANA: Używamy calendarDays (pełne dni kalendarzowe) dla obliczeń limitów
-        // Jeśli calendarDays <= 0 (wpływ dzisiaj lub w przeszłości), zwracamy limity = 0
-        if (period.calendarDays <= 0) {
-            console.log(`\n📊 Okres: ${period.name} - BRAK CZASU (wpływ dzisiaj lub w przeszłości)`);
+        // Jeśli calendarDays < 0 (wpływ był wczoraj lub wcześniej), zwracamy limity = 0
+        if (period.calendarDays < 0) {
+            console.log(`\n📊 Okres: ${period.name} - BRAK CZASU (wpływ był w przeszłości)`);
             return {
                 date: period.date,
                 name: period.name,
@@ -261,8 +261,9 @@ export function calculateCurrentLimits() {
             };
         }
 
-        // Dla obliczeń limitów: używamy pełnych dni kalendarzowych (BEZ dnia wpływu)
-        const daysForCalculation = period.calendarDays;
+        // Dla obliczeń limitów: używamy minimum 1 dzień (gdy calendarDays = 0, traktuj jako 1 dzień)
+        // Gdy wpływ jest dzisiaj (calendarDays = 0), nadal mamy dzień dzisiejszy do wydawania
+        const daysForCalculation = Math.max(1, period.calendarDays);
 
         const periodTotal = plannedTotals.periodTotals[index];
         const futureIncome = periodTotal?.futureIncome || 0;
@@ -554,12 +555,12 @@ export async function updateDailyEnvelope(forDate = null) {
     let smartLimit = 0;
 
     // ZMIANA: Używamy calendarDays (pełne dni kalendarzowe) zamiast daysLeft dla obliczeń
-    if (!selectedPeriod || selectedPeriod.calendarDays <= 0) {
-        console.log('⚠️ Brak czasu do końca okresu (wpływ dzisiaj lub w przeszłości)!');
+    if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
+        console.log('⚠️ Brak czasu do końca okresu (wpływ był w przeszłości)!');
         smartLimit = 0;
     } else {
-        // Dla obliczeń koperty: używamy pełnych dni kalendarzowych (BEZ dnia wpływu)
-        const daysForCalculation = selectedPeriod.calendarDays;
+        // Dla obliczeń koperty: używamy minimum 1 dzień (gdy wpływ jest dzisiaj, liczmy dzisiejszy dzień)
+        const daysForCalculation = Math.max(1, selectedPeriod.calendarDays);
         console.log('⏱️  Dni do obliczeń:', daysForCalculation, 'dni');
         const d30 = new Date();
         d30.setDate(d30.getDate() - 30);
@@ -655,7 +656,7 @@ export function getEnvelopeCalculationInfo() {
 
     if (!envelope) {
         // ZMIANA: Używamy calendarDays zamiast daysLeft
-        if (!selectedPeriod || selectedPeriod.calendarDays <= 0) {
+        if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
             return {
                 description: 'Brak wybranego okresu',
                 formula: 'Wybierz okres w ustawieniach'
@@ -705,14 +706,14 @@ export function getEnvelopeCalculationInfo() {
     let formula = '';
 
     // ZMIANA: Używamy calendarDays zamiast daysLeft dla obliczeń
-    if (!selectedPeriod || selectedPeriod.calendarDays <= 0) {
+    if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
         description = 'Brak wybranego okresu';
         formula = 'Wybierz okres w ustawieniach';
     } else {
         const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
 
-        // Dla obliczeń: używamy pełnych dni kalendarzowych (BEZ dnia wpływu)
-        const daysForCalculation = selectedPeriod.calendarDays;
+        // Dla obliczeń: używamy minimum 1 dzień (gdy wpływ jest dzisiaj, liczmy dzisiejszy dzień)
+        const daysForCalculation = Math.max(1, selectedPeriod.calendarDays);
         const dailyLimit = totalAvailableToday / daysForCalculation;
         const limitSource = `${selectedPeriod.name} (${selectedPeriod.timeFormatted})`;
 
@@ -905,7 +906,7 @@ export function calculateSpendingDynamics() {
     const toSpend = available;
     const limitsData = calculateCurrentLimits();
 
-    if (!selectedPeriod || selectedPeriod.calendarDays <= 0) {
+    if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
         return {
             status: 'no-date',
             title: '⚠️ Brak wybranego okresu',
@@ -916,10 +917,11 @@ export function calculateSpendingDynamics() {
     }
 
     // ZMIANA: Używamy calendarDays (pełne dni kalendarzowe) dla obliczeń
-    const activeDays = selectedPeriod.calendarDays;
+    // Dla prognozy: minimum 1 dzień (gdy wpływ jest dzisiaj, prognozujemy dla dzisiejszego dnia)
+    const activeDays = Math.max(1, selectedPeriod.calendarDays);
 
-    // Dla obliczeń limitu dziennego: używamy pełnych dni kalendarzowych
-    const daysForLimitCalculation = selectedPeriod.calendarDays;
+    // Dla obliczeń limitu dziennego: używamy minimum 1 dzień
+    const daysForLimitCalculation = Math.max(1, selectedPeriod.calendarDays);
 
     // Znajdź limit dla wybranego okresu dynamiki
     const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
@@ -928,7 +930,7 @@ export function calculateSpendingDynamics() {
     let targetDaily = selectedLimit?.realLimit || 0;
 
     // Jeśli limit jest 0 a są środki dostępne, oblicz limit bezpośrednio
-    if (targetDaily === 0 && toSpend > 0 && selectedPeriod.calendarDays > 0) {
+    if (targetDaily === 0 && toSpend > 0 && selectedPeriod.calendarDays >= 0) {
         targetDaily = toSpend / daysForLimitCalculation;
         console.log('⚠️ Brak limitu w cache, obliczam bezpośrednio:', targetDaily.toFixed(2), 'zł');
     }
