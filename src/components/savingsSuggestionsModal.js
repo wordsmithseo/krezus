@@ -43,6 +43,13 @@ function markSuggestionAsDismissed(goalId, amount) {
 export async function checkAndShowSavingsSuggestions() {
     console.log('💡 Sprawdzanie sugestii oszczędzania...');
 
+    // WAŻNE: Sprawdź czy modal jest już otwarty
+    const existingModal = document.querySelector('.savings-suggestions-modal.active');
+    if (existingModal) {
+        console.log('ℹ️ Modal sugestii jest już otwarty - pomijam');
+        return;
+    }
+
     const goals = getSavingsGoals();
     const activeGoals = goals.filter(g => g.status === 'active');
 

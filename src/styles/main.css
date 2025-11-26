@@ -2178,34 +2178,90 @@ tr.correction {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--gray);
   transition: transform 0.2s ease;
-}
-
-.savings-goal-card.collapsed .collapse-toggle .collapse-icon {
-  transform: rotate(-90deg);
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .collapse-icon {
-  font-size: 0.8rem;
+  font-size: 1rem;
   transition: transform 0.2s ease;
+  display: inline-block;
 }
 
+/* Strzałka obraca się w dół gdy rozwinięte */
+.savings-goal-card:not(.collapsed) .collapse-icon {
+  transform: rotate(90deg);
+}
+
+/* Sekcja tytułu - pozwala na lepsze ułożenie nazwy i badge'a */
+.goal-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0; /* Pozwala na text-overflow */
+}
+
+/* Info widoczne gdy collapsed */
 .goal-collapsed-info {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-right: 15px;
+  gap: 16px;
+  margin-left: auto;
+  padding-left: 16px;
 }
 
 .savings-goal-card:not(.collapsed) .goal-collapsed-info {
   display: none;
 }
 
+/* Kwoty w collapsed view */
+.collapsed-amounts {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.collapsed-current {
+  color: var(--success);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.collapsed-separator {
+  color: var(--gray);
+  font-weight: 400;
+  font-size: 0.95rem;
+}
+
+.collapsed-target {
+  color: var(--dark);
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+/* Progress % w collapsed view */
+.collapsed-progress {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(107, 127, 215, 0.1);
+  padding: 6px 14px;
+  border-radius: 16px;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Stare klasy dla zachowania kompatybilności */
 .collapsed-stat {
   font-size: 0.95rem;
   color: var(--dark);
@@ -2214,15 +2270,6 @@ tr.correction {
 .collapsed-stat strong {
   color: var(--success);
   font-weight: 700;
-}
-
-.collapsed-progress {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary);
-  background: rgba(107, 127, 215, 0.1);
-  padding: 4px 12px;
-  border-radius: 12px;
 }
 
 /* Akcje */
@@ -2719,15 +2766,34 @@ tr.correction {
     align-items: flex-start;
     gap: 8px;
     margin-right: 10px;
+    padding-left: 8px;
   }
 
-  .collapsed-stat {
+  .collapsed-amounts {
+    font-size: 0.9rem;
+  }
+
+  .collapsed-current {
+    font-size: 1rem;
+  }
+
+  .collapsed-separator {
     font-size: 0.85rem;
   }
 
+  .collapsed-target {
+    font-size: 0.95rem;
+  }
+
   .collapsed-progress {
-    font-size: 0.8rem;
-    padding: 3px 10px;
+    font-size: 0.95rem;
+    padding: 4px 10px;
+    min-width: 50px;
+  }
+
+  /* Stare klasy dla kompatybilności */
+  .collapsed-stat {
+    font-size: 0.85rem;
   }
 
   /* Actions bar */

@@ -310,19 +310,23 @@ function renderSavingsGoalCard(goal, suggestion) {
             <div class="goal-header-collapsible" onclick="window.toggleGoalCollapse('${goal.id}')">
                 <div class="goal-collapse-left">
                     <button class="collapse-toggle" title="Rozwiń/Zwiń">
-                        <span class="collapse-icon">▼</span>
+                        <span class="collapse-icon">▶</span>
                     </button>
                     <span class="goal-icon">${sanitizeHTML(goal.icon)}</span>
-                    <h3 class="goal-name">${sanitizeHTML(goal.name)}</h3>
-                    ${statusBadge}
+                    <div class="goal-title-section">
+                        <h3 class="goal-name">${sanitizeHTML(goal.name)}</h3>
+                        ${statusBadge}
+                    </div>
                 </div>
 
                 <!-- Info widoczne gdy collapsed -->
                 <div class="goal-collapsed-info">
-                    <span class="collapsed-stat">
-                        <strong>${goal.currentAmount.toFixed(2)} zł</strong> / ${goal.targetAmount.toFixed(2)} zł
-                    </span>
-                    <span class="collapsed-progress">${progress.percentage.toFixed(0)}%</span>
+                    <div class="collapsed-amounts">
+                        <span class="collapsed-current">${goal.currentAmount.toFixed(2)} zł</span>
+                        <span class="collapsed-separator">/</span>
+                        <span class="collapsed-target">${goal.targetAmount.toFixed(2)} zł</span>
+                    </div>
+                    <div class="collapsed-progress">${progress.percentage.toFixed(0)}%</div>
                 </div>
             </div>
 
