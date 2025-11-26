@@ -52,9 +52,9 @@ function getLimitsCache() {
             return null;
         }
 
-        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted, calendarDays)
-        if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined || firstLimit.calendarDays === undefined)) {
-            console.log('⚠️ Cache limitów nie ma pól czasu (totalDays/timeFormatted/calendarDays), obliczam na nowo');
+        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted, calendarDays, seconds, countdownFormat)
+        if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined || firstLimit.calendarDays === undefined || firstLimit.seconds === undefined)) {
+            console.log('⚠️ Cache limitów nie ma pól czasu (totalDays/timeFormatted/calendarDays/seconds/countdownFormat), obliczam na nowo');
             return null;
         }
 
@@ -205,7 +205,9 @@ export function calculateSpendingPeriods() {
             calendarDays: timeInfo.calendarDays,  // Pełne dni kalendarzowe (dla obliczeń limitów)
             hours: timeInfo.hours,
             minutes: timeInfo.minutes,
-            timeFormatted: timeInfo.formatted  // Sformatowany tekst czasu
+            seconds: timeInfo.seconds,  // NOWE: sekundy dla countdown timera
+            timeFormatted: timeInfo.formatted,  // Sformatowany tekst czasu
+            countdownFormat: timeInfo.countdownFormat  // NOWE: format HH:MM:SS dla countdown (null gdy >= 1 dzień)
         };
     });
 
@@ -253,7 +255,9 @@ export function calculateCurrentLimits() {
                 daysLeft: period.daysLeft,
                 hours: period.hours,
                 minutes: period.minutes,
+                seconds: period.seconds,
                 timeFormatted: period.timeFormatted,
+                countdownFormat: period.countdownFormat,
                 totalDays: period.totalDays,
                 calendarDays: period.calendarDays,
                 realLimit: 0,
@@ -292,7 +296,9 @@ export function calculateCurrentLimits() {
             daysLeft: period.daysLeft,
             hours: period.hours,
             minutes: period.minutes,
+            seconds: period.seconds,
             timeFormatted: period.timeFormatted,
+            countdownFormat: period.countdownFormat,
             totalDays: period.totalDays,
             calendarDays: period.calendarDays,
             realLimit: realLimit, // Limit realny bez modyfikatorów
@@ -621,7 +627,9 @@ export async function updateDailyEnvelope(forDate = null) {
         daysLeft: selectedPeriod.daysLeft,
         hours: selectedPeriod.hours,
         minutes: selectedPeriod.minutes,
+        seconds: selectedPeriod.seconds,
         timeFormatted: selectedPeriod.timeFormatted,
+        countdownFormat: selectedPeriod.countdownFormat,
         totalDays: selectedPeriod.totalDays,
         calendarDays: selectedPeriod.calendarDays
     } : null;

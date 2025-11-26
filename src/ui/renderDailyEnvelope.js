@@ -7,6 +7,7 @@ import {
 } from '../modules/budgetCalculator.js';
 
 import { sanitizeHTML } from '../utils/sanitizer.js';
+import { startCountdownTimers } from '../utils/countdownTimer.js';
 
 export function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
@@ -65,18 +66,31 @@ export function renderDailyEnvelope() {
         hour: '2-digit',
         minute: '2-digit'
       });
-      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      // ZMIANA: Pokazuj countdown timer (HH:MM:SS) gdy zostało mniej niż 1 dzień
+      let timeText;
+      if (envelope.period.countdownFormat) {
+        timeText = `<span class="countdown-timer" data-end-date="${envelope.period.date}">${envelope.period.countdownFormat}</span>`;
+      } else {
+        timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      }
       const periodText = `📅 Okres: ${envelope.period.name} (${timeText}) | 🕐 Wyliczono: ${formattedDate}`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else if (envelope.period) {
-      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
-      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      // ZMIANA: Pokazuj countdown timer (HH:MM:SS) gdy zostało mniej niż 1 dzień
+      let timeText;
+      if (envelope.period.countdownFormat) {
+        timeText = `<span class="countdown-timer" data-end-date="${envelope.period.date}">${envelope.period.countdownFormat}</span>`;
+      } else {
+        timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      }
       const periodText = `📅 Okres: ${envelope.period.name} (${timeText})`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else {
       envelopePeriodInfoEl.innerHTML = '';
     }
+
+    // Uruchom countdown timery po wyrenderowaniu
+    startCountdownTimers();
   }
 
   if (spendingGaugeEl) {
