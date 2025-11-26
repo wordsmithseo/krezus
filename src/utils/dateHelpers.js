@@ -168,3 +168,69 @@ export function isRealised(record) {
 export function clearDateCache() {
   dateCache.clear();
 }
+
+/**
+ * Oblicza dokładny czas pozostały do danej daty (BEZ dnia końcowego)
+ * Zwraca obiekt z dniami, godzinami, minutami oraz totalDays (zmiennoprzecinkowa liczba dni)
+ *
+ * @param {string} endDateStr - Data końcowa w formacie YYYY-MM-DD
+ * @param {string} endTimeStr - Opcjonalny czas końcowy w formacie HH:MM (jeśli nie podany, używa 00:00)
+ * @returns {Object} { days, hours, minutes, totalDays, formatted }
+ */
+export function calculateRemainingTime(endDateStr, endTimeStr = null) {
+  if (!endDateStr) {
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+  }
+
+  const now = getWarsawDateTime();
+
+  // Parsuj datę końcową
+  let endDate;
+  if (endTimeStr && endTimeStr.trim() !== '') {
+    endDate = parseDateTime(endDateStr, endTimeStr);
+  } else {
+    // Jeśli nie ma czasu, ustaw na 00:00 (początek dnia)
+    endDate = parseDateStr(endDateStr);
+    if (endDate && !isNaN(endDate.getTime())) {
+      endDate.setHours(0, 0, 0, 0);
+    }
+  }
+
+  if (!endDate || isNaN(endDate.getTime())) {
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+  }
+
+  // Oblicz różnicę w milisekundach
+  const diffMs = endDate - now;
+
+  if (diffMs <= 0) {
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+  }
+
+  // Oblicz składowe
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const totalDays = diffMs / (1000 * 60 * 60 * 24); // Zmiennoprzecinkowa liczba dni
+
+  const days = Math.floor(totalDays);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
+
+  // Sformatuj tekst
+  let formatted;
+  if (days >= 1) {
+    formatted = `${days} ${days === 1 ? 'dzień' : 'dni'}`;
+  } else if (hours >= 1) {
+    formatted = `${hours}h ${minutes}min`;
+  } else {
+    formatted = `${minutes} min`;
+  }
+
+  return {
+    days,
+    hours,
+    minutes,
+    totalDays,
+    formatted
+  };
+}

@@ -101,7 +101,8 @@ export function renderSpendingDynamics() {
   const { periods } = calculateSpendingPeriods();
   const dynamicsPeriodIndex = getDynamicsPeriod();
   const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
-  const periodInfo = selectedPeriod ? `${selectedPeriod.name} (${selectedPeriod.daysLeft} dni)` : 'Brak okresu';
+  // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
+  const periodInfo = selectedPeriod ? `${selectedPeriod.name} (${selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`})` : 'Brak okresu';
 
   let statusClass = '';
   switch(dynamics.status) {
@@ -239,7 +240,8 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     const daysDiv = document.createElement('div');
     daysDiv.className = 'stat-label mt-10';
-    daysDiv.textContent = `Pozostało ${limit.daysLeft} dni`;
+    // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
+    daysDiv.textContent = `Pozostało: ${limit.timeFormatted || `${limit.daysLeft} dni`}`;
 
     // Limit realny
     const realLabelDiv = document.createElement('div');

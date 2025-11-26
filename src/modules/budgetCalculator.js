@@ -1,5 +1,5 @@
 // src/modules/budgetCalculator.js
-import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised } from '../utils/dateHelpers.js';
+import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised, calculateRemainingTime } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getEnvelopePeriod, getDynamicsPeriod, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
 // === CACHE LIMITÓW DZIENNYCH ===
@@ -49,6 +49,12 @@ function getLimitsCache() {
         const firstLimit = cache.limits.limits[0];
         if (firstLimit && (firstLimit.realLimit === undefined || firstLimit.plannedLimit === undefined)) {
             console.log('⚠️ Cache limitów nie ma nowych pól (realLimit/plannedLimit), obliczam na nowo');
+            return null;
+        }
+
+        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted)
+        if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined)) {
+            console.log('⚠️ Cache limitów nie ma pól czasu (totalDays/timeFormatted), obliczam na nowo');
             return null;
         }
 
@@ -183,21 +189,22 @@ export function calculateSpendingPeriods() {
 
     // Oblicz dni pozostałe dla każdej daty
     const periods = incomes.map(income => {
-        let daysLeft = 0;
+        // Używamy nowej funkcji calculateRemainingTime dla dokładnego czasu
+        const timeInfo = calculateRemainingTime(income.date);
 
-        if (income.date && income.date.trim() !== '') {
-            const d = parseDateStr(income.date);
-            const td = parseDateStr(today);
-            if (d && td && !isNaN(d.getTime()) && !isNaN(td.getTime())) {
-                daysLeft = Math.max(0, Math.floor((d - td) / (1000*60*60*24)));
-            }
-        }
+        // Dla zgodności wstecznej, zachowujemy daysLeft jako liczbę całkowitą
+        const daysLeft = timeInfo.days;
 
+        // Dodajemy nowe pola dla dokładniejszych obliczeń
         return {
             date: income.date,
             name: income.name,
             amount: income.amount,
-            daysLeft
+            daysLeft,  // Liczba całkowita dni (dla wyświetlania)
+            totalDays: timeInfo.totalDays,  // Zmiennoprzecinkowa liczba dni (dla obliczeń limitów)
+            hours: timeInfo.hours,
+            minutes: timeInfo.minutes,
+            timeFormatted: timeInfo.formatted  // Sformatowany tekst czasu
         };
     });
 
@@ -234,12 +241,21 @@ export function calculateCurrentLimits() {
 
     // Oblicz limity dla wszystkich okresów
     const limits = periods.map((period, index) => {
-        if (period.daysLeft <= 0) {
+        // ZMIANA: Używamy totalDays (zmiennoprzecinkowa) zamiast daysLeft gdy jest < 1 dzień
+        // To pozwala na poprawne obliczanie limitów nawet gdy zostało np. 12 godzin (0.5 dnia)
+        const daysForCalculation = period.totalDays > 0 ? period.totalDays : 0;
+
+        if (daysForCalculation <= 0) {
+            console.log(`\n📊 Okres: ${period.name} - BRAK CZASU (wpływ dzisiaj lub w przeszłości)`);
             return {
                 date: period.date,
                 name: period.name,
                 amount: period.amount,
                 daysLeft: period.daysLeft,
+                hours: period.hours,
+                minutes: period.minutes,
+                timeFormatted: period.timeFormatted,
+                totalDays: period.totalDays,
                 realLimit: 0,
                 plannedLimit: 0
             };
@@ -249,16 +265,17 @@ export function calculateCurrentLimits() {
         const futureIncome = periodTotal?.futureIncome || 0;
         const futureExpense = periodTotal?.futureExpense || 0;
 
-        console.log(`\n📊 Okres: ${period.name} (${period.daysLeft} dni)`);
+        console.log(`\n📊 Okres: ${period.name} (${period.timeFormatted})`);
+        console.log('  ⏱️  Dokładny czas: totalDays =', daysForCalculation.toFixed(3), 'dni');
         console.log('  💰 Dostępne środki:', available.toFixed(2), 'zł');
-        console.log('  📥 Planowane przychody (bez końcowego wpływu):', futureIncome.toFixed(2), 'zł');
-        console.log('  📤 Planowane wydatki:', futureExpense.toFixed(2), 'zł');
+        console.log('  📥 Planowane przychody (BEZ dnia wpływu):', futureIncome.toFixed(2), 'zł');
+        console.log('  📤 Planowane wydatki (BEZ dnia wpływu):', futureExpense.toFixed(2), 'zł');
 
-        // Limit realny = available / daysLeft (bez modyfikatorów)
-        const realLimit = Math.max(0, available / period.daysLeft);
+        // Limit realny = available / totalDays (BEZ dnia wpływu)
+        const realLimit = Math.max(0, available / daysForCalculation);
 
-        // Limit planowany = (available + futureIncome - futureExpense) / daysLeft
-        const plannedLimit = Math.max(0, (available + futureIncome - futureExpense) / period.daysLeft);
+        // Limit planowany = (available + futureIncome - futureExpense) / totalDays (BEZ dnia wpływu)
+        const plannedLimit = Math.max(0, (available + futureIncome - futureExpense) / daysForCalculation);
 
         console.log('  ✅ Limit realny:', realLimit.toFixed(2), 'zł/dzień');
         console.log('  ✅ Limit planowany:', plannedLimit.toFixed(2), 'zł/dzień');
@@ -268,6 +285,10 @@ export function calculateCurrentLimits() {
             name: period.name,
             amount: period.amount, // Kwota planowanego przychodu
             daysLeft: period.daysLeft,
+            hours: period.hours,
+            minutes: period.minutes,
+            timeFormatted: period.timeFormatted,
+            totalDays: period.totalDays,
             realLimit: realLimit, // Limit realny bez modyfikatorów
             plannedLimit: plannedLimit // Limit planowany z przyszłymi transakcjami
         };
@@ -519,14 +540,16 @@ export async function updateDailyEnvelope(forDate = null) {
     console.log('💵 Do wydania PRZED dzisiejszym dniem:', toSpendBeforeToday.toFixed(2), 'PLN');
     console.log('📅 Wybrany okres koperty:', selectedPeriod?.name || 'brak');
     console.log('📅 Data końcowa wybranego okresu:', selectedPeriod?.date || 'brak');
-    console.log('📅 Dni do końca okresu (włącznie z dzisiaj):', selectedPeriod?.daysLeft || 0);
+    console.log('📅 Czas do końca okresu (BEZ dnia wpływu):', selectedPeriod?.timeFormatted || '0 dni');
+    console.log('⏱️  Dokładny czas (totalDays):', selectedPeriod?.totalDays?.toFixed(3) || 0, 'dni');
     console.log('💵 Dzisiejsze wpływy:', todayIncomesSum.toFixed(2), 'PLN');
-    console.log('💸 Dzisiejsze wydatki:', todayExpensesSum.toFixed(2), 'PLN');
+    console.log('💸 Dzisiejskie wydatki:', todayExpensesSum.toFixed(2), 'PLN');
 
     let smartLimit = 0;
 
-    if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
-        console.log('⚠️ Brak dni do końca okresu!');
+    // ZMIANA: Używamy totalDays (zmiennoprzecinkowa) zamiast daysLeft dla obliczeń
+    if (!selectedPeriod || selectedPeriod.totalDays <= 0) {
+        console.log('⚠️ Brak czasu do końca okresu (wpływ dzisiaj lub w przeszłości)!');
         smartLimit = 0;
     } else {
         const d30 = new Date();
@@ -543,7 +566,8 @@ export async function updateDailyEnvelope(forDate = null) {
 
         console.log('💰 Całkowite środki do wydania dziś:', totalAvailableToday.toFixed(2), 'PLN');
 
-        const dailyLimit = totalAvailableToday / selectedPeriod.daysLeft;
+        // ZMIANA: Używamy totalDays dla dokładnych obliczeń (obsługa < 1 dnia)
+        const dailyLimit = totalAvailableToday / selectedPeriod.totalDays;
         console.log('📊 Limit dzienny dla wybranego okresu:', dailyLimit.toFixed(2), 'zł');
 
         if (dailyLimit <= 0) {
@@ -580,11 +604,15 @@ export async function updateDailyEnvelope(forDate = null) {
         }
     }
 
-    // Informacja o okresie do zapisu
+    // Informacja o okresie do zapisu - ZMIANA: dodajemy pola czasu
     const periodInfo = selectedPeriod ? {
         name: selectedPeriod.name,
         date: selectedPeriod.date,
-        daysLeft: selectedPeriod.daysLeft
+        daysLeft: selectedPeriod.daysLeft,
+        hours: selectedPeriod.hours,
+        minutes: selectedPeriod.minutes,
+        timeFormatted: selectedPeriod.timeFormatted,
+        totalDays: selectedPeriod.totalDays
     } : null;
 
     console.log('✅ KOŃCOWA KOPERTA DNIA:', smartLimit.toFixed(2), 'zł');
@@ -616,7 +644,8 @@ export function getEnvelopeCalculationInfo() {
     const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
 
     if (!envelope) {
-        if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
+        // ZMIANA: Używamy totalDays zamiast daysLeft
+        if (!selectedPeriod || selectedPeriod.totalDays <= 0) {
             return {
                 description: 'Brak wybranego okresu',
                 formula: 'Wybierz okres w ustawieniach'
@@ -665,14 +694,15 @@ export function getEnvelopeCalculationInfo() {
     let description = '';
     let formula = '';
 
-    if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
+    // ZMIANA: Używamy totalDays zamiast daysLeft dla obliczeń
+    if (!selectedPeriod || selectedPeriod.totalDays <= 0) {
         description = 'Brak wybranego okresu';
         formula = 'Wybierz okres w ustawieniach';
     } else {
         const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
 
-        const dailyLimit = totalAvailableToday / selectedPeriod.daysLeft;
-        const limitSource = `${selectedPeriod.name} (${selectedPeriod.daysLeft} dni)`;
+        const dailyLimit = totalAvailableToday / selectedPeriod.totalDays;
+        const limitSource = `${selectedPeriod.name} (${selectedPeriod.timeFormatted})`;
 
         if (dailyLimit <= 0) {
             description = 'Brak środków do wydania';
@@ -863,7 +893,7 @@ export function calculateSpendingDynamics() {
     const toSpend = available;
     const limitsData = calculateCurrentLimits();
 
-    if (!selectedPeriod || selectedPeriod.daysLeft <= 0) {
+    if (!selectedPeriod || selectedPeriod.totalDays <= 0) {
         return {
             status: 'no-date',
             title: '⚠️ Brak wybranego okresu',
@@ -873,7 +903,8 @@ export function calculateSpendingDynamics() {
         };
     }
 
-    const activeDays = selectedPeriod.daysLeft;
+    // ZMIANA: Używamy totalDays (zmiennoprzecinkowa) dla dokładnych obliczeń
+    const activeDays = selectedPeriod.totalDays;
 
     // Znajdź limit dla wybranego okresu dynamiki
     const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
@@ -898,7 +929,7 @@ export function calculateSpendingDynamics() {
             summary: 'W ostatnich 7 dniach nie było żadnych wydatków. Twój budżet jest w świetnym stanie.',
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
-                `Dni do końca okresu (${selectedPeriod.name}): ${activeDays}`,
+                `Czas do końca okresu (${selectedPeriod.name}): ${selectedPeriod.timeFormatted}`,
                 `Dzienny limit: ${targetDaily.toFixed(2)} zł`
             ],
             recommendation: 'Kontynuuj tak dalej! Możesz pozwolić sobie na większe wydatki, jeśli zajdzie taka potrzeba.'
@@ -916,7 +947,7 @@ export function calculateSpendingDynamics() {
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
                 `Średnie dzienne wydatki (7 dni): ${dailyAvg7.toFixed(2)} zł`,
-                `Dni do końca okresu: ${activeDays}`
+                `Czas do końca okresu: ${selectedPeriod.timeFormatted}`
             ],
             recommendation: 'Natychmiast ogranicz wydatki lub rozważ zwiększenie przychodów. Skonsultuj swój budżet i priorytetyzuj tylko niezbędne wydatki.'
         };
@@ -954,9 +985,13 @@ export function calculateSpendingDynamics() {
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }
 
+    // ZMIANA: Pokazuj "Czas do końca okresu:" gdy zostało mniej niż 1 dzień
+    const timeLabel = activeDays < 1 ? 'Czas do końca okresu' : 'Dni do końca okresu';
+    const timeValue = selectedPeriod.timeFormatted || `${activeDays} dni`;
+
     const details = [
         `Dostępne środki do wydania: ${toSpend.toFixed(2)} zł`,
-        `Dni do końca okresu: ${activeDays}`,
+        `${timeLabel}: ${timeValue}`,
         `Dzienny limit: ${targetDaily.toFixed(2)} zł`,
         `Średnie wydatki dzienne (7 dni): ${dailyAvg7.toFixed(2)} zł`,
         `Liczba transakcji (7 dni): ${last7.length}`,
