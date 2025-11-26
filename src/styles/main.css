@@ -2856,15 +2856,32 @@ tr.correction {
   /* Goal info */
   .goal-info {
     grid-template-columns: 1fr;
+    gap: 0;
+    margin-bottom: 15px;
+  }
+
+  .goal-info-item {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
     gap: 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .goal-info-item:last-child {
+    border-bottom: none;
   }
 
   .goal-info-item .label {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    flex-shrink: 0;
   }
 
   .goal-info-item .value {
-    font-size: 1rem;
+    font-size: 0.95rem;
+    text-align: right;
+    font-weight: 700;
   }
 
   /* Goal header */
