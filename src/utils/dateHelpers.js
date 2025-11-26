@@ -171,15 +171,17 @@ export function clearDateCache() {
 
 /**
  * Oblicza dokładny czas pozostały do danej daty (BEZ dnia końcowego)
- * Zwraca obiekt z dniami, godzinami, minutami oraz totalDays (zmiennoprzecinkowa liczba dni)
+ * Zwraca obiekt z dniami, godzinami, minutami oraz dwiema miarami dni:
+ * - totalDays: zmiennoprzecinkowa liczba dni (dokładny czas, dla wyświetlania)
+ * - calendarDays: pełne dni kalendarzowe (dla obliczeń limitów)
  *
  * @param {string} endDateStr - Data końcowa w formacie YYYY-MM-DD
  * @param {string} endTimeStr - Opcjonalny czas końcowy w formacie HH:MM (jeśli nie podany, używa 00:00)
- * @returns {Object} { days, hours, minutes, totalDays, formatted }
+ * @returns {Object} { days, hours, minutes, totalDays, calendarDays, formatted }
  */
 export function calculateRemainingTime(endDateStr, endTimeStr = null) {
   if (!endDateStr) {
-    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni' };
   }
 
   const now = getWarsawDateTime();
@@ -197,29 +199,38 @@ export function calculateRemainingTime(endDateStr, endTimeStr = null) {
   }
 
   if (!endDate || isNaN(endDate.getTime())) {
-    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni' };
   }
 
   // Oblicz różnicę w milisekundach
   const diffMs = endDate - now;
 
   if (diffMs <= 0) {
-    return { days: 0, hours: 0, minutes: 0, totalDays: 0, formatted: '0 dni' };
+    return { days: 0, hours: 0, minutes: 0, totalDays: 0, calendarDays: 0, formatted: '0 dni' };
   }
 
   // Oblicz składowe
   const totalMinutes = Math.floor(diffMs / (1000 * 60));
   const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const totalDays = diffMs / (1000 * 60 * 60 * 24); // Zmiennoprzecinkowa liczba dni
+  const totalDays = diffMs / (1000 * 60 * 60 * 24); // Zmiennoprzecinkowa liczba dni (dokładny czas)
 
   const days = Math.floor(totalDays);
   const hours = totalHours % 24;
   const minutes = totalMinutes % 60;
 
+  // Oblicz pełne dni kalendarzowe (od początku dzisiaj do początku dnia końcowego)
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfEndDate = new Date(endDate);
+  startOfEndDate.setHours(0, 0, 0, 0);
+
+  const calendarDays = Math.floor((startOfEndDate - startOfToday) / (1000 * 60 * 60 * 24));
+
   // Sformatuj tekst
   let formatted;
-  if (days >= 1) {
-    formatted = `${days} ${days === 1 ? 'dzień' : 'dni'}`;
+  if (calendarDays >= 1) {
+    formatted = `${calendarDays} ${calendarDays === 1 ? 'dzień' : 'dni'}`;
   } else if (hours >= 1) {
     formatted = `${hours}h ${minutes}min`;
   } else {
@@ -231,6 +242,7 @@ export function calculateRemainingTime(endDateStr, endTimeStr = null) {
     hours,
     minutes,
     totalDays,
+    calendarDays,  // NOWE: pełne dni kalendarzowe dla obliczeń limitów
     formatted
   };
 }
