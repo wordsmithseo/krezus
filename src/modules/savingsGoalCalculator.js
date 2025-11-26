@@ -115,18 +115,6 @@ export function calculateSafeSavingsAmount(goalId) {
     console.log('📅 Dni do następnego przychodu (dla obliczeń):', daysLeft);
     console.log('📅 Pełne dni kalendarzowe:', firstPeriod.calendarDays);
 
-    if (daysLeft < 7) {
-        return {
-            canSuggest: false,
-            amount: 0,
-            reason: 'Za mało dni do końca okresu (minimum 7 dni)',
-            details: [
-                `Dni do następnego przychodu: ${daysLeft}`,
-                'Algorytm sugeruje oszczędzanie tylko gdy zostało co najmniej 7 dni'
-            ]
-        };
-    }
-
     // WARUNEK 6: Analiza historycznych wydatków (30 dni)
     const expenses = getExpenses();
     const d30 = new Date();
@@ -189,6 +177,31 @@ export function calculateSafeSavingsAmount(goalId) {
 
     console.log('💼 Wymagane środki (bufor + planowane wydatki):', requiredFunds.toFixed(2), 'zł');
 
+    // INTELIGENTNA BLOKADA: Sprawdź czy zostało mniej niż 7 dni
+    // Jeśli tak, sprawdź czy użytkownik ma wystarczająco środków na pokrycie wydatków
+    if (daysLeft < 7) {
+        console.log('⚠️ Uwaga: Zostało mniej niż 7 dni do następnego przychodu');
+        console.log('🔍 Sprawdzam czy są wystarczające środki na pokrycie wydatków...');
+
+        // Sprawdź czy dostępne środki wystarczą na wymagane środki
+        if (available < requiredFunds) {
+            return {
+                canSuggest: false,
+                amount: 0,
+                reason: 'Za mało dni i niewystarczające środki',
+                details: [
+                    `📅 Dni do następnego przychodu: ${daysLeft}`,
+                    `💰 Dostępne środki: ${available.toFixed(2)} zł`,
+                    `💼 Wymagane środki (do końca okresu): ${requiredFunds.toFixed(2)} zł`,
+                    `❌ Brakuje: ${(requiredFunds - available).toFixed(2)} zł`,
+                    'Algorytm blokuje oszczędzanie, gdy zostało mało dni i brakuje środków na pokrycie wydatków'
+                ]
+            };
+        }
+
+        console.log('✅ Są wystarczające środki - oszczędzanie możliwe, ale zachowawczo');
+    }
+
     // KROK 3: Oblicz potencjalną nadwyżkę (uwzględniając planowane przychody)
     const potentialSurplus = available + plannedIncomes - requiredFunds;
 
@@ -209,17 +222,27 @@ export function calculateSafeSavingsAmount(goalId) {
     }
 
     // KROK 4: Zastosuj limity bezpieczeństwa
-    // Maksymalnie 20% dostępnych środków
-    const maxPercentage = 0.20; // 20%
+    // Maksymalnie 20% dostępnych środków (lub mniej gdy mało dni)
+    let maxPercentage = 0.20; // 20%
+    let surplusPercentage = 0.5; // 50% nadwyżki
+
+    // Gdy zostało mało dni (< 7), bądź bardziej zachowawczy
+    if (daysLeft < 7) {
+        maxPercentage = 0.10; // tylko 10% dostępnych środków
+        surplusPercentage = 0.30; // tylko 30% nadwyżki
+        console.log('⚠️ Tryb zachowawczy: mało dni do przychodu');
+        console.log('📉 Ograniczenie: max 10% dostępnych środków, 30% nadwyżki');
+    }
+
     const maxAmount = available * maxPercentage;
 
     // Minimalna kwota do sugestii: 10 zł
     const minSuggestion = 10;
 
-    // Bazowa sugestia = 50% potencjalnej nadwyżki (zachowawcze podejście)
-    let suggestedAmount = potentialSurplus * 0.5;
+    // Bazowa sugestia = % potencjalnej nadwyżki (zachowawcze podejście)
+    let suggestedAmount = potentialSurplus * surplusPercentage;
 
-    // Ogranicz do max 20% available
+    // Ogranicz do maksymalnego % dostępnych środków
     suggestedAmount = Math.min(suggestedAmount, maxAmount);
 
     // Uwzględnij priorytet celu
@@ -296,7 +319,7 @@ export function calculateSafeSavingsAmount(goalId) {
     console.log('💵 Po odłożeniu zostanie:', (available - suggestedAmount).toFixed(2), 'zł');
     console.log('📊 To', ((suggestedAmount / available) * 100).toFixed(1), '% dostępnych środków');
 
-    // Buduj details z uwzględnieniem deadline
+    // Buduj details z uwzględnieniem deadline i trybu zachowawczego
     const details = [
         `💰 Dostępne środki: ${available.toFixed(2)} zł`,
         `🛡️ Bufor bezpieczeństwa: ${safetyBuffer.toFixed(2)} zł`,
@@ -307,6 +330,11 @@ export function calculateSafeSavingsAmount(goalId) {
         `📅 Dni do następnego przychodu: ${daysLeft}`,
         `📈 Średnie dzienne wydatki (30 dni): ${dailyAverageExpense.toFixed(2)} zł`
     ];
+
+    // Dodaj informację o trybie zachowawczym
+    if (daysLeft < 7) {
+        details.push(`⚠️ Tryb zachowawczy: Zostało mało dni (${daysLeft}), sugestia jest bardziej ostrożna`);
+    }
 
     // Dodaj informację o deadline jeśli istnieje
     if (goal.targetDate && daysToDeadline !== null) {
