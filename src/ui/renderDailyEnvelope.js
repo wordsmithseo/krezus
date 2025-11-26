@@ -65,10 +65,14 @@ export function renderDailyEnvelope() {
         hour: '2-digit',
         minute: '2-digit'
       });
-      const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni) | 🕐 Wyliczono: ${formattedDate}`;
+      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
+      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      const periodText = `📅 Okres: ${envelope.period.name} (${timeText}) | 🕐 Wyliczono: ${formattedDate}`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else if (envelope.period) {
-      const periodText = `📅 Okres: ${envelope.period.name} (${envelope.period.daysLeft} dni)`;
+      // ZMIANA: Pokazuj czas (godziny/minuty) gdy zostało mniej niż 1 dzień
+      const timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
+      const periodText = `📅 Okres: ${envelope.period.name} (${timeText})`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
     } else {
       envelopePeriodInfoEl.innerHTML = '';
