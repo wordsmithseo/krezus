@@ -2857,6 +2857,7 @@ tr.correction {
   .goal-info {
     display: flex;
     flex-direction: row;
+    align-items: flex-start;
     gap: 6px;
     margin-bottom: 15px;
     width: 100%;
