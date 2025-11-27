@@ -615,8 +615,9 @@ function renderCategoriesChart(breakdown) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Group small categories (< 5%) into "Inne"
-  const SMALL_CATEGORY_THRESHOLD = 5;
+  // Group small categories (< 2%) into "Inne" - tylko drobne wydatki
+  // Zmniejszone z 5% na 2% aby "Inne" zawierało tylko naprawdę małe kategorie
+  const SMALL_CATEGORY_THRESHOLD = 2;
   const mainCategories = breakdown.filter(item => item.percentage >= SMALL_CATEGORY_THRESHOLD);
   const smallCategories = breakdown.filter(item => item.percentage < SMALL_CATEGORY_THRESHOLD);
 
