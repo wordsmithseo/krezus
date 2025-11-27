@@ -1,0 +1,105 @@
+/* ==================== DESIGN TOKENS: TYPOGRAPHY ==================== */
+
+:root {
+  /* === FONT FAMILIES === */
+  --font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  /* === FONT SIZES === */
+  /*
+   * Modular scale based on 1.25 ratio (Major Third)
+   * Base size: 1rem (16px)
+   */
+
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-md: 1.125rem;     /* 18px */
+  --font-size-lg: 1.25rem;      /* 20px */
+  --font-size-xl: 1.5rem;       /* 24px */
+  --font-size-2xl: 1.875rem;    /* 30px */
+  --font-size-3xl: 2.25rem;     /* 36px */
+  --font-size-4xl: 3rem;        /* 48px */
+  --font-size-5xl: 3.75rem;     /* 60px */
+
+  /* Component-specific font sizes */
+  --font-size-h1: 2.5rem;       /* 40px */
+  --font-size-h2: 1.875rem;     /* 30px */
+  --font-size-h3: 1.5rem;       /* 24px */
+  --font-size-h4: 1.25rem;      /* 20px */
+  --font-size-h5: 1.125rem;     /* 18px */
+  --font-size-h6: 1rem;         /* 16px */
+
+  /* Special text sizes */
+  --font-size-display: 3.5rem;   /* 56px - for large display text */
+  --font-size-stat-value: 2.5rem; /* 40px - for stat cards */
+  --font-size-stat-value-large: 3rem; /* 48px - for beige stat cards */
+  --font-size-envelope: 3rem;    /* 48px - for envelope amount */
+
+  /* === FONT WEIGHTS === */
+  --font-weight-thin: 100;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --font-weight-black: 900;
+
+  /* === LINE HEIGHTS === */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Base line height */
+  --line-height-base: 1.6;
+
+  /* === LETTER SPACING === */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* App title specific */
+  --letter-spacing-title: -0.5px;
+
+  /* === TEXT TRANSFORMS === */
+  --text-transform-uppercase: uppercase;
+  --text-transform-lowercase: lowercase;
+  --text-transform-capitalize: capitalize;
+  --text-transform-none: none;
+
+  /* === RESPONSIVE FONT SIZES === */
+  /* These are adjusted in media queries */
+  --font-size-h1-mobile: 2rem;     /* 32px */
+  --font-size-h2-mobile: 1.5rem;   /* 24px */
+  --font-size-stat-mobile: 2rem;   /* 32px */
+  --font-size-display-mobile: 3rem; /* 48px */
+}
+
+/* === RESPONSIVE TYPOGRAPHY ADJUSTMENTS === */
+
+/* Tablets and smaller */
+@media (max-width: 768px) {
+  :root {
+    --font-size-display: var(--font-size-display-mobile);
+    --font-size-h1: var(--font-size-h1-mobile);
+    --font-size-h2: var(--font-size-h2-mobile);
+    --font-size-stat-value: var(--font-size-stat-mobile);
+    --font-size-envelope: 2rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  :root {
+    --font-size-h1: 1.75rem;   /* 28px */
+    --font-size-h2: 1.25rem;   /* 20px */
+    --font-size-stat-value: 1.75rem; /* 28px */
+  }
+}

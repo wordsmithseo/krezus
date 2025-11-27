@@ -1,0 +1,391 @@
+/* ==================== COMPONENT: FORMS ==================== */
+
+/* === FORM GROUP === */
+.form-group {
+  margin-bottom: var(--space-5);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--dark);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+/* === FORM INPUTS === */
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: var(--input-padding);
+  border: var(--border-base);
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
+  transition: var(--transition-base);
+  background: var(--color-white);
+  color: var(--dark);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-shadow-primary);
+}
+
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+  background: var(--light-gray);
+  cursor: not-allowed;
+  opacity: var(--opacity-70);
+}
+
+/* Input with error state */
+.form-group input.error,
+.form-group select.error,
+.form-group textarea.error {
+  border-color: var(--danger);
+}
+
+.form-group input.error:focus,
+.form-group select.error:focus,
+.form-group textarea.error:focus {
+  box-shadow: var(--focus-shadow-danger);
+}
+
+/* Input with success state */
+.form-group input.success,
+.form-group select.success,
+.form-group textarea.success {
+  border-color: var(--success);
+}
+
+.form-group input.success:focus,
+.form-group select.success:focus,
+.form-group textarea.success:focus {
+  box-shadow: var(--focus-shadow-success);
+}
+
+/* === TEXTAREA === */
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: var(--line-height-base);
+}
+
+/* === FORM ROW (Grid Layout) === */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap-lg);
+}
+
+/* === CHECKBOX GROUP === */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  margin: 0;
+}
+
+.checkbox-group label {
+  margin: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* === RADIO GROUP === */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  cursor: pointer;
+  user-select: none;
+}
+
+.radio-group input[type="radio"] {
+  width: auto;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* === FORM HINT === */
+.form-hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--gray);
+}
+
+/* === ERROR MESSAGE === */
+.form-error {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--danger);
+  font-weight: var(--font-weight-medium);
+}
+
+/* === SUCCESS MESSAGE === */
+.form-success {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--success);
+  font-weight: var(--font-weight-medium);
+}
+
+/* === INPUT GROUPS (with icons or buttons) === */
+.input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.input-group input {
+  border-radius: var(--radius-input) 0 0 var(--radius-input);
+  border-right: none;
+}
+
+.input-group-append {
+  display: flex;
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--light-gray);
+  border: var(--border-base);
+  border-left: none;
+  border-radius: 0 var(--radius-input) var(--radius-input) 0;
+  color: var(--gray);
+}
+
+/* === FORM SECTIONS === */
+.form-section {
+  margin-bottom: var(--space-8);
+}
+
+.form-section-title {
+  font-size: var(--font-size-h4);
+  font-weight: var(--font-weight-semibold);
+  color: var(--dark);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width-base) solid var(--light-gray);
+}
+
+/* === FORM ACTIONS === */
+.form-actions {
+  display: flex;
+  gap: var(--gap-md);
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--border-width-thin) solid var(--border);
+}
+
+.form-actions--left {
+  justify-content: flex-start;
+}
+
+.form-actions--center {
+  justify-content: center;
+}
+
+.form-actions--space-between {
+  justify-content: space-between;
+}
+
+/* === CUSTOM PERIOD (Analytics) === */
+.custom-period {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  background: var(--light-gray);
+  border-radius: var(--radius-md);
+}
+
+/* === SEARCH INPUT === */
+.search-input {
+  position: relative;
+}
+
+.search-input input {
+  padding-left: var(--space-10);
+}
+
+.search-input::before {
+  content: "🔍";
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* === SELECT STYLING === */
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236c717a' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+/* === FILE INPUT === */
+input[type="file"] {
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+input[type="file"]::file-selector-button {
+  padding: var(--space-2) var(--space-4);
+  background: var(--primary);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: var(--font-weight-semibold);
+  margin-right: var(--space-3);
+  transition: var(--transition-base);
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: var(--primary-dark);
+}
+
+/* === NUMBER INPUT === */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* === DATE INPUT === */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  cursor: pointer;
+}
+
+/* === FIELDSET === */
+fieldset {
+  border: var(--border-base);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+legend {
+  padding: 0 var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  color: var(--dark);
+}
+
+/* === FORM VALIDATION STATES === */
+.form-group.has-error input,
+.form-group.has-error select,
+.form-group.has-error textarea {
+  border-color: var(--danger);
+}
+
+.form-group.has-error label {
+  color: var(--danger);
+}
+
+.form-group.has-success input,
+.form-group.has-success select,
+.form-group.has-success textarea {
+  border-color: var(--success);
+}
+
+.form-group.has-success label {
+  color: var(--success);
+}
+
+/* === INLINE FORM === */
+.form-inline {
+  display: flex;
+  gap: var(--gap-md);
+  align-items: flex-end;
+}
+
+.form-inline .form-group {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+/* === MODAL INFO BOX === */
+.modal-info-box {
+  background: var(--color-primary-50);
+  border: var(--border-width-thin) solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.modal-info-box p {
+  margin: 0 0 var(--space-2) 0;
+  color: var(--dark);
+  font-size: var(--font-size-sm);
+}
+
+.modal-info-box p:last-child {
+  margin-bottom: 0;
+}
+
+.modal-info-box strong {
+  color: var(--primary);
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: var(--gap-sm);
+  }
+
+  .form-actions button,
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .form-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-inline .form-group {
+    margin-bottom: var(--space-4);
+  }
+}
+
+@media (max-width: 480px) {
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: var(--font-size-base);
+  }
+}

@@ -1,0 +1,87 @@
+/* ==================== LAYOUT: HEADER ==================== */
+
+/* === APP HEADER === */
+.app-header {
+  background: var(--gradient-primary);
+  color: var(--color-white);
+  padding: var(--space-4) 0;
+  box-shadow: var(--shadow-lg);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-index-nav);
+  animation: slideDown var(--duration-slow) var(--ease-out);
+}
+
+.header-content {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* === APP TITLE === */
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-lg);
+}
+
+.app-title h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: var(--letter-spacing-title);
+  text-shadow: var(--text-shadow);
+  background: linear-gradient(to right, #ffffff, #f0f0f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-version {
+  font-size: 0.75rem;
+  opacity: var(--opacity-80);
+  font-weight: var(--font-weight-normal);
+  align-self: flex-start;
+  margin-top: var(--space-1);
+}
+
+/* === HEADER USER === */
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+}
+
+.user-info {
+  text-align: right;
+}
+
+.user-info span {
+  font-size: var(--font-size-sm);
+  opacity: var(--opacity-90);
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: var(--gap-lg);
+  }
+
+  .app-title h1 {
+    font-size: var(--font-size-3xl);
+  }
+
+  .app-nav {
+    top: 68px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-title h1 {
+    font-size: var(--font-size-2xl);
+  }
+}

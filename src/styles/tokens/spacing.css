@@ -1,0 +1,72 @@
+/* ==================== DESIGN TOKENS: SPACING ==================== */
+
+:root {
+  /* === SPACING SCALE (4px base unit) === */
+  /*
+   * Naming convention: --space-{number}
+   * Each increment is 4px (0.25rem)
+   * Provides consistent spacing throughout the application
+   */
+
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-7: 1.75rem;   /* 28px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-15: 3.75rem;  /* 60px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+
+  /* === SEMANTIC SPACING ALIASES === */
+  /* Common use cases with meaningful names */
+
+  /* Gaps */
+  --gap-xs: var(--space-1);    /* 4px */
+  --gap-sm: var(--space-2);    /* 8px */
+  --gap-md: var(--space-3);    /* 12px */
+  --gap-lg: var(--space-4);    /* 16px */
+  --gap-xl: var(--space-5);    /* 20px */
+  --gap-2xl: var(--space-6);   /* 24px */
+
+  /* Padding presets */
+  --padding-xs: var(--space-2);    /* 8px */
+  --padding-sm: var(--space-3);    /* 12px */
+  --padding-md: var(--space-4);    /* 16px */
+  --padding-lg: var(--space-5);    /* 20px */
+  --padding-xl: var(--space-6);    /* 24px */
+  --padding-2xl: var(--space-8);   /* 32px */
+
+  /* Margin presets */
+  --margin-xs: var(--space-2);    /* 8px */
+  --margin-sm: var(--space-3);    /* 12px */
+  --margin-md: var(--space-4);    /* 16px */
+  --margin-lg: var(--space-5);    /* 20px */
+  --margin-xl: var(--space-6);    /* 24px */
+  --margin-2xl: var(--space-8);   /* 32px */
+
+  /* Component-specific spacing */
+  --section-padding: var(--space-6);      /* 24px */
+  --card-padding: var(--space-5);         /* 20px */
+  --card-padding-sm: var(--space-4);      /* 16px */
+  --button-padding-y: var(--space-3);     /* 12px */
+  --button-padding-x: var(--space-6);     /* 24px */
+  --input-padding: var(--space-3);        /* 12px */
+  --modal-padding: var(--space-8);        /* 32px */
+
+  /* Container widths */
+  --container-max-width: 1400px;
+  --container-padding: var(--space-5);    /* 20px */
+  --modal-max-width-sm: 600px;
+  --modal-max-width-md: 700px;
+  --modal-max-width-lg: 800px;
+
+  /* Section spacing */
+  --section-margin-bottom: var(--space-5);  /* 20px */
+  --section-gap: var(--space-5);            /* 20px */
+}
