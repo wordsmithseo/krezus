@@ -147,6 +147,9 @@ import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 // Import modułu obecności użytkowników
 import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
 
+// Import automatycznej wersji aplikacji
+import { initVersion } from './utils/version.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentCategoryPage = 1;
@@ -612,8 +615,9 @@ function renderCategoriesChart(breakdown) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Group small categories (< 5%) into "Inne"
-  const SMALL_CATEGORY_THRESHOLD = 5;
+  // Group small categories (< 2%) into "Inne" - tylko drobne wydatki
+  // Zmniejszone z 5% na 2% aby "Inne" zawierało tylko naprawdę małe kategorie
+  const SMALL_CATEGORY_THRESHOLD = 2;
   const mainCategories = breakdown.filter(item => item.percentage >= SMALL_CATEGORY_THRESHOLD);
   const smallCategories = breakdown.filter(item => item.percentage < SMALL_CATEGORY_THRESHOLD);
 
@@ -2576,6 +2580,9 @@ onAuthChange(async (user) => {
 
     // Inicjalizuj śledzenie obecności
     initializePresence();
+
+    // Wyświetl wersję aplikacji w nagłówku
+    initVersion();
 
     // Oznacz otwarcie strony jako aktywność
     recordActivity();
