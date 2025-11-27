@@ -1,0 +1,126 @@
+/* ==================== COMPONENT: TABLES ==================== */
+
+/* === TABLE CONTAINER === */
+.table-container {
+  overflow-x: auto;
+  margin: var(--space-5) 0;
+}
+
+/* === BASE TABLE === */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-white);
+}
+
+/* === TABLE HEADER === */
+thead {
+  background: var(--light-gray);
+}
+
+th {
+  padding: var(--space-3);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--dark);
+  border-bottom: var(--border-base);
+  font-size: var(--font-size-base);
+}
+
+/* === TABLE BODY === */
+td {
+  padding: var(--space-3);
+  border-bottom: var(--border-width-thin) solid var(--border);
+  font-size: var(--font-size-base);
+}
+
+/* === TABLE ROWS === */
+tbody tr {
+  transition: var(--transition-base);
+}
+
+tbody tr:hover {
+  background: var(--light-gray);
+}
+
+/* Row States */
+tr.realised {
+  opacity: 1;
+}
+
+tr.planned {
+  opacity: var(--opacity-80);
+  background: var(--bg-planned);
+}
+
+tr.correction {
+  background: var(--bg-correction);
+}
+
+/* === TABLE ACTIONS === */
+.actions {
+  display: flex;
+  gap: var(--gap-sm);
+  justify-content: flex-end;
+}
+
+.no-actions {
+  visibility: hidden;
+  opacity: 0;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* === STRIPED TABLE === */
+.table-striped tbody tr:nth-child(odd) {
+  background: var(--color-white);
+}
+
+.table-striped tbody tr:nth-child(even) {
+  background: var(--color-neutral-50);
+}
+
+.table-striped tbody tr:hover {
+  background: var(--light-gray);
+}
+
+/* === BORDERED TABLE === */
+.table-bordered {
+  border: var(--border-base);
+}
+
+.table-bordered th,
+.table-bordered td {
+  border: var(--border-width-thin) solid var(--border);
+}
+
+/* === COMPACT TABLE === */
+.table-compact th,
+.table-compact td {
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  table {
+    font-size: var(--font-size-sm);
+  }
+
+  th, td {
+    padding: var(--space-2);
+  }
+}
+
+@media (max-width: 480px) {
+  table {
+    font-size: var(--font-size-xs);
+  }
+
+  th, td {
+    padding: var(--space-1);
+  }
+}

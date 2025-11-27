@@ -1,0 +1,153 @@
+/* ==================== DESIGN TOKENS: COLORS ==================== */
+
+:root {
+  /* === PRIMARY COLORS === */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #4a9fd8;  /* Main primary */
+  --color-primary-600: #2980b9;  /* Primary dark */
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+
+  /* === SUCCESS COLORS (GREEN) === */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #5cb88a;  /* Main success */
+  --color-success-500: #4a9e75;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+
+  /* === DANGER COLORS (RED) === */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-300: #fca5a5;
+  --color-danger-400: #f87171;
+  --color-danger-500: #e85c6a;  /* Main danger */
+  --color-danger-600: #d63f4f;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+
+  /* === WARNING COLORS (ORANGE/YELLOW) === */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #e89d3f;  /* Main warning */
+  --color-warning-600: #d6831f;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+
+  /* === NEUTRAL COLORS (GRAYS) === */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f8f9fa;  /* Light gray */
+  --color-neutral-200: #e9ecef;
+  --color-neutral-300: #e5e7eb;  /* Border */
+  --color-neutral-400: #cbd5e0;
+  --color-neutral-500: #6c717a;  /* Gray */
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;  /* Dark */
+  --color-neutral-900: #111827;
+
+  /* === SPECIAL COLORS === */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Beige/Cream colors for special stat cards */
+  --color-beige-50: #fafafa;
+  --color-beige-100: #f5f5f5;
+  --color-beige-200: #e8e8e8;
+  --color-beige-300: #d4d4d4;
+
+  /* === GRADIENT COLORS === */
+  --gradient-primary: linear-gradient(135deg, #6b7fd7 0%, #9b7ec4 100%);
+  --gradient-primary-reverse: linear-gradient(135deg, #9b7ec4 0%, #6b7fd7 100%);
+
+  --gradient-success: linear-gradient(135deg, #5cb88a 0%, #4a9e75 100%);
+  --gradient-success-alt: linear-gradient(90deg, #5cb88a, #4a9e75);
+  --gradient-success-bright: linear-gradient(135deg, var(--color-success-400) 0%, #16a34a 100%);
+
+  --gradient-danger: linear-gradient(135deg, #e85c6a 0%, #d63f4f 100%);
+  --gradient-warning: linear-gradient(135deg, #e89d3f 0%, #d6831f 100%);
+  --gradient-beige: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+
+  /* Card overlay gradients */
+  --gradient-overlay-light: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+
+  --gradient-overlay-bright: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.08) 100%
+  );
+
+  --gradient-overlay-beige: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(0, 0, 0, 0.03) 100%
+  );
+
+  /* === SEMANTIC COLOR ALIASES === */
+  /* These are shorthand aliases for the most commonly used colors */
+  --primary: var(--color-primary-500);
+  --primary-dark: var(--color-primary-600);
+  --success: var(--color-success-400);
+  --danger: var(--color-danger-500);
+  --warning: var(--color-warning-500);
+  --dark: var(--color-neutral-800);
+  --gray: var(--color-neutral-500);
+  --light-gray: var(--color-neutral-100);
+  --border: var(--color-neutral-300);
+  --white: var(--color-white);
+
+  /* === BACKGROUND COLORS === */
+  --bg-planned: #fff9e6;
+  --bg-correction: #fff3cd;
+  --bg-completed: #d1fae5;
+  --bg-paused: #fef3c7;
+
+  /* === TEXT COLORS === */
+  --text-primary: var(--color-neutral-800);
+  --text-secondary: var(--color-neutral-500);
+  --text-muted: var(--color-neutral-500);
+  --text-white: var(--color-white);
+
+  /* === BADGE COLORS === */
+  --badge-normal-bg: #a5d9b8;
+  --badge-normal-text: #065f46;
+  --badge-planned-bg: #e8cf8d;
+  --badge-planned-text: #92400e;
+  --badge-completed-bg: #d1fae5;
+  --badge-completed-text: #065f46;
+  --badge-paused-bg: #fef3c7;
+  --badge-paused-text: #92400e;
+
+  /* === PRESENCE INDICATOR === */
+  --presence-active: #ff4444;
+
+  /* === OPACITY VALUES === */
+  --opacity-10: 0.1;
+  --opacity-20: 0.2;
+  --opacity-30: 0.3;
+  --opacity-50: 0.5;
+  --opacity-70: 0.7;
+  --opacity-80: 0.8;
+  --opacity-85: 0.85;
+  --opacity-90: 0.9;
+  --opacity-95: 0.95;
+}

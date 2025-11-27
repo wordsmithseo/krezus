@@ -1,0 +1,115 @@
+/* ==================== LAYOUT: NAVIGATION ==================== */
+
+/* === APP NAVIGATION === */
+.app-nav {
+  background: var(--color-white);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 78px;
+  z-index: var(--z-index-sticky);
+}
+
+.nav-container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--container-padding);
+  display: flex;
+  align-items: center;
+}
+
+/* === NAV MENU === */
+.nav-menu {
+  display: flex;
+  gap: var(--gap-xs);
+  overflow-x: auto;
+  padding: var(--space-2) 0;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.nav-menu::-webkit-scrollbar {
+  height: 6px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+  background: var(--gray);
+}
+
+/* === NAV BUTTON === */
+.nav-btn {
+  background: transparent;
+  border: none;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  color: var(--gray);
+  transition: var(--transition-base);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  font-weight: var(--font-weight-medium);
+  flex-shrink: 0;
+}
+
+.nav-btn:hover {
+  background: var(--light-gray);
+  color: var(--dark);
+}
+
+.nav-btn.active {
+  background: var(--primary);
+  color: var(--color-white);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* === PERIOD BUTTONS (Analytics) === */
+.period-buttons {
+  display: flex;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 0 var(--space-4);
+  }
+
+  .nav-menu {
+    gap: var(--gap-sm);
+    padding: var(--space-3) 0;
+  }
+
+  .nav-btn {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+    gap: var(--gap-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-menu {
+    gap: var(--gap-xs);
+    padding: var(--space-2) 0;
+  }
+
+  .nav-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
+    gap: var(--gap-xs);
+  }
+}

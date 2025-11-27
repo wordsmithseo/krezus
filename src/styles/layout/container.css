@@ -1,0 +1,118 @@
+/* ==================== LAYOUT: CONTAINER & GRID ==================== */
+
+/* === CONTAINER === */
+.container {
+  max-width: var(--container-max-width);
+  margin: var(--space-5) auto;
+  padding: 0 var(--container-padding);
+}
+
+/* === SECTIONS === */
+.section {
+  display: none;
+  animation: fadeIn var(--duration-normal) var(--ease-in-out);
+}
+
+.section.active {
+  display: block;
+}
+
+/* === GRIDS === */
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--gap-xl);
+  margin: var(--space-5) 0;
+}
+
+/* Savings Stats */
+.savings-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--gap-xl);
+  margin-bottom: var(--space-8);
+}
+
+/* Goals List */
+.savings-goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-lg);
+}
+
+/* Contributions Summary */
+.contributions-summary {
+  background: var(--light-gray);
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--gap-lg);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+}
+
+.summary-item .label {
+  font-size: var(--font-size-xs);
+  color: var(--gray);
+  font-weight: var(--font-weight-medium);
+}
+
+.summary-item .value {
+  font-size: var(--font-size-lg);
+  color: var(--dark);
+  font-weight: var(--font-weight-bold);
+}
+
+/* === TOP CATEGORIES/SOURCES === */
+.top-categories-buttons,
+.top-sources-buttons {
+  display: flex;
+  gap: var(--gap-sm);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+/* === ANALYTICS CONTROLS === */
+.analytics-controls {
+  margin-bottom: var(--space-8);
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .savings-stats {
+    grid-template-columns: 1fr;
+    gap: var(--gap-md);
+  }
+
+  .contributions-summary {
+    grid-template-columns: 1fr;
+    gap: var(--gap-md);
+    padding: var(--space-4);
+  }
+
+  .summary-item .label {
+    font-size: 0.8rem;
+  }
+
+  .summary-item .value {
+    font-size: var(--font-size-md);
+  }
+
+  .top-categories-buttons,
+  .top-sources-buttons {
+    justify-content: flex-start;
+  }
+}

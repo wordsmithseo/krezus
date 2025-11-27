@@ -1,0 +1,136 @@
+/* ==================== BASE STYLES ==================== */
+
+/* === RESET === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* === ROOT === */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === BODY === */
+body {
+  font-family: var(--font-family-base);
+  background: var(--gradient-primary);
+  min-height: 100vh;
+  color: var(--text-primary);
+  line-height: var(--line-height-base);
+}
+
+/* === FOCUS STATES === */
+*:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: var(--focus-shadow-primary);
+}
+
+/* === LINKS === */
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: var(--transition-color);
+}
+
+a:hover {
+  opacity: var(--opacity-80);
+}
+
+/* === HEADINGS === */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--dark);
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+h3 {
+  font-size: var(--font-size-h3);
+}
+
+h4 {
+  font-size: var(--font-size-h4);
+}
+
+h5 {
+  font-size: var(--font-size-h5);
+}
+
+h6 {
+  font-size: var(--font-size-h6);
+}
+
+/* === LISTS === */
+ul, ol {
+  list-style-position: inside;
+}
+
+/* === IMAGES === */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* === SCROLLBAR STYLING === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gray);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dark);
+}
+
+/* === SELECTION === */
+::selection {
+  background: var(--primary);
+  color: var(--color-white);
+}
+
+::-moz-selection {
+  background: var(--primary);
+  color: var(--color-white);
+}
+
+/* === RESPONSIVE TYPOGRAPHY === */
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+}

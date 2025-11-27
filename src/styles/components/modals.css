@@ -1,0 +1,132 @@
+/* ==================== COMPONENT: MODALS ==================== */
+
+/* === BASE MODAL === */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-index-modal-backdrop);
+  animation: fadeIn var(--duration-normal) var(--ease-in-out);
+}
+
+.modal.active {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* === MODAL CONTENT === */
+.modal-content {
+  background: var(--color-white);
+  border-radius: var(--radius-modal);
+  padding: var(--modal-padding);
+  max-width: var(--modal-max-width-sm);
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-modal);
+  animation: slideUp var(--duration-normal) var(--ease-out);
+  z-index: var(--z-index-modal);
+}
+
+/* === MODAL HEADER === */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-base);
+}
+
+.modal-header h2 {
+  color: var(--dark);
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+/* === MODAL BODY === */
+.modal-body {
+  /* Add any specific modal body styles if needed */
+}
+
+/* === MODAL FOOTER === */
+.modal-footer {
+  display: flex;
+  gap: var(--gap-md);
+  justify-content: flex-end;
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--border-width-thin) solid var(--border);
+}
+
+/* === MODAL SIZES === */
+.modal-content--sm {
+  max-width: var(--modal-max-width-sm);
+}
+
+.modal-content--md {
+  max-width: var(--modal-max-width-md);
+}
+
+.modal-content--lg {
+  max-width: var(--modal-max-width-lg);
+}
+
+/* === SPECIAL MODALS === */
+
+/* Notifications Modal */
+.notifications-modal {
+  max-width: var(--modal-max-width-md);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.notifications-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Savings Suggestions Modal */
+.savings-suggestions-modal .modal-content {
+  max-width: var(--modal-max-width-lg);
+  max-height: 85vh;
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    padding: var(--space-5);
+    max-height: 90vh;
+  }
+
+  .notifications-modal {
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  .notifications-body {
+    max-height: 70vh;
+  }
+
+  .savings-suggestions-modal .modal-content {
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-footer button,
+  .modal-footer .btn {
+    width: 100%;
+  }
+}

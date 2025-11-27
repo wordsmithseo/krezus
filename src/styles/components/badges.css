@@ -1,0 +1,195 @@
+/* ==================== COMPONENT: BADGES & STATUS INDICATORS ==================== */
+
+/* === BASE BADGE === */
+.badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-badge);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* === STATUS BADGE === */
+.status-badge {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-badge);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  display: inline-block;
+}
+
+.status-normal {
+  background: var(--badge-normal-bg);
+  color: var(--badge-normal-text);
+}
+
+.status-planned {
+  background: var(--badge-planned-bg);
+  color: var(--badge-planned-text);
+}
+
+.status-completed {
+  background: var(--badge-completed-bg);
+  color: var(--badge-completed-text);
+}
+
+.status-paused {
+  background: var(--badge-paused-bg);
+  color: var(--badge-paused-text);
+}
+
+/* === OWNER BADGE === */
+.owner-badge {
+  background: var(--primary);
+  color: var(--color-white);
+  padding: var(--space-0) var(--space-2);
+  border-radius: var(--radius-badge);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* === CHANGE BADGE === */
+.change-badge {
+  font-size: 0.75rem;
+  padding: var(--space-0) var(--space-2);
+  border-radius: var(--radius-badge);
+  font-weight: var(--font-weight-semibold);
+}
+
+.change-badge.automatic {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+/* === PRESENCE BADGE === */
+.presence-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  background: var(--presence-active);
+  color: var(--color-white);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-0) var(--space-1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: var(--border-base) var(--color-white);
+}
+
+/* === BADGE VARIANTS === */
+.badge-primary {
+  background: var(--primary);
+  color: var(--color-white);
+}
+
+.badge-success {
+  background: var(--success);
+  color: var(--color-white);
+}
+
+.badge-danger {
+  background: var(--danger);
+  color: var(--color-white);
+}
+
+.badge-warning {
+  background: var(--warning);
+  color: var(--color-white);
+}
+
+.badge-secondary {
+  background: var(--gray);
+  color: var(--color-white);
+}
+
+.badge-light {
+  background: var(--light-gray);
+  color: var(--dark);
+}
+
+.badge-dark {
+  background: var(--dark);
+  color: var(--color-white);
+}
+
+/* === BADGE SIZES === */
+.badge--sm {
+  padding: 2px 6px;
+  font-size: 0.7rem;
+}
+
+.badge--md {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+}
+
+.badge--lg {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+/* === PILL BADGE === */
+.badge-pill {
+  border-radius: var(--radius-badge-pill);
+}
+
+/* === DOT INDICATOR === */
+.dot-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-circle);
+  margin-right: var(--space-1);
+}
+
+.dot-indicator--success {
+  background: var(--success);
+}
+
+.dot-indicator--danger {
+  background: var(--danger);
+}
+
+.dot-indicator--warning {
+  background: var(--warning);
+}
+
+.dot-indicator--primary {
+  background: var(--primary);
+}
+
+.dot-indicator--gray {
+  background: var(--gray);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .status-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+
+  .presence-badge {
+    top: -3px;
+    right: -3px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+    padding: var(--space-0) var(--space-1);
+  }
+}
+
+@media (max-width: 480px) {
+  .status-badge {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+  }
+}
