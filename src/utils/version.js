@@ -3,26 +3,21 @@
  * Reads version from package.json and displays it in the app header
  */
 
+import packageJson from '../../package.json';
+
 /**
  * Get version from package.json
- * @returns {Promise<string>} Version string
+ * @returns {string} Version string
  */
-async function getAppVersion() {
-  try {
-    const response = await fetch('/package.json');
-    const packageData = await response.json();
-    return packageData.version || '1.0.0';
-  } catch (error) {
-    console.error('Failed to load version:', error);
-    return '1.0.0';
-  }
+function getAppVersion() {
+  return packageJson.version || '1.0.0';
 }
 
 /**
  * Display version in the app header
  */
-export async function displayAppVersion() {
-  const version = await getAppVersion();
+export function displayAppVersion() {
+  const version = getAppVersion();
   const versionElement = document.getElementById('appVersion');
 
   if (versionElement) {
