@@ -180,21 +180,18 @@
 
 /* === PRESENCE INDICATOR === */
 #presenceIndicator {
-  position: fixed;
-  top: 95px;
-  right: 20px;
-  width: 48px;
-  height: 48px;
-  background: var(--color-white);
-  border-radius: var(--radius-circle);
+  position: relative;
   display: none;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-presence);
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-circle);
   cursor: pointer;
-  z-index: var(--z-index-presence);
   transition: var(--transition-color), var(--transition-transform);
-  color: #333;
+  color: var(--color-white);
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 #presenceIndicator svg {
@@ -202,12 +199,14 @@
 }
 
 #presenceIndicator:hover {
-  transform: scale(var(--scale-up-md));
-  box-shadow: var(--shadow-presence-hover);
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 #presenceIndicator.active {
-  color: var(--presence-active);
+  background: rgba(231, 76, 60, 0.9);
+  border-color: rgba(231, 76, 60, 1);
+  color: var(--color-white);
 }
 
 /* === SECTION HEADERS === */
@@ -437,15 +436,13 @@
   }
 
   #presenceIndicator {
-    top: 85px;
-    right: 15px;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
 
   #presenceIndicator svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
   }
 
   .progress-bar {
