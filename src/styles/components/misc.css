@@ -181,7 +181,7 @@
 /* === PRESENCE INDICATOR === */
 #presenceIndicator {
   position: fixed;
-  top: 20px;
+  top: 95px;
   right: 20px;
   width: 48px;
   height: 48px;
@@ -437,7 +437,7 @@
   }
 
   #presenceIndicator {
-    top: 15px;
+    top: 85px;
     right: 15px;
     width: 40px;
     height: 40px;
