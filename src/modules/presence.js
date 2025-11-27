@@ -152,14 +152,28 @@ function showPresenceIndicator(count = 0) {
     indicator = document.createElement('div');
     indicator.id = 'presenceIndicator';
     indicator.innerHTML = `
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
       </svg>
       <span class="presence-badge">${count}</span>
     `;
     const title = count === 1 ? 'Jedna inna sesja jest aktywna na Twoim koncie' : `${count} inne sesje są aktywne na Twoim koncie`;
     indicator.title = title;
-    document.body.appendChild(indicator);
+
+    // Dodaj do header-user (obok przycisku profilu) zamiast do body
+    const headerUser = document.querySelector('.header-user');
+    if (headerUser) {
+      // Wstaw przed pierwszym przyciskiem
+      const firstButton = headerUser.querySelector('button');
+      if (firstButton) {
+        headerUser.insertBefore(indicator, firstButton);
+      } else {
+        headerUser.appendChild(indicator);
+      }
+    } else {
+      // Fallback: dodaj do body jeśli header nie istnieje
+      document.body.appendChild(indicator);
+    }
   } else {
     // Zaktualizuj badge jeśli indicator już istnieje
     const badge = indicator.querySelector('.presence-badge');
@@ -170,7 +184,7 @@ function showPresenceIndicator(count = 0) {
     indicator.title = title;
   }
 
-  indicator.style.display = 'flex';
+  indicator.style.display = 'inline-flex';
 }
 
 /**
