@@ -147,6 +147,9 @@ import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 // Import modułu obecności użytkowników
 import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
 
+// Import automatycznej wersji aplikacji
+import { initVersion } from './utils/version.js';
+
 let currentExpensePage = 1;
 let currentIncomePage = 1;
 let currentCategoryPage = 1;
@@ -2576,6 +2579,9 @@ onAuthChange(async (user) => {
 
     // Inicjalizuj śledzenie obecności
     initializePresence();
+
+    // Wyświetl wersję aplikacji w nagłówku
+    initVersion();
 
     // Oznacz otwarcie strony jako aktywność
     recordActivity();
