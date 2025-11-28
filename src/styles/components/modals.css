@@ -80,18 +80,6 @@
 
 /* === SPECIAL MODALS === */
 
-/* Notifications Modal */
-.notifications-modal {
-  max-width: var(--modal-max-width-md);
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.notifications-body {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
 /* Savings Suggestions Modal */
 .savings-suggestions-modal .modal-content {
   max-width: var(--modal-max-width-lg);
@@ -105,15 +93,6 @@
     width: 95%;
     padding: var(--space-5);
     max-height: 90vh;
-  }
-
-  .notifications-modal {
-    max-width: 95vw;
-    max-height: 90vh;
-  }
-
-  .notifications-body {
-    max-height: 70vh;
   }
 
   .savings-suggestions-modal .modal-content {

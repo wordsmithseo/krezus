@@ -87,13 +87,6 @@ import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
 
 import './components/savingsGoalsModals.js';
 
-import {
-  hasNewChanges,
-  updateLastSeenTimestamp,
-  initializeSession
-} from './modules/changeTracker.js';
-
-import { showNotificationsModal } from './components/notificationsModal.js';
 import { checkAndShowSavingsSuggestions } from './components/savingsSuggestionsModal.js';
 
 import {
@@ -232,65 +225,6 @@ function updateDisplayNameInUI(displayName) {
   });
 }
 
-/**
- * Sprawdza czy są nowe powiadomienia i wyświetla modal
- */
-async function checkForNotifications() {
-  try {
-    const hasNew = await hasNewChanges();
-    if (hasNew) {
-      console.log('🔔 Wykryto nowe zmiany - pokazuję powiadomienia');
-      // Odczekaj chwilę aby UI się załadował
-      setTimeout(() => {
-        showNotificationsModal();
-        // Po zamknięciu powiadomień sprawdź sugestie oszczędzania
-        setTimeout(() => {
-          checkAndShowSavingsSuggestions();
-        }, 2000);
-      }, 1000);
-    } else {
-      console.log('ℹ️ Brak nowych zmian');
-      // Zaktualizuj timestamp ostatniej wizyty
-      updateLastSeenTimestamp();
-      // Sprawdź sugestie oszczędzania
-      setTimeout(() => {
-        checkAndShowSavingsSuggestions();
-      }, 1500);
-    }
-  } catch (error) {
-    console.error('❌ Błąd sprawdzania powiadomień:', error);
-  }
-}
-
-/**
- * Inicjalizuje obsługę Page Visibility API
- * Wykrywa gdy użytkownik wraca do zakładki
- */
-function initPageVisibilityTracking() {
-  let wasHidden = false;
-
-  document.addEventListener('visibilitychange', async () => {
-    if (document.hidden) {
-      // Użytkownik opuścił zakładkę
-      wasHidden = true;
-      console.log('👋 Użytkownik opuścił zakładkę');
-    } else {
-      // Użytkownik wrócił do zakładki
-      if (wasHidden) {
-        console.log('👀 Użytkownik wrócił do zakładki');
-        wasHidden = false;
-
-        // Sprawdź czy są nowe powiadomienia
-        const user = getCurrentUser();
-        if (user) {
-          await checkForNotifications();
-        }
-      }
-    }
-  });
-
-  console.log('✅ Inicjalizacja śledzenia widoczności zakładki');
-}
 
 function updatePaginationVisibility(tableId, totalItems) {
   const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
@@ -2568,15 +2502,9 @@ onAuthChange(async (user) => {
       }
     });
 
-    // Inicjalizuj sesję (do śledzenia własnych akcji)
-    initializeSession();
-
     console.log('📥 Rozpoczęcie ładowania danych...');
     await loadAllData();
     hideLoader();
-
-    // Sprawdź czy są nowe powiadomienia
-    await checkForNotifications();
 
     // Inicjalizuj śledzenie obecności
     initializePresence();
@@ -2618,9 +2546,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
-
-  // Inicjalizuj śledzenie widoczności zakładki (powiadomienia)
-  initPageVisibilityTracking();
 
   // Śledź aktywność użytkownika
   const activityEvents = ['click', 'keydown', 'scroll', 'touchstart'];
