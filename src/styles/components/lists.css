@@ -259,78 +259,6 @@
   margin-bottom: var(--space-2);
 }
 
-/* === NOTIFICATIONS LIST === */
-.notifications-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-md);
-}
-
-.notifications-intro {
-  font-size: var(--font-size-base);
-  color: var(--gray);
-  margin-bottom: var(--space-6);
-  padding: var(--space-4);
-  background: var(--light-gray);
-  border-radius: var(--radius-md);
-  border-left: var(--border-width-heavy) solid var(--primary);
-}
-
-.notifications-group {
-  margin-bottom: var(--space-8);
-}
-
-.notifications-group-title {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  color: var(--dark);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: var(--border-base) var(--light-gray);
-}
-
-.notification-header {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-sm);
-  margin-bottom: var(--space-2);
-}
-
-.notification-label {
-  font-weight: var(--font-weight-semibold);
-  color: var(--dark);
-  font-size: var(--font-size-sm);
-}
-
-.notification-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-lg);
-  font-size: var(--font-size-xs);
-  color: var(--gray);
-  margin-bottom: var(--space-2);
-}
-
-.notification-user,
-.notification-time {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-xs);
-}
-
-.change-details {
-  font-size: var(--font-size-sm);
-  color: var(--dark);
-  line-height: var(--line-height-relaxed);
-  padding-top: var(--space-2);
-  border-top: var(--border-width-thin) solid var(--light-gray);
-}
-
-.change-details strong {
-  font-weight: var(--font-weight-bold);
-  color: var(--primary);
-}
-
 /* === SUGGESTIONS LIST === */
 .suggestions-list {
   display: flex;
@@ -341,11 +269,6 @@
 /* === RESPONSIVE === */
 
 @media (max-width: 768px) {
-  .notification-meta {
-    flex-direction: column;
-    gap: var(--gap-xs);
-  }
-
   .contribution-item {
     flex-direction: column;
     align-items: flex-start;
