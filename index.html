@@ -86,7 +86,7 @@
                 </div>
 
                 <div id="loginTab" class="tab-content active">
-                    <form id="loginForm" onsubmit="handleLogin(event)">
+                    <form id="loginForm">
                         <div class="form-group">
                             <label>Email</label>
                             <input type="email" name="loginEmail" required placeholder="twoj@email.pl">
@@ -100,7 +100,7 @@
                 </div>
 
                 <div id="registerTab" class="tab-content">
-                    <form id="registerForm" onsubmit="handleRegister(event)">
+                    <form id="registerForm">
                         <div class="form-group">
                             <label>Nazwa użytkownika</label>
                             <input type="text" name="registerDisplayName" required minlength="2" placeholder="Jan Kowalski">
@@ -141,7 +141,7 @@
                     <div class="user-info">
                         <span id="username"></span>
                     </div>
-                    <button id="profileBtn" class="btn-profile" data-action="open-profile">👤 Profil</button>
+                    <button id="profileBtn" class="btn-profile" data-action="open-profile" aria-label="Profil użytkownika">👤 Profil</button>
                     <button class="btn-logout" data-action="handle-logout">Wyloguj</button>
                 </div>
             </div>
@@ -150,14 +150,14 @@
         <nav class="app-nav">
             <div class="nav-container">
                 <div class="nav-menu" id="navMenu">
-                    <button class="nav-btn active" data-action="show-section" data-section="summarySection">📊 Podsumowanie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="envelopeSection">📩 Koperta dnia</button>
-                    <button class="nav-btn" data-action="show-section" data-section="sourcesSection">💰 Przychody</button>
-                    <button class="nav-btn" data-action="show-section" data-section="expensesSection">💸 Wydatki</button>
-                    <button class="nav-btn" data-action="show-section" data-section="categoriesSection">🏷️ Kategorie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="analyticsSection">📈 Analityka</button>
-                    <button class="nav-btn" data-action="show-section" data-section="savingsGoalsSection">🎯 Oszczędzanie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="settingsSection">⚙️ Ustawienia</button>
+                    <button class="nav-btn active" data-action="show-section" data-section="summarySection" aria-label="Podsumowanie">📊 Podsumowanie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="envelopeSection" aria-label="Koperta dnia">📩 Koperta dnia</button>
+                    <button class="nav-btn" data-action="show-section" data-section="sourcesSection" aria-label="Przychody">💰 Przychody</button>
+                    <button class="nav-btn" data-action="show-section" data-section="expensesSection" aria-label="Wydatki">💸 Wydatki</button>
+                    <button class="nav-btn" data-action="show-section" data-section="categoriesSection" aria-label="Kategorie">🏷️ Kategorie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="analyticsSection" aria-label="Analityka">📈 Analityka</button>
+                    <button class="nav-btn" data-action="show-section" data-section="savingsGoalsSection" aria-label="Oszczędzanie">🎯 Oszczędzanie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="settingsSection" aria-label="Ustawienia">⚙️ Ustawienia</button>
                 </div>
             </div>
         </nav>
@@ -247,7 +247,7 @@
             <section id="sourcesSection" class="section">
                 <div class="section-card">
                     <h2 id="incomeFormTitle">💰 Dodaj przychód</h2>
-                    <form id="incomeForm" onsubmit="addIncome(event)">
+                    <form id="incomeForm">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Kwota (zł)</label>
@@ -294,7 +294,7 @@
                     <p style="margin-bottom: 15px; color: var(--gray);">
                         Aktualne dostępne środki: <strong><span id="currentFundsDisplay">0.00</span> zł</strong>
                     </p>
-                    <form id="correctionForm" onsubmit="addCorrection(event)">
+                    <form id="correctionForm">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Nowa kwota całkowitych środków (zł)</label>
@@ -331,7 +331,7 @@
             <section id="expensesSection" class="section">
                 <div class="section-card">
                     <h2 id="expenseFormTitle">💸 Dodaj wydatek</h2>
-                    <form id="expenseForm" onsubmit="addExpense(event)">
+                    <form id="expenseForm">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Kwota (zł)</label>
@@ -502,7 +502,7 @@
                     <h2>🎯 Oszczednosci</h2>
                     <p style="margin-bottom: 20px; opacity: 0.8;">Zdefiniuj kwote oszczednosci, ktora zostanie wylaczona z budzetu ogolnego. Ta kwota nie bedzie wliczana do dostepnych srodkow.</p>
 
-                    <form id="savingsAmountForm" onsubmit="saveSavingsAmount(event)">
+                    <form id="savingsAmountForm">
                         <div class="form-group">
                             <label for="savingsAmountInput">Kwota oszczednosci (zl)</label>
                             <input type="number" id="savingsAmountInput" name="savingsAmount" step="0.01" min="0" class="form-control" placeholder="0.00" />
@@ -519,7 +519,7 @@
                 <div class="section-card">
                     <h2>⚙️ Ustawienia budżetu</h2>
 
-                    <form id="settingsForm" onsubmit="saveSettings(event)">
+                    <form id="settingsForm">
                         <div class="form-group">
                             <label>Okres dla Koperty Dnia</label>
                             <select id="settingsEnvelopePeriod" name="envelopePeriod" class="form-control">
