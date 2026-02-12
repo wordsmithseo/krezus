@@ -21,7 +21,7 @@ import { animateNumber } from '../utils/animateNumber.js';
 import { startCountdownTimers } from '../utils/countdownTimer.js';
 
 export function renderSummary() {
-  const { available } = calculateAvailableFunds();
+  const { available, totalAvailable, savingsAmount } = calculateAvailableFunds();
 
   const todayExpenses = getTodayExpenses();
   const weekExpenses = getWeekExpenses();
@@ -35,6 +35,17 @@ export function renderSummary() {
   const availableFundsEl = document.getElementById('availableFunds');
 
   if (availableFundsEl) animateNumber(availableFundsEl, available);
+
+  // Pokaż informację o oszczędnościach jeśli są zdefiniowane
+  const savingsInfoEl = document.getElementById('savingsInfo');
+  if (savingsInfoEl) {
+    if (savingsAmount > 0) {
+      savingsInfoEl.innerHTML = sanitizeHTML(`<small style="font-size: 0.8rem; opacity: 0.8;">Z czego ${savingsAmount.toFixed(2)} zł odlozono jako oszczednosci</small>`);
+      savingsInfoEl.style.display = 'block';
+    } else {
+      savingsInfoEl.style.display = 'none';
+    }
+  }
 
   // Wydatki dzisiaj
   const todayLabel = document.querySelector('#todayExpenses')?.closest('.stat-card')?.querySelector('.stat-label');

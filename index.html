@@ -170,6 +170,7 @@
                         <div class="stat-card beige">
                             <div class="stat-label">Dostępne środki</div>
                             <div class="stat-value"><span id="availableFunds">0.00</span><span class="stat-unit">zł</span></div>
+                            <div id="savingsInfo" style="display: none;"></div>
                         </div>
                     </div>
 
@@ -497,7 +498,21 @@
             </section>
 
             <section id="savingsGoalsSection" class="section">
-                <div id="savingsGoalsContent"></div>
+                <div class="section-card">
+                    <h2>🎯 Oszczednosci</h2>
+                    <p style="margin-bottom: 20px; opacity: 0.8;">Zdefiniuj kwote oszczednosci, ktora zostanie wylaczona z budzetu ogolnego. Ta kwota nie bedzie wliczana do dostepnych srodkow.</p>
+
+                    <form id="savingsAmountForm" onsubmit="saveSavingsAmount(event)">
+                        <div class="form-group">
+                            <label for="savingsAmountInput">Kwota oszczednosci (zl)</label>
+                            <input type="number" id="savingsAmountInput" name="savingsAmount" step="0.01" min="0" class="form-control" placeholder="0.00" />
+                            <small class="text-muted">Podaj kwote, ktora chcesz odlozyc. Zostanie odjeta od dostepnych srodkow.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Zapisz kwote oszczednosci</button>
+                    </form>
+
+                    <div id="savingsStatusInfo" style="margin-top: 20px;"></div>
+                </div>
             </section>
 
             <section id="settingsSection" class="section">

@@ -236,10 +236,14 @@ export function calculateSpendingPeriods() {
 
 export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
-    const available = sumIncome - sumExpense;
+    const savingGoal = getSavingGoal();
+    const totalAvailable = sumIncome - sumExpense;
+    const available = totalAvailable - savingGoal;
 
     return {
-        available
+        available,
+        totalAvailable,
+        savingsAmount: savingGoal
     };
 }
 
@@ -611,10 +615,10 @@ export async function updateDailyEnvelope(forDate = null) {
             let calculatedLimit;
             if (median > dailyLimit * 1.5) {
                 calculatedLimit = dailyLimit * 0.9;
-                console.log('📊 Mediana zbyt wysoka - używam 90% limitu');
+                console.log('📊 Wydatki powyżej normy - używam 90% limitu');
             } else if (median < dailyLimit * 0.3) {
                 calculatedLimit = dailyLimit * 0.7;
-                console.log('📊 Mediana zbyt niska - używam 70% limitu');
+                console.log('📊 Niskie wydatki - używam 70% limitu (masz duży zapas)');
             } else {
                 calculatedLimit = (median * 0.4 + dailyLimit * 0.6);
                 console.log('📊 Używam ważonej średniej: 40% mediana + 60% limit');
@@ -750,13 +754,13 @@ export function getEnvelopeCalculationInfo() {
             const median = amounts[Math.floor(amounts.length / 2)];
 
             if (median > dailyLimit * 1.5) {
-                description = `Algorytm inteligentny - mediana zbyt wysoka (${historicalExpenses.length} transakcji)`;
-                formula = `90% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.9 = ${(dailyLimit * 0.9).toFixed(2)} zł`;
+                description = `Wydatki powyżej normy - ostrożny limit (${historicalExpenses.length} transakcji)`;
+                formula = `90% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.9 = ${(dailyLimit * 0.9).toFixed(2)} zł. Mediana wydatków (${median.toFixed(2)} zł) przekracza 150% limitu.`;
             } else if (median < dailyLimit * 0.3) {
-                description = `Algorytm inteligentny - mediana zbyt niska (${historicalExpenses.length} transakcji)`;
-                formula = `70% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.7 = ${(dailyLimit * 0.7).toFixed(2)} zł`;
+                description = `Niskie wydatki - zachęcający limit (${historicalExpenses.length} transakcji)`;
+                formula = `70% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.7 = ${(dailyLimit * 0.7).toFixed(2)} zł. Mediana wydatków (${median.toFixed(2)} zł) jest niska względem limitu - masz duży zapas.`;
             } else {
-                description = `Algorytm inteligentny (${historicalExpenses.length} transakcji z 30 dni)`;
+                description = `Algorytm zbalansowany (${historicalExpenses.length} transakcji z 30 dni)`;
                 formula = `40% mediany ${median.toFixed(2)} zł + 60% limitu (${limitSource}) ${dailyLimit.toFixed(2)} zł, max ${dailyLimit.toFixed(2)} zł`;
             }
         } else {

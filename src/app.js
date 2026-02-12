@@ -83,12 +83,6 @@ import {
   clearSavingsGoalsCache
 } from './modules/savingsGoalManager.js';
 
-import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
-
-import './components/savingsGoalsModals.js';
-
-import { checkAndShowSavingsSuggestions } from './components/savingsSuggestionsModal.js';
-
 import {
   showProfileModal,
   showPasswordModal,
@@ -319,11 +313,11 @@ async function loadAllData() {
     subscribeToSavingsGoalsUpdates(userId, {
       onGoalsChange: () => {
         console.log('🔄 Zmiana w celach oszczędzania - re-render');
-        renderSavingsGoals();
+        renderSavingsSection();
       },
       onContributionsChange: () => {
         console.log('🔄 Zmiana w wpłatach - re-render');
-        renderSavingsGoals();
+        renderSavingsSection();
       }
     });
 
@@ -387,7 +381,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
-  renderSavingsGoals();
+  renderSavingsSection();
   await renderLogs();
   loadSettings();
   setupCategorySuggestions();
@@ -1375,6 +1369,10 @@ const realiseExpense = async (expenseId) => {
       budgetUser: budgetUserName
     });
 
+    clearLimitsCache();
+    renderExpenses();
+    renderSummary();
+    renderDailyEnvelope();
     showSuccessMessage('Wydatek zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji wydatku:', error);
@@ -1504,7 +1502,9 @@ const realiseIncome = async (incomeId) => {
       budgetUser: budgetUserName
     });
 
-    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
+    renderSources();
+    renderSummary();
+    renderDailyEnvelope();
     showSuccessMessage('Przychód zrealizowany');
   } catch (error) {
     console.error('❌ Błąd realizacji przychodu:', error);
@@ -1538,7 +1538,9 @@ const editIncome = (incomeId) => {
         budgetUser: budgetUserName
       });
 
-      renderSummary(); // Odśwież wyświetlanie planowanych transakcji
+      renderSources();
+      renderSummary();
+      renderDailyEnvelope();
       showSuccessMessage('Przychód zaktualizowany');
     } catch (error) {
       console.error('❌ Błąd aktualizacji przychodu:', error);
@@ -1566,9 +1568,9 @@ const deleteIncome = async (incomeId) => {
 
     await loadIncomes();
 
-    if (income && income.type === 'normal' && income.date <= getWarsawDateString()) {
-      await updateDailyEnvelope();
-    }
+    // Zawsze aktualizuj kopertę i limity po usunięciu przychodu (planowanego lub nie)
+    clearLimitsCache();
+    await updateDailyEnvelope();
 
     const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
 
@@ -1578,7 +1580,10 @@ const deleteIncome = async (incomeId) => {
       budgetUser: budgetUserName
     });
 
-    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
+    refreshPeriodSelectors();
+    renderSources();
+    renderSummary();
+    renderDailyEnvelope();
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania przychodu:', error);
@@ -1756,10 +1761,99 @@ const selectMergeTarget = async (targetCategoryId) => {
   }
 };
 
+function renderSavingsSection() {
+  const savingsAmount = getSavingGoal();
+  const { available, totalAvailable } = calculateAvailableFunds();
+  const input = document.getElementById('savingsAmountInput');
+  const statusDiv = document.getElementById('savingsStatusInfo');
+
+  if (input) {
+    input.value = savingsAmount > 0 ? savingsAmount : '';
+  }
+
+  if (statusDiv) {
+    if (savingsAmount > 0) {
+      const percentage = totalAvailable > 0 ? ((savingsAmount / totalAvailable) * 100).toFixed(1) : 0;
+      statusDiv.innerHTML = `
+        <div class="stat-card beige" style="margin-top: 10px;">
+          <div class="stat-label">Odlozone oszczednosci</div>
+          <div class="stat-value">${savingsAmount.toFixed(2)} <span class="stat-unit">zl</span></div>
+          <div style="margin-top: 8px; font-size: 0.85rem; opacity: 0.8;">
+            Stanowi ${percentage}% calkowitych srodkow (${totalAvailable.toFixed(2)} zl).<br>
+            Dostepne po odliczeniu: ${available.toFixed(2)} zl.
+          </div>
+        </div>
+      `;
+    } else {
+      statusDiv.innerHTML = '<p style="opacity: 0.6;">Nie zdefiniowano kwoty oszczednosci.</p>';
+    }
+  }
+}
+
+window.saveSavingsAmount = async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Zapisywanie...';
+  }
+
+  const amount = parseFloat(form.savingsAmount.value) || 0;
+
+  if (amount < 0) {
+    showErrorMessage('Kwota oszczednosci nie moze byc ujemna');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz kwote oszczednosci'; }
+    return;
+  }
+
+  try {
+    await saveSavingGoal(amount);
+    clearLimitsCache();
+    await updateDailyEnvelope();
+
+    const user = getCurrentUser();
+    const displayName = await getDisplayName(user.uid);
+
+    await log('SAVINGS_AMOUNT_UPDATE', {
+      amount,
+      budgetUser: displayName
+    });
+
+    renderSavingsSection();
+    renderSummary();
+    renderDailyEnvelope();
+    showSuccessMessage(`Kwota oszczednosci zapisana: ${amount.toFixed(2)} zl`);
+  } catch (error) {
+    console.error('Blad zapisywania kwoty oszczednosci:', error);
+    showErrorMessage('Nie udalo sie zapisac kwoty oszczednosci');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Zapisz kwote oszczednosci';
+    }
+  }
+};
+
 window.addExpense = async (e) => {
   e.preventDefault();
 
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  // Zapobieganie podwójnemu kliknięciu / wysyłce offline
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Zapisywanie...';
+  }
+
+  const wasEditing = editingExpenseId;
+
   const amount = parseFloat(form.expenseAmount.value);
   const type = form.expenseType.value;
   const userId = form.expenseUser.value;
@@ -1768,21 +1862,25 @@ window.addExpense = async (e) => {
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
   if (!userId) {
     showErrorMessage('Wybierz użytkownika');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
   if (!category) {
     showErrorMessage('Podaj kategorię');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
   if (!description) {
     showErrorMessage('Podaj opis');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
@@ -1798,7 +1896,7 @@ window.addExpense = async (e) => {
   }
 
   let date, time;
-  
+
   if (type === 'normal') {
     date = getWarsawDateString();
     time = getCurrentTimeString();
@@ -1826,34 +1924,39 @@ window.addExpense = async (e) => {
 
   try {
     await saveExpenses(updated);
-    
+
     if (type === 'normal' && date === getWarsawDateString()) {
       await updateDailyEnvelope();
     }
-    
+
     const budgetUserName = getBudgetUserName(userId);
-    
-    await log(editingExpenseId ? 'EXPENSE_EDIT' : 'EXPENSE_ADD', {
+
+    await log(wasEditing ? 'EXPENSE_EDIT' : 'EXPENSE_ADD', {
       amount,
       category,
       description,
       type,
       budgetUser: budgetUserName
     });
-    
+
     form.reset();
     form.expenseDate.value = getWarsawDateString();
     form.expenseType.value = 'normal';
     editingExpenseId = null;
     document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
     document.getElementById('descriptionSuggestions').innerHTML = '';
-    
+
     setupExpenseTypeToggle();
-    
-    showSuccessMessage(editingExpenseId ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
+
+    showSuccessMessage(wasEditing ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatku:', error);
     showErrorMessage('Nie udało się zapisać wydatku');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.originalText || (wasEditing ? 'Zapisz zmiany' : 'Dodaj wydatek');
+    }
   }
 };
 
@@ -1881,7 +1984,11 @@ const editExpense = (expenseId) => {
         type: updatedExpense.type,
         budgetUser: budgetUserName
       });
-      
+
+      clearLimitsCache();
+      renderExpenses();
+      renderSummary();
+      renderDailyEnvelope();
       showSuccessMessage('Wydatek zaktualizowany');
     } catch (error) {
       console.error('❌ Błąd aktualizacji wydatku:', error);
@@ -1919,7 +2026,12 @@ const deleteExpense = async (expenseId) => {
       description: expense?.description,
       budgetUser: budgetUserName
     });
-    
+
+    clearLimitsCache();
+    renderExpenses();
+    renderCategories();
+    renderSummary();
+    renderDailyEnvelope();
     showSuccessMessage('Wydatek usunięty');
   } catch (error) {
     console.error('❌ Błąd usuwania wydatku:', error);
@@ -1929,8 +2041,20 @@ const deleteExpense = async (expenseId) => {
 
 window.addIncome = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  // Zapobieganie podwójnemu kliknięciu / wysyłce offline
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Zapisywanie...';
+  }
+
+  const wasEditing = editingIncomeId;
+
   const amount = parseFloat(form.incomeAmount.value);
   const type = form.incomeType.value;
   const userId = form.incomeUser.value;
@@ -1938,16 +2062,18 @@ window.addIncome = async (e) => {
 
   if (!validateAmount(amount)) {
     showErrorMessage('Kwota musi być większa od 0');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
   if (!userId) {
     showErrorMessage('Wybierz użytkownika');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
 
   let date, time;
-  
+
   if (type === 'normal') {
     date = getWarsawDateString();
     time = getCurrentTimeString();
@@ -1974,8 +2100,8 @@ window.addIncome = async (e) => {
 
   try {
     await saveIncomes(updated);
-    clearLimitsCache(); // Wyczyść cache po dodaniu/edycji przychodu
-    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
+    clearLimitsCache();
+    refreshPeriodSelectors();
 
     if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
@@ -1983,7 +2109,7 @@ window.addIncome = async (e) => {
 
     const budgetUserName = getBudgetUserName(userId);
 
-    await log(editingIncomeId ? 'INCOME_EDIT' : 'INCOME_ADD', {
+    await log(wasEditing ? 'INCOME_EDIT' : 'INCOME_ADD', {
       amount,
       source,
       type,
@@ -1999,29 +2125,46 @@ window.addIncome = async (e) => {
 
     setupIncomeTypeToggle();
 
-    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
-    showSuccessMessage(editingIncomeId ? 'Przychód zaktualizowany' : 'Przychód dodany');
+    renderSummary();
+    showSuccessMessage(wasEditing ? 'Przychód zaktualizowany' : 'Przychód dodany');
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodu:', error);
     showErrorMessage('Nie udało się zapisać przychodu');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.originalText || (wasEditing ? 'Zapisz zmiany' : 'Dodaj przychód');
+    }
   }
 };
 
 window.addCorrection = async (e) => {
   e.preventDefault();
-  
+
   const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  // Zapobieganie podwójnemu kliknięciu
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Zapisywanie...';
+  }
+
   const newTotalAmount = parseFloat(form.correctionAmount.value);
   const reason = form.correctionReason.value.trim();
 
   // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
   if (!Number.isFinite(newTotalAmount)) {
     showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
-  
+
   if (!reason) {
     showErrorMessage('Podaj powód korekty');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
   
@@ -2070,11 +2213,16 @@ window.addCorrection = async (e) => {
     });
 
     form.reset();
-    renderSummary(); // Odśwież wyświetlanie planowanych transakcji
+    renderSummary();
     showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
   } catch (error) {
     console.error('❌ Błąd wprowadzania korekty:', error);
     showErrorMessage('Nie udało się wprowadzić korekty');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtn.dataset.originalText || 'Wprowadź korektę';
+    }
   }
 };
 
