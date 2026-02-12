@@ -130,6 +130,13 @@ import { initClickDelegation, getDataAttributes } from './handlers/clickDelegati
 // Import funkcji renderowania UI
 import { renderSummary } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
+import { renderExpenses, changeExpensePage, setExpenseDeps } from './ui/renderExpenses.js';
+import { renderSources, changeIncomePage, setIncomeDeps } from './ui/renderIncomes.js';
+
+// Import handlerów
+import { addExpense, editExpense, deleteExpense, realiseExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
+import { addIncome, editIncome, deleteIncome, realiseIncome, addCorrection, setIncomeHandlerDeps } from './handlers/incomeHandlers.js';
+import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget, setCategoryHandlerDeps, getMergingCategoryId } from './handlers/categoryHandlers.js';
 
 // Import modułu obecności użytkowników
 import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
@@ -137,16 +144,11 @@ import { initializePresence, cleanupPresence, recordActivity } from './modules/p
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
 
-let currentExpensePage = 1;
-let currentIncomePage = 1;
 let currentCategoryPage = 1;
 let currentLogPage = 1;
-let editingExpenseId = null;
-let editingIncomeId = null;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
-let mergingCategoryId = null;  // ID kategorii która ma być scalona
 
 const APP_VERSION = '1.9.9';
 const LOGS_PER_PAGE = 20;
@@ -484,6 +486,8 @@ let categoriesChartInstance = null;
 let chartTooltip = null;
 let chartMouseMoveHandler = null;  // Referencja do handlera mousemove (zapobiega memory leak)
 let chartMouseLeaveHandler = null;  // Referencja do handlera mouseleave (zapobiega memory leak)
+let chartTouchHandler = null;  // Referencja do handlera touch (mobile)
+let chartTouchEndHandler = null;  // Referencja do handlera touchend (mobile)
 
 // Helper function to adjust brightness of hex color
 function adjustBrightness(hex, percent) {
@@ -530,6 +534,15 @@ function renderCategoriesChart(breakdown) {
   if (chartMouseLeaveHandler) {
     canvas.removeEventListener('mouseleave', chartMouseLeaveHandler);
     chartMouseLeaveHandler = null;
+  }
+  if (chartTouchHandler) {
+    canvas.removeEventListener('touchstart', chartTouchHandler);
+    canvas.removeEventListener('touchmove', chartTouchHandler);
+    chartTouchHandler = null;
+  }
+  if (chartTouchEndHandler) {
+    canvas.removeEventListener('touchend', chartTouchEndHandler);
+    chartTouchEndHandler = null;
   }
 
   const container = canvas.parentElement;
@@ -813,6 +826,91 @@ function renderCategoriesChart(breakdown) {
   canvas.addEventListener('mousemove', chartMouseMoveHandler);
   canvas.addEventListener('mouseleave', chartMouseLeaveHandler);
 
+  // Touch handling dla urządzeń mobilnych
+  chartTouchHandler = (e) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
+    const dx = touchX - centerX;
+    const dy = touchY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance <= radius) {
+      let angle = Math.atan2(dy, dx);
+      angle = angle - (-Math.PI / 2);
+      if (angle < 0) angle += 2 * Math.PI;
+
+      let hoveredSlice = null;
+      for (const slice of sliceData) {
+        let startAngle = slice.startAngle - (-Math.PI / 2);
+        let endAngle = slice.endAngle - (-Math.PI / 2);
+        if (startAngle < 0) startAngle += 2 * Math.PI;
+        if (endAngle < 0) endAngle += 2 * Math.PI;
+
+        if (startAngle <= endAngle) {
+          if (angle >= startAngle && angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        } else {
+          if (angle >= startAngle || angle <= endAngle) {
+            hoveredSlice = slice;
+            break;
+          }
+        }
+      }
+
+      if (hoveredSlice) {
+        chartTooltip.style.display = 'block';
+        chartTooltip.style.left = `${touch.clientX + 15}px`;
+        chartTooltip.style.top = `${touch.clientY - 80}px`;
+
+        let tooltipContent = `
+          <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: ${hoveredSlice.color};">
+            ${hoveredSlice.category}
+          </div>`;
+
+        if (hoveredSlice.category === 'Inne' && hoveredSlice.categories) {
+          tooltipContent += `
+            <div style="font-size: 12px; color: #ccc; margin-bottom: 6px; font-style: italic;">
+              ${hoveredSlice.categories}
+            </div>`;
+        }
+
+        tooltipContent += `
+          <div style="display: flex; gap: 12px; margin-top: 4px;">
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Kwota</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.amount.toFixed(2)} zł</div>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: #999; text-transform: uppercase;">Udział</div>
+              <div style="font-size: 15px; font-weight: bold;">${hoveredSlice.percentage.toFixed(1)}%</div>
+            </div>
+          </div>`;
+
+        chartTooltip.innerHTML = tooltipContent;
+      } else {
+        chartTooltip.style.display = 'none';
+      }
+    } else {
+      chartTooltip.style.display = 'none';
+    }
+  };
+
+  chartTouchEndHandler = () => {
+    chartTooltip.style.display = 'none';
+  };
+
+  canvas.addEventListener('touchstart', chartTouchHandler, { passive: false });
+  canvas.addEventListener('touchmove', chartTouchHandler, { passive: false });
+  canvas.addEventListener('touchend', chartTouchEndHandler);
+
   categoriesChartInstance = {
     destroy: () => {
       if (chartTooltip) {
@@ -893,8 +991,8 @@ function renderCategories() {
 
   // Jeśli jesteśmy w trybie scalania, pokaż komunikat i checkboxy
   let headerHtml = '';
-  if (mergingCategoryId) {
-    const mergingCat = categoryStats.find(c => c.id === mergingCategoryId);
+  if (getMergingCategoryId()) {
+    const mergingCat = categoryStats.find(c => c.id === getMergingCategoryId());
     if (mergingCat) {
       headerHtml = `
         <div style="background: #e8cf8d; border: 1px solid #e89d3f; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
@@ -907,8 +1005,8 @@ function renderCategories() {
   }
 
   const html = paginatedCategories.map(cat => {
-    const isMergingThis = mergingCategoryId === cat.id;
-    const showCheckbox = mergingCategoryId && !isMergingThis;
+    const isMergingThis = getMergingCategoryId() === cat.id;
+    const showCheckbox = getMergingCategoryId() && !isMergingThis;
     // ZAWSZE używaj inteligentnego dopasowania dla najlepszych wyników
     const categoryIcon = getCategoryIcon(cat.name);
 
@@ -930,7 +1028,7 @@ function renderCategories() {
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          ${!mergingCategoryId ? `
+          ${!getMergingCategoryId() ? `
             <button class="btn-icon" data-action="start-merge-category" data-id="${cat.id}" title="Scal kategorię">🔀</button>
             <button class="btn-icon" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">✏️</button>
             <button class="btn-icon" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">🗑️</button>
@@ -1249,517 +1347,11 @@ const selectSource = (source) => {
   }
 };
 
-function renderExpenses() {
-  const expenses = getExpenses();
-  const totalExpenses = expenses.length;
-  
-  const sorted = [...expenses].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'planned' ? -1 : 1;
-    }
-    return b.date.localeCompare(a.date);
-  });
+// renderExpenses, renderExpensesPagination, changeExpensePage, realiseExpense -> src/ui/renderExpenses.js + src/handlers/expenseHandlers.js
 
-  const startIdx = (currentExpensePage - 1) * PAGINATION.EXPENSES_PER_PAGE;
-  const endIdx = startIdx + PAGINATION.EXPENSES_PER_PAGE;
-  const paginatedExpenses = sorted.slice(startIdx, endIdx);
+// renderSources, renderIncomesPagination, changeIncomePage, realiseIncome, editIncome, deleteIncome -> src/ui/renderIncomes.js + src/handlers/incomeHandlers.js
 
-  const tbody = document.getElementById('expensesTableBody');
-  
-  if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
-    updatePaginationVisibility('expensesTableBody', totalExpenses);
-    return;
-  }
-
-  const html = paginatedExpenses.map(exp => {
-    const mergedInfo = exp.mergedFrom ? `<br><small style="color: #666; font-style: italic;">🔀 przeniesione z "${exp.mergedFrom}"</small>` : '';
-    const categoryIcon = exp.category ? getCategoryIcon(exp.category) : '📌';
-
-    return `
-      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
-        <td>${formatDateLabel(exp.date)}</td>
-        <td>${exp.time || '-'}</td>
-        <td>${exp.amount.toFixed(2)} zł</td>
-        <td>${exp.userId ? getBudgetUserName(exp.userId) : '-'}</td>
-        <td>${categoryIcon} ${exp.category || 'Brak'}${mergedInfo}</td>
-        <td>${exp.description || '-'}</td>
-        <td>
-          <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
-            ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
-          </span>
-        </td>
-        <td class="actions">
-          ${exp.type === 'planned' ? `<button class="btn-icon" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj teraz">✅</button>` : ''}
-          <button class="btn-icon" data-action="edit-expense" data-id="${exp.id}" title="Edytuj">✏️</button>
-          <button class="btn-icon" data-action="delete-expense" data-id="${exp.id}" title="Usuń">🗑️</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  tbody.innerHTML = html;
-  renderExpensesPagination(totalExpenses);
-  updatePaginationVisibility('expensesTableBody', totalExpenses);
-}
-
-function renderExpensesPagination(total) {
-  const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
-  const container = document.getElementById('expensesPagination');
-
-  if (totalPages <= 1) {
-    container.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage - 1}">◀</button>`;
-
-  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
-  let startPage = Math.max(1, currentExpensePage - Math.floor(maxButtons / 2));
-  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-  if (endPage - startPage + 1 < maxButtons) {
-    startPage = Math.max(1, endPage - maxButtons + 1);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" data-action="change-expense-page" data-page="${i}">${i}</button>`;
-  }
-
-  html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage + 1}">▶</button>`;
-  container.innerHTML = html;
-}
-
-const changeExpensePage = (page) => {
-  const total = getExpenses().length;
-  const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
-
-  if (page < 1 || page > totalPages) return;
-
-  currentExpensePage = page;
-  renderExpenses();
-
-  const tableBody = document.getElementById('expensesTableBody');
-  if (tableBody) {
-    tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-};
-
-const realiseExpense = async (expenseId) => {
-  const expenses = getExpenses();
-  const expense = expenses.find(e => e.id === expenseId);
-
-  if (!expense || expense.type !== 'planned') return;
-
-  expense.type = 'normal';
-  expense.date = getWarsawDateString();
-  expense.time = getCurrentTimeString();
-  expense.wasPlanned = true;
-
-  try {
-    await saveExpenses(expenses);
-    await updateDailyEnvelope();
-
-    const budgetUserName = getBudgetUserName(expense.userId);
-    await log('EXPENSE_REALISE', {
-      amount: expense.amount,
-      category: expense.category,
-      description: expense.description,
-      budgetUser: budgetUserName
-    });
-
-    clearLimitsCache();
-    renderExpenses();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage('Wydatek zrealizowany');
-  } catch (error) {
-    console.error('❌ Błąd realizacji wydatku:', error);
-    showErrorMessage('Nie udało się zrealizować wydatku');
-  }
-};
-
-function renderSources() {
-  const incomes = getIncomes();
-  const totalIncomes = incomes.length;
-  
-  const sorted = [...incomes].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'planned' ? -1 : 1;
-    }
-    return b.date.localeCompare(a.date);
-  });
-
-  const startIdx = (currentIncomePage - 1) * PAGINATION.INCOMES_PER_PAGE;
-  const endIdx = startIdx + PAGINATION.INCOMES_PER_PAGE;
-  const paginatedIncomes = sorted.slice(startIdx, endIdx);
-
-  const tbody = document.getElementById('sourcesTableBody');
-  
-  if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
-    updatePaginationVisibility('sourcesTableBody', totalIncomes);
-    return;
-  }
-
-  const html = paginatedIncomes.map(inc => {
-    const isCorrection = inc.source === 'KOREKTA';
-    const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
-    const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
-
-    return `
-    <tr class="${rowClass}">
-      <td>${formatDateLabel(inc.date)}</td>
-      <td>${inc.time || '-'}</td>
-      <td>${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)} zł</td>
-      <td>${inc.userId ? getBudgetUserName(inc.userId) : '-'}</td>
-      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'))}</td>
-      <td>
-        <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
-          ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
-        </span>
-      </td>
-      <td class="actions">
-         ${!isCorrection && inc.type === 'planned' ? `
-           <button class="btn-icon" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj teraz">✅</button>
-           <button class="btn-icon" data-action="edit-income" data-id="${inc.id}" title="Edytuj">✏️</button>
-           <button class="btn-icon" data-action="delete-income" data-id="${inc.id}" title="Usuń">🗑️</button>
-         ` : '<span class="no-actions">-</span>'}
-      </td>
-    </tr>
-  `}).join('');
-
-  tbody.innerHTML = html;
-  renderIncomesPagination(totalIncomes);
-  updatePaginationVisibility('sourcesTableBody', totalIncomes);
-}
-
-function renderIncomesPagination(total) {
-  const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
-  const container = document.getElementById('incomesPagination');
-
-  if (totalPages <= 1) {
-    container.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage - 1}">◀</button>`;
-
-  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
-  let startPage = Math.max(1, currentIncomePage - Math.floor(maxButtons / 2));
-  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-  if (endPage - startPage + 1 < maxButtons) {
-    startPage = Math.max(1, endPage - maxButtons + 1);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" data-action="change-income-page" data-page="${i}">${i}</button>`;
-  }
-
-  html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage + 1}">▶</button>`;
-  container.innerHTML = html;
-}
-
-const changeIncomePage = (page) => {
-  const total = getIncomes().length;
-  const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
-  
-  if (page < 1 || page > totalPages) return;
-  
-  currentIncomePage = page;
-  renderSources();
-  
-  const tableBody = document.getElementById('sourcesTableBody');
-  if (tableBody) {
-    tableBody.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-};
-
-const realiseIncome = async (incomeId) => {
-  const incomes = getIncomes();
-  const income = incomes.find(i => i.id === incomeId);
-  
-  if (!income || income.type !== 'planned') return;
-  
-  income.type = 'normal';
-  income.date = getWarsawDateString();
-  income.time = getCurrentTimeString();
-  income.wasPlanned = true;
-  
-  try {
-    await saveIncomes(incomes);
-    clearLimitsCache(); // Wyczyść cache po zmianie przychodu
-    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
-    await updateDailyEnvelope();
-
-    const budgetUserName = getBudgetUserName(income.userId);
-    await log('INCOME_REALISE', {
-      amount: income.amount,
-      source: income.source,
-      budgetUser: budgetUserName
-    });
-
-    renderSources();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage('Przychód zrealizowany');
-  } catch (error) {
-    console.error('❌ Błąd realizacji przychodu:', error);
-    showErrorMessage('Nie udało się zrealizować przychodu');
-  }
-};
-
-const editIncome = (incomeId) => {
-  const income = getIncomes().find(i => i.id === incomeId);
-  if (!income) return;
-  
-  showEditIncomeModal(income, budgetUsersCache, async (updatedIncome) => {
-    const incomes = getIncomes();
-    const updated = incomes.map(i => i.id === incomeId ? updatedIncome : i);
-    
-    try {
-      await saveIncomes(updated);
-      clearLimitsCache(); // Wyczyść cache po zmianie przychodu
-      refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
-
-      if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
-        await updateDailyEnvelope();
-      }
-
-      const budgetUserName = getBudgetUserName(updatedIncome.userId);
-
-      await log('INCOME_EDIT', {
-        amount: updatedIncome.amount,
-        source: updatedIncome.source,
-        type: updatedIncome.type,
-        budgetUser: budgetUserName
-      });
-
-      renderSources();
-      renderSummary();
-      renderDailyEnvelope();
-      showSuccessMessage('Przychód zaktualizowany');
-    } catch (error) {
-      console.error('❌ Błąd aktualizacji przychodu:', error);
-      showErrorMessage('Nie udało się zaktualizować przychodu');
-    }
-  });
-};
-
-const deleteIncome = async (incomeId) => {
-  const confirmed = await showPasswordModal(
-    'Usuwanie przychodu',
-    'Czy na pewno chcesz usunąć ten przychód? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
-  );
-  
-  if (!confirmed) return;
-
-  const incomes = getIncomes();
-  const income = incomes.find(i => i.id === incomeId);
-  const updated = incomes.filter(i => i.id !== incomeId);
-  
-  try {
-    await saveIncomes(updated);
-    clearLimitsCache(); // Wyczyść cache po usunięciu przychodu
-    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach
-
-    await loadIncomes();
-
-    // Zawsze aktualizuj kopertę i limity po usunięciu przychodu (planowanego lub nie)
-    clearLimitsCache();
-    await updateDailyEnvelope();
-
-    const budgetUserName = income?.userId ? getBudgetUserName(income.userId) : 'Nieznany';
-
-    await log('INCOME_DELETE', {
-      amount: income?.amount,
-      source: income?.source,
-      budgetUser: budgetUserName
-    });
-
-    refreshPeriodSelectors();
-    renderSources();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage('Przychód usunięty');
-  } catch (error) {
-    console.error('❌ Błąd usuwania przychodu:', error);
-    showErrorMessage('Nie udało się usunąć przychodu');
-  }
-};
-
-const addCategory = async () => {
-  const input = document.getElementById('newCategoryName');
-  const name = input.value.trim();
-
-  if (!validateCategoryName(name)) {
-    showErrorMessage('Nazwa kategorii musi mieć od 2 do 30 znaków');
-    return;
-  }
-
-  const categories = getCategories();
-
-  if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-    showErrorMessage('Kategoria o tej nazwie już istnieje');
-    return;
-  }
-
-  const newCategory = {
-    id: `cat_${Date.now()}`,
-    name: escapeHTML(name.trim()),
-    icon: getCategoryIcon(name)
-  };
-
-  const updated = [...categories, newCategory];
-  
-  try {
-    await saveCategories(updated);
-    input.value = '';
-    
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-    
-    await log('CATEGORY_ADD', { 
-      categoryName: name,
-      budgetUser: displayName
-    });
-    
-    showSuccessMessage('Kategoria dodana');
-  } catch (error) {
-    console.error('❌ Błąd dodawania kategorii:', error);
-    showErrorMessage('Nie udało się dodać kategorii');
-  }
-};
-
-const editCategory = async (categoryId, currentName) => {
-  showEditCategoryModal(categoryId, currentName);
-};
-
-const deleteCategory = async (categoryId, categoryName) => {
-  const expenses = getExpenses();
-  const count = expenses.filter(e => e.category === categoryName).length;
-  
-  if (count > 0) {
-    const confirmed = await showPasswordModal(
-      'Usuwanie kategorii',
-      `Kategoria "${categoryName}" zawiera ${count} wydatków. Wszystkie te wydatki zostaną TRWALE usunięte. Aby potwierdzić, podaj hasło głównego konta.`
-    );
-    
-    if (!confirmed) return;
-    
-    const updatedExpenses = expenses.filter(e => e.category !== categoryName);
-    await saveExpenses(updatedExpenses);
-  } else {
-    const confirmed = await showConfirmModal(
-      'Usuwanie kategorii',
-      'Czy na pewno chcesz usunąć tę kategorię?',
-      { type: 'warning', confirmText: 'Usuń', cancelText: 'Anuluj' }
-    );
-    if (!confirmed) return;
-  }
-
-  const categories = getCategories();
-  const updated = categories.filter(c => c.id !== categoryId);
-  
-  try {
-    await saveCategories(updated);
-    
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-    
-    await log('CATEGORY_DELETE', { 
-      categoryName, 
-      affectedExpenses: count,
-      budgetUser: displayName
-    });
-    
-    showSuccessMessage('Kategoria usunięta');
-  } catch (error) {
-    console.error('❌ Błąd usuwania kategorii:', error);
-    showErrorMessage('Nie udało się usunąć kategorii');
-  }
-};
-
-// Rozpocznij proces scalania kategorii
-const startMergeCategory = (categoryId) => {
-  mergingCategoryId = categoryId;
-  renderCategories();
-};
-
-// Anuluj scalanie kategorii
-const cancelMergeCategory = () => {
-  mergingCategoryId = null;
-  renderCategories();
-};
-
-// Wybierz kategorię docelową i wykonaj scalanie
-const selectMergeTarget = async (targetCategoryId) => {
-  if (!mergingCategoryId) return;
-
-  const categories = getCategories();
-  const sourceCategory = categories.find(c => c.id === mergingCategoryId);
-  const targetCategory = categories.find(c => c.id === targetCategoryId);
-
-  if (!sourceCategory || !targetCategory) {
-    showErrorMessage('Nie znaleziono kategorii');
-    return;
-  }
-
-  // Zapytaj o potwierdzenie
-  const expenses = getExpenses();
-  const count = expenses.filter(e => e.category === sourceCategory.name).length;
-
-  const confirmed = await showConfirmModal(
-    'Scalanie kategorii',
-    `Czy na pewno chcesz scalić kategorię "${sourceCategory.name}" z kategorią "${targetCategory.name}"?\n\nWszystkie ${count} wydatki zostaną przeniesione i oznaczone jako "przeniesione z ${sourceCategory.name}".`,
-    { type: 'warning', confirmText: 'Scal', cancelText: 'Anuluj' }
-  );
-
-  if (!confirmed) {
-    mergingCategoryId = null;
-    renderCategories();
-    return;
-  }
-
-  try {
-    // Przenieś wszystkie wydatki z kategorii źródłowej do docelowej
-    const updatedExpenses = expenses.map(exp => {
-      if (exp.category === sourceCategory.name) {
-        return {
-          ...exp,
-          category: targetCategory.name,
-          mergedFrom: sourceCategory.name  // Dodaj informację o scaleniu
-        };
-      }
-      return exp;
-    });
-
-    await saveExpenses(updatedExpenses);
-
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-
-    await log('CATEGORY_MERGE', {
-      sourceCategory: sourceCategory.name,
-      targetCategory: targetCategory.name,
-      movedExpenses: count,
-      budgetUser: displayName
-    });
-
-    mergingCategoryId = null;
-    renderExpenses();
-    renderCategories();
-    showSuccessMessage(`Scalono ${count} wydatków z kategorii "${sourceCategory.name}" do "${targetCategory.name}"`);
-  } catch (error) {
-    console.error('❌ Błąd scalania kategorii:', error);
-    showErrorMessage('Nie udało się scalić kategorii');
-    mergingCategoryId = null;
-    renderCategories();
-  }
-};
+// addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget -> src/handlers/categoryHandlers.js
 
 function renderSavingsSection() {
   const savingsAmount = getSavingGoal();
@@ -1790,7 +1382,7 @@ function renderSavingsSection() {
   }
 }
 
-window.saveSavingsAmount = async (e) => {
+const saveSavingsAmount = async (e) => {
   e.preventDefault();
 
   const form = e.target;
@@ -1838,393 +1430,9 @@ window.saveSavingsAmount = async (e) => {
   }
 };
 
-window.addExpense = async (e) => {
-  e.preventDefault();
+// window.addExpense, editExpense, deleteExpense -> src/handlers/expenseHandlers.js
 
-  const form = e.target;
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  // Zapobieganie podwójnemu kliknięciu / wysyłce offline
-  if (submitBtn && submitBtn.disabled) return;
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.dataset.originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Zapisywanie...';
-  }
-
-  const wasEditing = editingExpenseId;
-
-  const amount = parseFloat(form.expenseAmount.value);
-  const type = form.expenseType.value;
-  const userId = form.expenseUser.value;
-  const category = form.expenseCategory.value.trim();
-  const description = form.expenseDescription.value.trim();
-
-  if (!validateAmount(amount)) {
-    showErrorMessage('Kwota musi być większa od 0');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  if (!userId) {
-    showErrorMessage('Wybierz użytkownika');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  if (!category) {
-    showErrorMessage('Podaj kategorię');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  if (!description) {
-    showErrorMessage('Podaj opis');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  const categories = getCategories();
-  if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
-    const newCategory = {
-      id: `cat_${Date.now()}`,
-      name: escapeHTML(category),
-      icon: getCategoryIcon(category)
-    };
-    const updatedCategories = [...categories, newCategory];
-    await saveCategories(updatedCategories);
-  }
-
-  let date, time;
-
-  if (type === 'normal') {
-    date = getWarsawDateString();
-    time = getCurrentTimeString();
-  } else {
-    date = form.expenseDate.value;
-    time = form.expenseTime.value || '';
-  }
-
-  const expense = {
-    id: editingExpenseId || `exp_${Date.now()}`,
-    amount,
-    date,
-    type,
-    time,
-    userId,
-    category: escapeHTML(category),
-    description: escapeHTML(description),
-    timestamp: editingExpenseId ? getExpenses().find(e => e.id === editingExpenseId)?.timestamp : getCurrentTimeString()
-  };
-
-  const expenses = getExpenses();
-  const updated = editingExpenseId
-    ? expenses.map(e => e.id === editingExpenseId ? expense : e)
-    : [...expenses, expense];
-
-  try {
-    await saveExpenses(updated);
-
-    if (type === 'normal' && date === getWarsawDateString()) {
-      await updateDailyEnvelope();
-    }
-
-    const budgetUserName = getBudgetUserName(userId);
-
-    await log(wasEditing ? 'EXPENSE_EDIT' : 'EXPENSE_ADD', {
-      amount,
-      category,
-      description,
-      type,
-      budgetUser: budgetUserName
-    });
-
-    form.reset();
-    form.expenseDate.value = getWarsawDateString();
-    form.expenseType.value = 'normal';
-    editingExpenseId = null;
-    document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
-    document.getElementById('descriptionSuggestions').innerHTML = '';
-
-    setupExpenseTypeToggle();
-
-    showSuccessMessage(wasEditing ? 'Wydatek zaktualizowany' : 'Wydatek dodany');
-  } catch (error) {
-    console.error('❌ Błąd zapisywania wydatku:', error);
-    showErrorMessage('Nie udało się zapisać wydatku');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = submitBtn.dataset.originalText || (wasEditing ? 'Zapisz zmiany' : 'Dodaj wydatek');
-    }
-  }
-};
-
-const editExpense = (expenseId) => {
-  const expense = getExpenses().find(e => e.id === expenseId);
-  if (!expense) return;
-  
-  showEditExpenseModal(expense, budgetUsersCache, async (updatedExpense) => {
-    const expenses = getExpenses();
-    const updated = expenses.map(e => e.id === expenseId ? updatedExpense : e);
-    
-    try {
-      await saveExpenses(updated);
-      
-      if (updatedExpense.type === 'normal' && updatedExpense.date === getWarsawDateString()) {
-        await updateDailyEnvelope();
-      }
-      
-      const budgetUserName = getBudgetUserName(updatedExpense.userId);
-      
-      await log('EXPENSE_EDIT', {
-        amount: updatedExpense.amount,
-        category: updatedExpense.category,
-        description: updatedExpense.description,
-        type: updatedExpense.type,
-        budgetUser: budgetUserName
-      });
-
-      clearLimitsCache();
-      renderExpenses();
-      renderSummary();
-      renderDailyEnvelope();
-      showSuccessMessage('Wydatek zaktualizowany');
-    } catch (error) {
-      console.error('❌ Błąd aktualizacji wydatku:', error);
-      showErrorMessage('Nie udało się zaktualizować wydatku');
-    }
-  });
-};
-
-const deleteExpense = async (expenseId) => {
-  const confirmed = await showPasswordModal(
-    'Usuwanie wydatku',
-    'Czy na pewno chcesz usunąć ten wydatek? Ta operacja jest nieodwracalna. Aby potwierdzić, podaj hasło głównego konta.'
-  );
-  
-  if (!confirmed) return;
-
-  const expenses = getExpenses();
-  const expense = expenses.find(e => e.id === expenseId);
-  const updated = expenses.filter(e => e.id !== expenseId);
-  
-  try {
-    await saveExpenses(updated);
-
-    await loadExpenses();
-    
-    if (expense && expense.type === 'normal' && expense.date === getWarsawDateString()) {
-      await updateDailyEnvelope();
-    }
-    
-    const budgetUserName = expense?.userId ? getBudgetUserName(expense.userId) : 'Nieznany';
-    
-    await log('EXPENSE_DELETE', {
-      amount: expense?.amount,
-      category: expense?.category,
-      description: expense?.description,
-      budgetUser: budgetUserName
-    });
-
-    clearLimitsCache();
-    renderExpenses();
-    renderCategories();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage('Wydatek usunięty');
-  } catch (error) {
-    console.error('❌ Błąd usuwania wydatku:', error);
-    showErrorMessage('Nie udało się usunąć wydatku');
-  }
-};
-
-window.addIncome = async (e) => {
-  e.preventDefault();
-
-  const form = e.target;
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  // Zapobieganie podwójnemu kliknięciu / wysyłce offline
-  if (submitBtn && submitBtn.disabled) return;
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.dataset.originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Zapisywanie...';
-  }
-
-  const wasEditing = editingIncomeId;
-
-  const amount = parseFloat(form.incomeAmount.value);
-  const type = form.incomeType.value;
-  const userId = form.incomeUser.value;
-  const source = form.incomeSource.value.trim();
-
-  if (!validateAmount(amount)) {
-    showErrorMessage('Kwota musi być większa od 0');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  if (!userId) {
-    showErrorMessage('Wybierz użytkownika');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  let date, time;
-
-  if (type === 'normal') {
-    date = getWarsawDateString();
-    time = getCurrentTimeString();
-  } else {
-    date = form.incomeDate.value;
-    time = form.incomeTime.value || '';
-  }
-
-  const income = {
-    id: editingIncomeId || `inc_${Date.now()}`,
-    amount,
-    date,
-    type,
-    time,
-    userId,
-    source: escapeHTML(source),
-    timestamp: editingIncomeId ? getIncomes().find(i => i.id === editingIncomeId)?.timestamp : getCurrentTimeString()
-  };
-
-  const incomes = getIncomes();
-  const updated = editingIncomeId
-    ? incomes.map(i => i.id === editingIncomeId ? income : i)
-    : [...incomes, income];
-
-  try {
-    await saveIncomes(updated);
-    clearLimitsCache();
-    refreshPeriodSelectors();
-
-    if (type === 'normal' && date <= getWarsawDateString()) {
-      await updateDailyEnvelope();
-    }
-
-    const budgetUserName = getBudgetUserName(userId);
-
-    await log(wasEditing ? 'INCOME_EDIT' : 'INCOME_ADD', {
-      amount,
-      source,
-      type,
-      budgetUser: budgetUserName
-    });
-
-    form.reset();
-    form.incomeDate.value = getWarsawDateString();
-    form.incomeType.value = 'normal';
-    editingIncomeId = null;
-    document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
-    document.getElementById('sourceSuggestions').innerHTML = '';
-
-    setupIncomeTypeToggle();
-
-    renderSummary();
-    showSuccessMessage(wasEditing ? 'Przychód zaktualizowany' : 'Przychód dodany');
-  } catch (error) {
-    console.error('❌ Błąd zapisywania przychodu:', error);
-    showErrorMessage('Nie udało się zapisać przychodu');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = submitBtn.dataset.originalText || (wasEditing ? 'Zapisz zmiany' : 'Dodaj przychód');
-    }
-  }
-};
-
-window.addCorrection = async (e) => {
-  e.preventDefault();
-
-  const form = e.target;
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  // Zapobieganie podwójnemu kliknięciu
-  if (submitBtn && submitBtn.disabled) return;
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.dataset.originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Zapisywanie...';
-  }
-
-  const newTotalAmount = parseFloat(form.correctionAmount.value);
-  const reason = form.correctionReason.value.trim();
-
-  // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
-  if (!Number.isFinite(newTotalAmount)) {
-    showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-
-  if (!reason) {
-    showErrorMessage('Podaj powód korekty');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
-    return;
-  }
-  
-  const user = getCurrentUser();
-  if (!user) {
-    showErrorMessage('Musisz być zalogowany');
-    return;
-  }
-  
-  const { available } = calculateAvailableFunds();
-  const difference = newTotalAmount - available;
-  
-  const correctionType = difference >= 0 ? 'PLUS' : 'MINUS';
-  
-  const correction = {
-    id: `corr_${Date.now()}`,
-    amount: difference,
-    date: getWarsawDateString(),
-    time: getCurrentTimeString(),
-    type: 'normal',
-    userId: 'system',
-    source: 'KOREKTA',
-    correctionReason: reason,
-    correctionType: correctionType,
-    previousAmount: available,
-    newAmount: newTotalAmount,
-    timestamp: getCurrentTimeString()
-  };
-  
-  const incomes = getIncomes();
-  const updated = [...incomes, correction];
-  
-  try {
-    await saveIncomes(updated);
-    clearLimitsCache(); // Wyczyść cache po wprowadzeniu korekty
-    refreshPeriodSelectors(); // Odśwież listy okresów w ustawieniach (na wszelki wypadek)
-    await updateDailyEnvelope();
-
-    await log('CORRECTION_ADD', {
-      difference: difference,
-      correctionType: correctionType,
-      previousAmount: available,
-      newAmount: newTotalAmount,
-      reason: reason,
-      budgetUser: 'System'
-    });
-
-    form.reset();
-    renderSummary();
-    showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
-  } catch (error) {
-    console.error('❌ Błąd wprowadzania korekty:', error);
-    showErrorMessage('Nie udało się wprowadzić korekty');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = submitBtn.dataset.originalText || 'Wprowadź korektę';
-    }
-  }
-};
+// window.addIncome, window.addCorrection -> src/handlers/incomeHandlers.js
 
 /**
  * Odświeża listy rozwijane okresów w ustawieniach
@@ -2267,7 +1475,7 @@ function loadSettings() {
   refreshPeriodSelectors();
 }
 
-window.saveSettings = async (e) => {
+const saveSettings = async (e) => {
   e.preventDefault();
 
   const form = e.target;
@@ -2505,7 +1713,7 @@ const openProfile = () => {
   showProfileModal();
 };
 
-window.handleLogin = async (e) => {
+const handleLogin = async (e) => {
   e.preventDefault();
   
   const form = e.target;
@@ -2530,7 +1738,7 @@ window.handleLogin = async (e) => {
   }
 };
 
-window.handleRegister = async (e) => {
+const handleRegister = async (e) => {
   e.preventDefault();
   
   const form = e.target;
@@ -2733,6 +1941,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // Dependency injection dla wydzielonych modułów
+  setExpenseDeps({ getBudgetUserName });
+  setIncomeDeps({ getBudgetUserName });
+  setCategoryHandlerDeps({ renderCategories, renderExpenses });
+  setExpenseHandlerDeps({
+    getBudgetUserName,
+    getBudgetUsersCache: () => budgetUsersCache,
+    renderAfterChange: (type) => {
+      renderExpenses();
+      renderCategories();
+      renderSummary();
+      renderDailyEnvelope();
+    },
+    setupExpenseTypeToggle
+  });
+  setIncomeHandlerDeps({
+    getBudgetUserName,
+    getBudgetUsersCache: () => budgetUsersCache,
+    renderAfterChange: (type) => {
+      renderSources();
+      renderSummary();
+      renderDailyEnvelope();
+    },
+    refreshPeriodSelectors,
+    setupIncomeTypeToggle
+  });
+
   // Inicjalizuj event delegation dla bezpiecznej obsługi kliknięć
   initClickDelegation({
     // Kategorie
@@ -2796,7 +2031,14 @@ document.addEventListener('DOMContentLoaded', () => {
     'export-budget-data': (el) => handleExportBudgetData(el.dataset.format)
   });
 
-  console.log('✅ Aplikacja Krezus gotowa do działania!');
+  // Podpięcie formularzy (zamiast inline onsubmit)
+  document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
+  document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
+  document.getElementById('expenseForm')?.addEventListener('submit', addExpense);
+  document.getElementById('incomeForm')?.addEventListener('submit', addIncome);
+  document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);
+  document.getElementById('savingsAmountForm')?.addEventListener('submit', saveSavingsAmount);
+  document.getElementById('settingsForm')?.addEventListener('submit', saveSettings);
 });
 
 // Oznacz aktywność przy zamknięciu strony

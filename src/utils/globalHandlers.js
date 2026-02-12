@@ -1,6 +1,5 @@
 // src/utils/globalHandlers.js
 // Centralne zarządzanie funkcjami globalnymi (window.*)
-// TODO: Docelowo usunąć wszystkie window.* i zastąpić event listenerami
 
 /**
  * Rejestruje funkcje jako globalne na obiekcie window
@@ -11,7 +10,6 @@ export function registerGlobalHandlers(handlers) {
   Object.entries(handlers).forEach(([name, handler]) => {
     if (typeof handler === 'function') {
       window[name] = handler;
-      console.warn(`⚠️ Registered global handler: window.${name} - consider migrating to addEventListener`);
     }
   });
 }
@@ -28,36 +26,9 @@ export function unregisterGlobalHandlers(handlerNames) {
 }
 
 /**
- * Lista wszystkich globalnych handlerów zarejestrowanych przez aplikację
- * Używana do debugowania i migracji
+ * Lista globalnych handlerów pozostających na window
+ * Większość została przeniesiona do event delegation (data-action) lub addEventListener
  */
 export const REGISTERED_HANDLERS = [
-  'onDisplayNameUpdate',
-  'selectPeriod',
-  'applyCustomPeriod',
-  'selectCategory',
-  'selectDescription',
-  'selectSource',
-  'changeExpensePage',
-  'realiseExpense',
-  'changeIncomePage',
-  'realiseIncome',
-  'editIncome',
-  'deleteIncome',
-  'addCategory',
-  'editCategory',
-  'deleteCategory',
-  'addExpense',
-  'editExpense',
-  'deleteExpense',
-  'addIncome',
-  'addCorrection',
-  'saveSettings',
-  'changeLogPage',
-  'clearLogs',
-  'showSection',
-  'openProfile',
-  'handleLogin',
-  'handleRegister',
-  'handleLogout'
+  'onDisplayNameUpdate' // Wywoływany z auth.js - jedyny pozostały window handler
 ];
