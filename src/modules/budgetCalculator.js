@@ -1166,39 +1166,41 @@ export function simulateExpense(simulationDate, simulationAmount) {
     const incomes = getIncomes();
     const savingGoal = getSavingGoal();
 
-    // 1. Oblicz dostępne środki na dzień symulacji
-    // Uwzględnij przychody i wydatki (zrealizowane + planowane, które powinny być zrealizowane do daty symulacji)
-    let projectedIncome = 0;
-    let projectedExpense = 0;
+    // 1. Oblicz REALNE dostępne środki - tylko zrealizowane transakcje
+    // NIE liczymy planowanych przychodów jako dostępnych środków (nie mamy ich fizycznie)
+    let realizedIncome = 0;
+    let realizedExpense = 0;
 
     incomes.forEach(inc => {
-        if (inc.date <= simulationDate) {
-            // Zrealizowane przychody
-            if (inc.type === 'normal') {
-                projectedIncome += inc.amount || 0;
-            }
-            // Planowane przychody do daty symulacji
-            else if (inc.type === 'planned' && inc.date > today) {
-                projectedIncome += inc.amount || 0;
-            }
+        if (inc.type === 'normal') {
+            realizedIncome += inc.amount || 0;
         }
     });
 
     expenses.forEach(exp => {
-        if (exp.date <= simulationDate) {
-            if (exp.type === 'normal') {
-                projectedExpense += exp.amount || 0;
-            }
-            else if (exp.type === 'planned' && exp.date > today) {
-                projectedExpense += exp.amount || 0;
-            }
+        if (exp.type === 'normal') {
+            realizedExpense += exp.amount || 0;
         }
     });
 
-    const projectedAvailable = projectedIncome - projectedExpense - savingGoal;
+    // Realne dostępne środki - to, co fizycznie mamy
+    const currentRealFunds = realizedIncome - realizedExpense - savingGoal;
+
+    // 2. Planowane WYDATKI między dziś a datą symulacji (zobowiązania, które pomniejszą saldo)
+    const plannedExpensesBeforeSim = expenses
+        .filter(e => e.type === 'planned' && e.date > today && e.date <= simulationDate)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    // Planowane PRZYCHODY do daty symulacji - tylko informacyjnie
+    const plannedIncomesBeforeSim = incomes
+        .filter(inc => inc.type === 'planned' && inc.date > today && inc.date <= simulationDate)
+        .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+    // Prognozowane środki = realne środki - planowane wydatki (BEZ planowanych przychodów)
+    const projectedAvailable = currentRealFunds - plannedExpensesBeforeSim;
     const availableAfterSimulation = projectedAvailable - simulationAmount;
 
-    // 2. Ile dni do następnego planowanego wpływu PO dacie symulacji
+    // 3. Ile dni do następnego planowanego wpływu PO dacie symulacji
     const futureIncomes = incomes
         .filter(inc => inc.type === 'planned' && inc.date > simulationDate)
         .sort((a, b) => a.date.localeCompare(b.date));
@@ -1313,6 +1315,16 @@ export function simulateExpense(simulationDate, simulationAmount) {
         findings.push(`Planowane wydatki po tej dacie: ${plannedExpensesAfterSim.toFixed(2)} zł do następnego wpływu.`);
     }
 
+    // Planowane wydatki PRZED datą symulacji
+    if (plannedExpensesBeforeSim > 0) {
+        findings.push(`Planowane wydatki do dnia symulacji: ${plannedExpensesBeforeSim.toFixed(2)} zł (odliczone od dostępnych środków).`);
+    }
+
+    // Informacja o planowanych przychodach (tylko kontekst, NIE liczone jako dostępne)
+    if (plannedIncomesBeforeSim > 0) {
+        findings.push(`Planowane przychody do dnia symulacji: ${plannedIncomesBeforeSim.toFixed(2)} zł (nieuwzględnione w saldzie - nie masz ich jeszcze fizycznie).`);
+    }
+
     // Pozytywne informacje jeśli bezpiecznie
     if (riskLevel === 'safe') {
         findings.push(`Po wydatku pozostanie ${availableAfterSimulation.toFixed(2)} zł, co daje ${dailyBudgetAfter.toFixed(2)} zł/dzień na ${daysForBudget} dni.`);
@@ -1341,13 +1353,16 @@ export function simulateExpense(simulationDate, simulationAmount) {
         data: {
             simulationDate,
             simulationAmount,
+            currentRealFunds,
             projectedAvailable,
             availableAfterSimulation,
             availableAfterAllPlanned,
             dailyBudgetAfter,
             daysToNextIncome,
             nextIncome: nextIncome ? { source: nextIncome.source, amount: nextIncome.amount, date: nextIncome.date } : null,
+            plannedExpensesBeforeSim,
             plannedExpensesAfterSim,
+            plannedIncomesBeforeSim,
             avgDailySpending,
             medianDailySpending
         }
