@@ -261,56 +261,6 @@ export function getUserExpensesBreakdown() {
   return breakdown;
 }
 
-export function detectAnomalies() {
-  const { dateFrom, dateTo } = getPeriodDates();
-  const expenses = getExpenses();
-
-  // Kategorie wykluczane z detekcji anomalii (naturalne duże wydatki)
-  const EXCLUDED_CATEGORIES = ['AGD', 'Elektronika', 'Meble', 'Urlop', 'Samochód', 'Remont'];
-
-  const periodExpenses = filterByPeriod(expenses, dateFrom, dateTo)
-    .filter(e => !EXCLUDED_CATEGORIES.includes(e.category)); // Wykluczenie kategorii
-
-  if (periodExpenses.length < 5) {
-    return [];
-  }
-
-  const amounts = periodExpenses.map(e => e.amount || 0);
-  const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
-  const sortedAmounts = [...amounts].sort((a, b) => a - b);
-  const median = sortedAmounts[Math.floor(sortedAmounts.length / 2)];
-
-  // Wyższy threshold dla okresu "Wszystko"
-  const threshold = currentPeriod === 'all'
-    ? Math.max(avg * 3, median * 5)  // Wyższy threshold dla "Wszystko"
-    : Math.max(avg * 2, median * 3);
-
-  // Limit max 10 anomalii, sortowane od największych
-  const anomalies = periodExpenses
-    .filter(e => (e.amount || 0) > threshold)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 10);  // Max 10 anomalii
-  
-  return anomalies.map(anomaly => {
-    const timesAboveMedian = median > 0 ? (anomaly.amount / median).toFixed(1) : '∞';
-    const timesAboveAvg = avg > 0 ? (anomaly.amount / avg).toFixed(1) : '∞';
-    
-    let reason = '';
-    if (anomaly.amount > median * 3) {
-      reason = `Kwota ${timesAboveMedian}× wyższa od mediany (${median.toFixed(2)} zł)`;
-    } else if (anomaly.amount > avg * 2) {
-      reason = `Kwota ${timesAboveAvg}× wyższa od średniej (${avg.toFixed(2)} zł)`;
-    } else {
-      reason = `Nietypowo wysoka kwota w tym okresie`;
-    }
-    
-    return {
-      ...anomaly,
-      anomalyReason: reason
-    };
-  });
-}
-
 export function getCategoryTransactions(categoryName) {
   const { dateFrom, dateTo } = getPeriodDates();
   const expenses = getExpenses();

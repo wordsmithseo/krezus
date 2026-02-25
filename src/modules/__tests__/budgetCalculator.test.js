@@ -55,7 +55,6 @@ import {
   getTodayExpenses,
   getWeekExpenses,
   getMonthExpenses,
-  checkAnomalies,
   getGlobalMedian30d,
   getTopCategories,
   computeComparisons,
@@ -368,31 +367,6 @@ describe('calculateSpendingGauge', () => {
     expect(result.spent).toBe(0);
     expect(result.total).toBe(0);
     expect(result.percentage).toBe(0);
-  });
-});
-
-// ============================================================
-// checkAnomalies
-// ============================================================
-describe('checkAnomalies', () => {
-  it('detects expenses above threshold (2x average or 3x median)', () => {
-    const regularExpenses = Array.from({ length: 20 }, (_, i) => ({
-      type: 'normal',
-      date: `2026-02-${String(1 + (i % 12)).padStart(2, '0')}`,
-      amount: 50
-    }));
-    regularExpenses.push({ type: 'normal', date: '2026-02-10', amount: 500 });
-
-    getExpenses.mockReturnValue(regularExpenses);
-
-    const anomalies = checkAnomalies();
-    expect(anomalies.length).toBeGreaterThan(0);
-    expect(anomalies[0].amount).toBe(500);
-  });
-
-  it('returns empty when no expenses', () => {
-    getExpenses.mockReturnValue([]);
-    expect(checkAnomalies()).toEqual([]);
   });
 });
 

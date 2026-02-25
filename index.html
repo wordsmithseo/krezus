@@ -50,7 +50,7 @@
                     <div class="feature-item">
                         <div class="feature-icon">📈</div>
                         <h3>Analityka</h3>
-                        <p>Wykresy, porównania okresów i wykrywanie anomalii</p>
+                        <p>Wykresy, porównania okresów i symulacja wydatków</p>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">🏷️</div>
@@ -241,6 +241,27 @@
                         <div id="envelopeOverLimit" style="display: none;"></div>
                         <div class="envelope-median"><strong>Mediana wydatków (30 dni):</strong> <span id="envelopeMedian">0.00</span> zł</div>
                     </div>
+                </div>
+
+                <div class="section-card">
+                    <h2>🔮 Symulacja wydatku</h2>
+                    <p style="margin-bottom: 15px; opacity: 0.8;">
+                        Sprawdź czy w danej dacie bezpiecznie jest dokonać planowanego wydatku. Algorytm analizuje budżet, przychody, wydatki (w tym planowane), dane historyczne i Twoje przyzwyczajenia.
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Data wydatku</label>
+                            <input type="date" id="simulationDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Kwota (zł)</label>
+                            <input type="number" id="simulationAmount" step="0.01" min="0.01" placeholder="np. 500.00">
+                        </div>
+                        <div class="form-group" style="display: flex; align-items: flex-end;">
+                            <button class="btn btn-primary" data-action="simulate-expense">Analizuj</button>
+                        </div>
+                    </div>
+                    <div id="simulationResult"></div>
                 </div>
             </section>
 
@@ -492,8 +513,6 @@
                     <div class="chart-container">
                         <canvas id="categoriesChart" width="800" height="400"></canvas>
                     </div>
-                    <h3>⚠️ Wykryte anomalie</h3>
-                    <div id="anomaliesList"></div>
                 </div>
             </section>
 
