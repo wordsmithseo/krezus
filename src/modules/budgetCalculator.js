@@ -405,36 +405,6 @@ export function computeSourcesRemaining() {
     }));
 }
 
-export function checkAnomalies() {
-    const expenses = getExpenses();
-    const today = getWarsawDateString();
-    
-    const d30 = new Date();
-    d30.setDate(d30.getDate() - 30);
-    const date30str = getWarsawDateString(d30);
-    
-    const last30 = expenses.filter(e => 
-        e.type === 'normal' && 
-        e.date >= date30str && 
-        e.date <= today
-    );
-    
-    if (last30.length === 0) return [];
-    
-    const amounts = last30.map(e => e.amount || 0);
-    const avg = amounts.reduce((a,b) => a+b, 0) / amounts.length;
-    const sortedAmounts = [...amounts].sort((a,b) => a-b);
-    const median = sortedAmounts[Math.floor(sortedAmounts.length / 2)];
-    
-    const threshold = Math.max(avg * 2, median * 3);
-    
-    return expenses.filter(e => 
-        e.type === 'normal' && 
-        e.date >= date30str && 
-        (e.amount || 0) > threshold
-    );
-}
-
 export function getGlobalMedian30d() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
@@ -455,10 +425,93 @@ export function getGlobalMedian30d() {
     return amounts[Math.floor(amounts.length / 2)];
 }
 
-export async function updateDailyEnvelope(forDate = null) {
+/**
+ * Oblicza historię dziennych przekroczeń koperty z ostatnich N dni
+ * Używane do korekty przyszłych limitów
+ */
+function calculateOverrunHistory(expenses, incomes, targetDate, daysBack = 14) {
+    const overruns = [];
+    const d = new Date(targetDate);
+
+    for (let i = 1; i <= daysBack; i++) {
+        const checkDate = new Date(d);
+        checkDate.setDate(d.getDate() - i);
+        const dateStr = getWarsawDateString(checkDate);
+
+        const dayExpenses = expenses
+            .filter(e => e.type === 'normal' && e.date === dateStr)
+            .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+        const dayIncomes = incomes
+            .filter(inc => inc.type === 'normal' && inc.date === dateStr)
+            .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+        overruns.push({
+            date: dateStr,
+            spent: dayExpenses,
+            received: dayIncomes
+        });
+    }
+    return overruns;
+}
+
+/**
+ * Oblicza wzorzec wydatków wg dnia tygodnia (pon=1, ndz=7)
+ * Zwraca mnożnik: >1 = dzień, w którym zwykle wydaje się więcej, <1 = mniej
+ */
+function getDayOfWeekPattern(expenses, targetDate) {
+    const d60 = new Date(targetDate);
+    d60.setDate(d60.getDate() - 60);
+    const date60str = getWarsawDateString(d60);
+
+    const relevantExpenses = expenses.filter(e =>
+        e.type === 'normal' && e.date >= date60str && e.date < targetDate
+    );
+
+    if (relevantExpenses.length < 14) return 1.0; // Za mało danych
+
+    // Grupuj wydatki wg dnia tygodnia
+    const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // 0=niedz, 1=pon, ..., 6=sob
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+
+    relevantExpenses.forEach(e => {
+        const dayOfWeek = new Date(e.date).getDay();
+        dayTotals[dayOfWeek] += e.amount || 0;
+        dayCounts[dayOfWeek]++;
+    });
+
+    const dayAverages = dayTotals.map((total, i) =>
+        dayCounts[i] > 0 ? total / dayCounts[i] : 0
+    );
+
+    const overallAvg = dayAverages.reduce((a, b) => a + b, 0) / 7;
+    if (overallAvg === 0) return 1.0;
+
+    const todayDayOfWeek = new Date(targetDate).getDay();
+    const todayAvg = dayAverages[todayDayOfWeek];
+
+    // Mnożnik: jeśli w ten dzień tygodnia zwykle wydaje się 150% średniej, zwróć 1.5
+    // Ograniczamy do zakresu 0.5 - 1.8 żeby uniknąć ekstremalnych wartości
+    return Math.max(0.5, Math.min(1.8, todayAvg / overallAvg));
+}
+
+/**
+ * Główna funkcja obliczania koperty dnia
+ * Inteligentny algorytm bazujący na:
+ * - Dostępnych środkach i dniach do następnego wpływu
+ * - Historycznych wzorcach wydatków (60 dni)
+ * - Wzorcach dnia tygodnia
+ * - Planowanych wydatkach w okresie
+ * - Historii przekroczeń koperty
+ * - NIGDY nie przekracza faktycznie dostępnych środków
+ *
+ * forceRecalc=true wymusza pełne przeliczenie (np. po synchronizacji, nowym przychodzie)
+ */
+export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
     const targetDate = forDate || getWarsawDateString();
 
     const expenses = getExpenses();
+    const incomes = getIncomes();
 
     // Oblicz dzisiejsze wydatki
     const todayExpenses = expenses.filter(exp =>
@@ -469,7 +522,8 @@ export async function updateDailyEnvelope(forDate = null) {
     const existing = getDailyEnvelope();
 
     // Sprawdź czy koperta została już dziś przeliczona
-    if (existing && existing.date === targetDate && existing.calculatedDate === targetDate) {
+    // ZMIANA: forceRecalc wymusza pełne przeliczenie (np. po synchronizacji, nowym przychodzie)
+    if (!forceRecalc && existing && existing.date === targetDate && existing.calculatedDate === targetDate) {
         const updatedEnvelope = {
             ...existing,
             spent: todayExpensesSum
@@ -479,81 +533,156 @@ export async function updateDailyEnvelope(forDate = null) {
         return updatedEnvelope;
     }
 
-    // PEŁNE PRZELICZENIE - tylko raz dziennie
-    const incomes = getIncomes();
+    // === PEŁNE PRZELICZENIE INTELIGENTNEJ KOPERTY ===
 
-    let sumIncomeBeforeToday = 0;
-    let sumExpenseBeforeToday = 0;
+    // 1. Oblicz dostępne środki (przychody - wydatki do dzisiaj włącznie)
+    let sumIncomeUpToToday = 0;
+    let sumExpenseUpToToday = 0;
 
     incomes.forEach(inc => {
-        if (inc.type === 'normal' && inc.date < targetDate) {
-            sumIncomeBeforeToday += inc.amount || 0;
+        if (inc.type === 'normal' && inc.date <= targetDate) {
+            sumIncomeUpToToday += inc.amount || 0;
         }
     });
 
     expenses.forEach(exp => {
-        if (exp.type === 'normal' && exp.date < targetDate) {
-            sumExpenseBeforeToday += exp.amount || 0;
+        if (exp.type === 'normal' && exp.date <= targetDate) {
+            sumExpenseUpToToday += exp.amount || 0;
         }
     });
 
-    const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
-    const toSpendBeforeToday = availableBeforeToday;
+    // Odejmij dzisiejsze wydatki - bo koperta je doliczy osobno jako "spent"
+    sumExpenseUpToToday -= todayExpensesSum;
 
+    const savingGoal = getSavingGoal();
+    const totalAvailable = sumIncomeUpToToday - sumExpenseUpToToday - savingGoal;
+
+    // Faktycznie dostępne środki po odjęciu dzisiejszych wydatków
+    const availableAfterTodaySpending = totalAvailable - todayExpensesSum;
+
+    // 2. Pobierz okres budżetowy
     const { periods } = calculateSpendingPeriods();
     const envelopePeriodIndex = getEnvelopePeriod();
     const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
 
-    const todayIncomes = incomes.filter(inc =>
-        inc.date === targetDate && inc.type === 'normal'
-    );
-    const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
-
     let smartLimit = 0;
+    let algorithmMode = 'none';
 
-    // ZMIANA: Używamy calendarDays (pełne dni kalendarzowe) zamiast daysLeft dla obliczeń
     if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
         smartLimit = 0;
+        algorithmMode = 'no-period';
+    } else if (totalAvailable <= 0) {
+        smartLimit = 0;
+        algorithmMode = 'no-funds';
     } else {
-        // Dla obliczeń koperty: używamy minimum 1 dzień (gdy wpływ jest dzisiaj, liczmy dzisiejszy dzień)
         const daysForCalculation = Math.max(1, selectedPeriod.calendarDays);
-        const d30 = new Date();
-        d30.setDate(d30.getDate() - 30);
-        const date30str = getWarsawDateString(d30);
+
+        // 3. Bazowy limit dzienny = dostępne / dni
+        const baseDailyLimit = totalAvailable / daysForCalculation;
+
+        // 4. Oblicz planowane wydatki do końca okresu
+        const plannedExpensesInPeriod = expenses
+            .filter(e => e.type === 'planned' && e.date >= targetDate && e.date <= selectedPeriod.date)
+            .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+        // Dostępne po odjęciu planowanych wydatków
+        const availableAfterPlanned = totalAvailable - plannedExpensesInPeriod;
+        const adjustedDailyLimit = Math.max(0, availableAfterPlanned / daysForCalculation);
+
+        // 5. Analiza historyczna (60 dni) - mediana i średnia
+        const d60 = new Date(targetDate);
+        d60.setDate(d60.getDate() - 60);
+        const date60str = getWarsawDateString(d60);
 
         const historicalExpenses = expenses.filter(e =>
-            e.type === 'normal' &&
-            e.date >= date30str &&
-            e.date < targetDate
+            e.type === 'normal' && e.date >= date60str && e.date < targetDate
         );
 
-        const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
+        // 6. Wzorzec dnia tygodnia
+        const dayOfWeekMultiplier = getDayOfWeekPattern(expenses, targetDate);
 
-        // ZMIANA: Używamy daysForCalculation (minimum 1 dzień) dla obliczeń
-        const dailyLimit = totalAvailableToday / daysForCalculation;
+        // 7. Historia przekroczeń koperty (14 dni)
+        const overrunHistory = calculateOverrunHistory(expenses, incomes, targetDate, 14);
+        const recentOverruns = overrunHistory.filter(d => d.spent > baseDailyLimit);
+        const overrunPenalty = recentOverruns.length > 0
+            ? Math.max(0.85, 1 - (recentOverruns.length * 0.02))
+            : 1.0;
 
-        if (dailyLimit <= 0) {
-            smartLimit = 0;
-        } else if (historicalExpenses.length >= 5) {
-            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
+        // 8. Oblicz inteligentny limit
+        if (historicalExpenses.length >= 10) {
+            // Tryb pełny - dużo historii
+            algorithmMode = 'full';
+
+            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a, b) => a - b);
             const median = amounts[Math.floor(amounts.length / 2)];
 
-            let calculatedLimit;
-            if (median > dailyLimit * 1.5) {
-                calculatedLimit = dailyLimit * 0.9;
-            } else if (median < dailyLimit * 0.3) {
-                calculatedLimit = dailyLimit * 0.7;
+            // Grupuj wydatki po dniach i oblicz medianę dzienną
+            const dailySpending = {};
+            historicalExpenses.forEach(e => {
+                dailySpending[e.date] = (dailySpending[e.date] || 0) + (e.amount || 0);
+            });
+            const dailyTotals = Object.values(dailySpending).sort((a, b) => a - b);
+            const dailyMedian = dailyTotals.length > 0
+                ? dailyTotals[Math.floor(dailyTotals.length / 2)]
+                : median;
+
+            // Bazowa propozycja: ważona kombinacja limitu budżetowego i mediany dziennej
+            let proposed;
+            if (dailyMedian > adjustedDailyLimit * 1.3) {
+                // Historyczne wydatki powyżej limitu - tryb ostrożny
+                proposed = adjustedDailyLimit * 0.9;
+            } else if (dailyMedian < adjustedDailyLimit * 0.4) {
+                // Historyczne wydatki znacznie poniżej limitu - tryb zbliżony do limitu
+                proposed = adjustedDailyLimit * 0.85;
             } else {
-                calculatedLimit = (median * 0.4 + dailyLimit * 0.6);
+                // Zbalansowany: 35% mediana dzienna + 65% limit budżetowy
+                proposed = (dailyMedian * 0.35 + adjustedDailyLimit * 0.65);
             }
 
-            smartLimit = Math.max(0, Math.min(calculatedLimit, dailyLimit, totalAvailableToday));
+            // Zastosuj wzorzec dnia tygodnia (delikatnie: max ±15%)
+            const dowAdjustment = 1 + (dayOfWeekMultiplier - 1) * 0.3;
+            proposed *= dowAdjustment;
+
+            // Zastosuj karę za przekroczenia
+            proposed *= overrunPenalty;
+
+            smartLimit = proposed;
+        } else if (historicalExpenses.length >= 5) {
+            // Tryb ograniczony - trochę historii
+            algorithmMode = 'limited';
+
+            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a, b) => a - b);
+            const median = amounts[Math.floor(amounts.length / 2)];
+
+            let proposed;
+            if (median > adjustedDailyLimit * 1.5) {
+                proposed = adjustedDailyLimit * 0.85;
+            } else if (median < adjustedDailyLimit * 0.3) {
+                proposed = adjustedDailyLimit * 0.75;
+            } else {
+                proposed = (median * 0.3 + adjustedDailyLimit * 0.7);
+            }
+
+            proposed *= overrunPenalty;
+            smartLimit = proposed;
         } else {
-            smartLimit = Math.max(0, Math.min(dailyLimit * 0.8, totalAvailableToday));
+            // Tryb konserwatywny - za mało historii
+            algorithmMode = 'conservative';
+            smartLimit = adjustedDailyLimit * 0.8;
         }
+
+        // 9. KLUCZOWE OGRANICZENIE: koperta NIGDY nie może przekraczać dostępnych środków
+        smartLimit = Math.max(0, Math.min(smartLimit, totalAvailable, availableAfterTodaySpending + todayExpensesSum));
+
+        // Jeśli smartLimit przekracza bazowy limit dzienny (np. przez wzorzec dnia),
+        // ogranicz do 120% bazowego limitu - nie może być dużo większy
+        smartLimit = Math.min(smartLimit, baseDailyLimit * 1.2);
+
+        // Ostateczne ograniczenie do dostępnych środków
+        smartLimit = Math.max(0, Math.min(smartLimit, totalAvailable));
     }
 
-    // Informacja o okresie do zapisu - ZMIANA: dodajemy pola czasu
+    // Informacja o okresie do zapisu
     const periodInfo = selectedPeriod ? {
         name: selectedPeriod.name,
         date: selectedPeriod.date,
@@ -569,8 +698,8 @@ export async function updateDailyEnvelope(forDate = null) {
         calendarDays: selectedPeriod.calendarDays
     } : null;
 
-    // Ustaw timestamp na północ dzisiejszego dnia (00:00:00)
-    const midnightTimestamp = new Date(targetDate + 'T00:00:00+01:00').toISOString();
+    const now = new Date();
+    const calculatedAtTimestamp = now.toISOString();
 
     const envelope = {
         date: targetDate,
@@ -579,13 +708,22 @@ export async function updateDailyEnvelope(forDate = null) {
         totalAmount: smartLimit,
         spent: todayExpensesSum,
         period: periodInfo,
+        algorithmMode,
         calculatedDate: targetDate,
-        calculatedAt: midnightTimestamp
+        calculatedAt: calculatedAtTimestamp
     };
 
     await saveDailyEnvelope(targetDate, envelope);
 
     return envelope;
+}
+
+/**
+ * Awaryjne przeliczenie koperty (po synchronizacji, nowym przychodzie, etc.)
+ * Wymusza pełne przeliczenie bez resetowania daty
+ */
+export async function recalculateEnvelope() {
+    return updateDailyEnvelope(null, true);
 }
 
 export function getEnvelopeCalculationInfo() {
@@ -595,7 +733,6 @@ export function getEnvelopeCalculationInfo() {
     const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
 
     if (!envelope) {
-        // ZMIANA: Używamy calendarDays zamiast daysLeft
         if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
             return {
                 description: 'Brak wybranego okresu',
@@ -606,80 +743,93 @@ export function getEnvelopeCalculationInfo() {
     }
 
     const expenses = getExpenses();
+    const incomes = getIncomes();
     const today = getWarsawDateString();
 
-    const incomes = getIncomes();
-    let sumIncomeBeforeToday = 0;
-    let sumExpenseBeforeToday = 0;
+    // Oblicz dostępne środki (przychody - wydatki do dziś włącznie, bez dzisiejszych wydatków)
+    const todayExpensesSum = expenses
+        .filter(e => e.type === 'normal' && e.date === today)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    let sumIncomeUpToToday = 0;
+    let sumExpenseUpToToday = 0;
 
     incomes.forEach(inc => {
-        if (inc.type === 'normal' && inc.date < today) {
-            sumIncomeBeforeToday += inc.amount || 0;
+        if (inc.type === 'normal' && inc.date <= today) {
+            sumIncomeUpToToday += inc.amount || 0;
         }
     });
 
     expenses.forEach(exp => {
-        if (exp.type === 'normal' && exp.date < today) {
-            sumExpenseBeforeToday += exp.amount || 0;
+        if (exp.type === 'normal' && exp.date <= today) {
+            sumExpenseUpToToday += exp.amount || 0;
         }
     });
 
-    const availableBeforeToday = sumIncomeBeforeToday - sumExpenseBeforeToday;
-    const toSpendBeforeToday = availableBeforeToday;
-
-    const todayIncomes = incomes.filter(inc =>
-        inc.date === today && inc.type === 'normal'
-    );
-    const todayIncomesSum = todayIncomes.reduce((sum, inc) => sum + (inc.amount || 0), 0);
-
-    const d30 = new Date();
-    d30.setDate(d30.getDate() - 30);
-    const date30str = getWarsawDateString(d30);
-
-    const historicalExpenses = expenses.filter(e =>
-        e.type === 'normal' &&
-        e.date >= date30str &&
-        e.date < today
-    );
+    sumExpenseUpToToday -= todayExpensesSum;
+    const savingGoal = getSavingGoal();
+    const totalAvailable = sumIncomeUpToToday - sumExpenseUpToToday - savingGoal;
 
     let description = '';
     let formula = '';
 
-    // ZMIANA: Używamy calendarDays zamiast daysLeft dla obliczeń
     if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
         description = 'Brak wybranego okresu';
         formula = 'Wybierz okres w ustawieniach';
+    } else if (totalAvailable <= 0) {
+        description = 'Brak środków do wydania';
+        formula = `Dostępne środki: ${totalAvailable.toFixed(2)} zł`;
     } else {
-        const totalAvailableToday = toSpendBeforeToday + todayIncomesSum;
-
-        // Dla obliczeń: używamy minimum 1 dzień (gdy wpływ jest dzisiaj, liczmy dzisiejszy dzień)
         const daysForCalculation = Math.max(1, selectedPeriod.calendarDays);
-        const dailyLimit = totalAvailableToday / daysForCalculation;
+        const baseDailyLimit = totalAvailable / daysForCalculation;
         const limitSource = `${selectedPeriod.name} (${selectedPeriod.timeFormatted})`;
 
-        if (dailyLimit <= 0) {
-            description = 'Brak środków do wydania';
-            formula = 'Dostępne środki: 0 zł';
-        } else if (historicalExpenses.length >= 5) {
-            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a,b) => a-b);
-            const median = amounts[Math.floor(amounts.length / 2)];
+        // Planowane wydatki w okresie
+        const plannedExpensesInPeriod = expenses
+            .filter(e => e.type === 'planned' && e.date >= today && e.date <= selectedPeriod.date)
+            .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-            if (median > dailyLimit * 1.5) {
-                description = `Wydatki powyżej normy - ostrożny limit (${historicalExpenses.length} transakcji)`;
-                formula = `90% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.9 = ${(dailyLimit * 0.9).toFixed(2)} zł. Mediana wydatków (${median.toFixed(2)} zł) przekracza 150% limitu.`;
-            } else if (median < dailyLimit * 0.3) {
-                description = `Niskie wydatki - zachęcający limit (${historicalExpenses.length} transakcji)`;
-                formula = `70% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.7 = ${(dailyLimit * 0.7).toFixed(2)} zł. Mediana wydatków (${median.toFixed(2)} zł) jest niska względem limitu - masz duży zapas.`;
-            } else {
-                description = `Algorytm zbalansowany (${historicalExpenses.length} transakcji z 30 dni)`;
-                formula = `40% mediany ${median.toFixed(2)} zł + 60% limitu (${limitSource}) ${dailyLimit.toFixed(2)} zł, max ${dailyLimit.toFixed(2)} zł`;
-            }
+        const adjustedAvailable = totalAvailable - plannedExpensesInPeriod;
+        const adjustedDailyLimit = Math.max(0, adjustedAvailable / daysForCalculation);
+
+        // Dane historyczne
+        const d60 = new Date(today);
+        d60.setDate(d60.getDate() - 60);
+        const date60str = getWarsawDateString(d60);
+        const historicalExpenses = expenses.filter(e =>
+            e.type === 'normal' && e.date >= date60str && e.date < today
+        );
+
+        const mode = envelope.algorithmMode || 'unknown';
+        const baseInfo = `Dostępne: ${totalAvailable.toFixed(2)} zł / ${daysForCalculation} dni (${limitSource})`;
+        const plannedInfo = plannedExpensesInPeriod > 0
+            ? ` | Planowane wydatki: -${plannedExpensesInPeriod.toFixed(2)} zł`
+            : '';
+
+        if (mode === 'full') {
+            const dailySpending = {};
+            historicalExpenses.forEach(e => {
+                dailySpending[e.date] = (dailySpending[e.date] || 0) + (e.amount || 0);
+            });
+            const dailyTotals = Object.values(dailySpending).sort((a, b) => a - b);
+            const dailyMedian = dailyTotals.length > 0
+                ? dailyTotals[Math.floor(dailyTotals.length / 2)]
+                : 0;
+
+            description = `Algorytm pełny (${historicalExpenses.length} transakcji z 60 dni)`;
+            formula = `${baseInfo}${plannedInfo}. Mediana dzienna: ${dailyMedian.toFixed(2)} zł. Limit bazowy: ${baseDailyLimit.toFixed(2)} zł/dzień. Uwzgl. wzorzec dnia tygodnia i historię przekroczeń.`;
+        } else if (mode === 'limited') {
+            const amounts = historicalExpenses.map(e => e.amount || 0).sort((a, b) => a - b);
+            const median = amounts[Math.floor(amounts.length / 2)] || 0;
+
+            description = `Algorytm ograniczony (${historicalExpenses.length} transakcji)`;
+            formula = `${baseInfo}${plannedInfo}. Mediana transakcji: ${median.toFixed(2)} zł. Limit bazowy: ${baseDailyLimit.toFixed(2)} zł/dzień.`;
         } else {
-            description = `Algorytm zachowawczy (za mało historii: ${historicalExpenses.length}/5 transakcji)`;
-            formula = `80% limitu (${limitSource}): ${dailyLimit.toFixed(2)} zł × 0.8 = ${(dailyLimit * 0.8).toFixed(2)} zł`;
+            description = `Algorytm konserwatywny (za mało historii: ${historicalExpenses.length} transakcji)`;
+            formula = `${baseInfo}${plannedInfo}. 80% limitu bazowego: ${(adjustedDailyLimit * 0.8).toFixed(2)} zł.`;
         }
     }
-    
+
     return {
         description,
         formula
@@ -999,4 +1149,207 @@ export function getWeekDateRange() {
 export function getMonthName() {
     const today = new Date();
     return today.toLocaleDateString('pl-PL', { month: 'long', year: 'numeric' });
+}
+
+/**
+ * Symulacja wydatku - analizuje czy w podanej dacie bezpiecznie jest dokonać wydatku o podanej kwocie
+ * Bazuje na: budżecie, wydatkach, przychodach (planowanych i zrealizowanych),
+ * danych historycznych, przyzwyczajeniach użytkownika i inteligentnej analizie
+ *
+ * @param {string} simulationDate - Data wydatku (YYYY-MM-DD)
+ * @param {number} simulationAmount - Kwota wydatku
+ * @returns {Object} Szczegółowa analiza bezpieczeństwa wydatku
+ */
+export function simulateExpense(simulationDate, simulationAmount) {
+    const today = getWarsawDateString();
+    const expenses = getExpenses();
+    const incomes = getIncomes();
+    const savingGoal = getSavingGoal();
+
+    // 1. Oblicz dostępne środki na dzień symulacji
+    // Uwzględnij przychody i wydatki (zrealizowane + planowane, które powinny być zrealizowane do daty symulacji)
+    let projectedIncome = 0;
+    let projectedExpense = 0;
+
+    incomes.forEach(inc => {
+        if (inc.date <= simulationDate) {
+            // Zrealizowane przychody
+            if (inc.type === 'normal') {
+                projectedIncome += inc.amount || 0;
+            }
+            // Planowane przychody do daty symulacji
+            else if (inc.type === 'planned' && inc.date > today) {
+                projectedIncome += inc.amount || 0;
+            }
+        }
+    });
+
+    expenses.forEach(exp => {
+        if (exp.date <= simulationDate) {
+            if (exp.type === 'normal') {
+                projectedExpense += exp.amount || 0;
+            }
+            else if (exp.type === 'planned' && exp.date > today) {
+                projectedExpense += exp.amount || 0;
+            }
+        }
+    });
+
+    const projectedAvailable = projectedIncome - projectedExpense - savingGoal;
+    const availableAfterSimulation = projectedAvailable - simulationAmount;
+
+    // 2. Ile dni do następnego planowanego wpływu PO dacie symulacji
+    const futureIncomes = incomes
+        .filter(inc => inc.type === 'planned' && inc.date > simulationDate)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    const nextIncome = futureIncomes[0] || null;
+    let daysToNextIncome = 0;
+    if (nextIncome) {
+        const simDate = new Date(simulationDate);
+        const incDate = new Date(nextIncome.date);
+        daysToNextIncome = Math.ceil((incDate - simDate) / (1000 * 60 * 60 * 24));
+    }
+
+    // 3. Oblicz planowane wydatki między datą symulacji a następnym wpływem
+    const plannedExpensesAfterSim = expenses
+        .filter(e => e.type === 'planned' && e.date > simulationDate && (!nextIncome || e.date <= nextIncome.date))
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const availableAfterAllPlanned = availableAfterSimulation - plannedExpensesAfterSim;
+
+    // 4. Bazowy limit dzienny po symulacji do następnego wpływu
+    const daysForBudget = Math.max(1, daysToNextIncome || 30);
+    const dailyBudgetAfter = availableAfterAllPlanned / daysForBudget;
+
+    // 5. Analiza historyczna - średnie dzienne wydatki
+    const d60 = new Date(today);
+    d60.setDate(d60.getDate() - 60);
+    const date60str = getWarsawDateString(d60);
+
+    const historicalExpenses = expenses.filter(e =>
+        e.type === 'normal' && e.date >= date60str && e.date <= today
+    );
+
+    const dailySpending = {};
+    historicalExpenses.forEach(e => {
+        dailySpending[e.date] = (dailySpending[e.date] || 0) + (e.amount || 0);
+    });
+    const dailyTotals = Object.values(dailySpending);
+    const avgDailySpending = dailyTotals.length > 0
+        ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length
+        : 0;
+
+    const sortedDailyTotals = [...dailyTotals].sort((a, b) => a - b);
+    const medianDailySpending = sortedDailyTotals.length > 0
+        ? sortedDailyTotals[Math.floor(sortedDailyTotals.length / 2)]
+        : 0;
+
+    // 6. Analiza dnia tygodnia - ile zwykle wydaje się w ten dzień
+    const simDayOfWeek = new Date(simulationDate).getDay();
+    const dayNames = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
+    const dayExpenses = historicalExpenses.filter(e => new Date(e.date).getDay() === simDayOfWeek);
+    const dayAvg = dayExpenses.length > 0
+        ? dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) / new Set(dayExpenses.map(e => e.date)).size
+        : avgDailySpending;
+
+    // 7. Ile razy taki wydatek był już dokonywany (analiza częstotliwości kwoty)
+    const similarExpenses = historicalExpenses.filter(e =>
+        Math.abs((e.amount || 0) - simulationAmount) < simulationAmount * 0.2
+    );
+
+    // 8. Podejmij decyzję
+    const findings = [];
+    let riskLevel = 'safe'; // safe, caution, warning, danger
+
+    // Dni do daty symulacji
+    const daysToSimulation = Math.max(0, Math.ceil((new Date(simulationDate) - new Date(today)) / (1000 * 60 * 60 * 24)));
+
+    // Czy starczy środków?
+    if (availableAfterSimulation < 0) {
+        riskLevel = 'danger';
+        findings.push(`Brak wystarczających środków. Po wydatku saldo wyniesie ${availableAfterSimulation.toFixed(2)} zł (ujemne).`);
+    } else if (availableAfterAllPlanned < 0) {
+        riskLevel = 'danger';
+        findings.push(`Po uwzględnieniu planowanych wydatków (${plannedExpensesAfterSim.toFixed(2)} zł) saldo będzie ujemne: ${availableAfterAllPlanned.toFixed(2)} zł.`);
+    } else if (dailyBudgetAfter < avgDailySpending * 0.3) {
+        riskLevel = 'warning';
+        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) spadnie poniżej 30% Twoich zwykłych wydatków (${avgDailySpending.toFixed(2)} zł/dzień).`);
+    } else if (dailyBudgetAfter < avgDailySpending * 0.6) {
+        riskLevel = 'caution';
+        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) będzie ograniczony w porównaniu do zwykłych wydatków (${avgDailySpending.toFixed(2)} zł/dzień).`);
+    }
+
+    // Kontekst kwoty
+    if (simulationAmount > projectedAvailable * 0.5) {
+        if (riskLevel === 'safe') riskLevel = 'caution';
+        findings.push(`Wydatek stanowi ${((simulationAmount / projectedAvailable) * 100).toFixed(0)}% dostępnych środków - to znacząca część budżetu.`);
+    }
+
+    if (simulationAmount > avgDailySpending * 5 && avgDailySpending > 0) {
+        findings.push(`Kwota jest ${(simulationAmount / avgDailySpending).toFixed(1)}× wyższa od Twojej średniej dziennej (${avgDailySpending.toFixed(2)} zł).`);
+    }
+
+    // Kontekst dnia tygodnia
+    if (dayAvg > 0 && simulationAmount > dayAvg * 3) {
+        findings.push(`W ${dayNames[simDayOfWeek].toLowerCase()} zwykle wydajesz ok. ${dayAvg.toFixed(2)} zł, ten wydatek jest ${(simulationAmount / dayAvg).toFixed(1)}× wyższy.`);
+    }
+
+    // Podobne wydatki w historii
+    if (similarExpenses.length > 0) {
+        findings.push(`Podobne wydatki (ok. ${simulationAmount.toFixed(0)} zł) pojawiały się ${similarExpenses.length} razy w ostatnich 60 dniach.`);
+    }
+
+    // Planowane przychody
+    if (nextIncome) {
+        findings.push(`Następny planowany wpływ: ${nextIncome.source || 'Bez nazwy'} (${(nextIncome.amount || 0).toFixed(2)} zł) dnia ${nextIncome.date} (za ${daysToNextIncome} dni).`);
+    } else {
+        if (riskLevel === 'safe' || riskLevel === 'caution') riskLevel = 'caution';
+        findings.push(`Brak zaplanowanych przyszłych wpływów - zachowaj ostrożność.`);
+    }
+
+    // Planowane wydatki po symulacji
+    if (plannedExpensesAfterSim > 0) {
+        findings.push(`Planowane wydatki po tej dacie: ${plannedExpensesAfterSim.toFixed(2)} zł do następnego wpływu.`);
+    }
+
+    // Pozytywne informacje jeśli bezpiecznie
+    if (riskLevel === 'safe') {
+        findings.push(`Po wydatku pozostanie ${availableAfterSimulation.toFixed(2)} zł, co daje ${dailyBudgetAfter.toFixed(2)} zł/dzień na ${daysForBudget} dni.`);
+    }
+
+    // Tytuł i podsumowanie
+    const titles = {
+        safe: 'Bezpieczny wydatek',
+        caution: 'Wydatek możliwy z uwagami',
+        warning: 'Wydatek ryzykowny',
+        danger: 'Wydatek niebezpieczny'
+    };
+
+    const summaries = {
+        safe: `Możesz bezpiecznie dokonać wydatku ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate}. Twój budżet to udźwignie.`,
+        caution: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest możliwy, ale wymaga ostrożności w kolejnych dniach.`,
+        warning: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest ryzykowny i może zagrozić stabilności budżetu.`,
+        danger: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest niebezpieczny - grozi brakiem środków.`
+    };
+
+    return {
+        riskLevel,
+        title: titles[riskLevel],
+        summary: summaries[riskLevel],
+        findings,
+        data: {
+            simulationDate,
+            simulationAmount,
+            projectedAvailable,
+            availableAfterSimulation,
+            availableAfterAllPlanned,
+            dailyBudgetAfter,
+            daysToNextIncome,
+            nextIncome: nextIncome ? { source: nextIncome.source, amount: nextIncome.amount, date: nextIncome.date } : null,
+            plannedExpensesAfterSim,
+            avgDailySpending,
+            medianDailySpending
+        }
+    };
 }

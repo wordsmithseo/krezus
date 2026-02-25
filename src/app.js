@@ -44,9 +44,9 @@ import {
   calculateAvailableFunds,
   calculateCurrentLimits,
   computeSourcesRemaining,
-  checkAnomalies,
   getGlobalMedian30d,
   updateDailyEnvelope,
+  recalculateEnvelope,
   calculateSpendingGauge,
   getTopCategories,
   getTopDescriptionsForCategory,
@@ -60,7 +60,8 @@ import {
   calculatePlannedTransactionsTotals,
   getWeekDateRange,
   getMonthName,
-  clearLimitsCache
+  clearLimitsCache,
+  simulateExpense
 } from './modules/budgetCalculator.js';
 
 import {
@@ -70,7 +71,6 @@ import {
   compareToPreviousPeriod,
   getMostExpensiveCategories,
   getCategoriesBreakdown,
-  detectAnomalies,
   getUserExpensesBreakdown,
   getCurrentPeriod,
   setBudgetUsersCache
@@ -274,8 +274,8 @@ async function loadAllData() {
         setupCategorySuggestions();
       },
       onExpensesChange: async () => {
-        clearLimitsCache();  // Wyczyść cache przy zmianie wydatków
-        await updateDailyEnvelope();
+        clearLimitsCache();
+        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie wydatków
         renderExpenses();
         renderCategories();
         renderSummary();
@@ -283,8 +283,8 @@ async function loadAllData() {
         renderAnalytics();
       },
       onIncomesChange: async () => {
-        clearLimitsCache();  // Wyczyść cache przy zmianie przychodów
-        await updateDailyEnvelope();
+        clearLimitsCache();
+        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie przychodów
 
         renderSources();
         renderSummary();
@@ -292,15 +292,15 @@ async function loadAllData() {
         renderAnalytics();
       },
       onEndDatesChange: async () => {
-        clearLimitsCache();  // Wyczyść cache przy zmianie dat
-        await updateDailyEnvelope();
+        clearLimitsCache();
+        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie dat
 
         renderSummary();
         renderDailyEnvelope();
       },
       onSavingGoalChange: async () => {
-        clearLimitsCache();  // Wyczyść cache przy zmianie celu oszczędnościowego
-        await updateDailyEnvelope();
+        clearLimitsCache();
+        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie oszczędności
 
         renderSummary();
         renderDailyEnvelope();
@@ -399,7 +399,6 @@ function renderAnalytics() {
   const comparison = compareToPreviousPeriod();
   const topCategories = getMostExpensiveCategories(3);
   const breakdown = getCategoriesBreakdown();
-  const anomalies = detectAnomalies();
   const userExpenses = getUserExpensesBreakdown();
 
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
@@ -461,24 +460,6 @@ function renderAnalytics() {
     ctx.fillStyle = '#6b7280';
     ctx.textAlign = 'center';
     ctx.fillText('Brak wydatków w wybranym okresie', chartCanvas.width / 2, chartCanvas.height / 2);
-  }
-
-  const anomaliesDiv = document.getElementById('anomaliesList');
-  if (anomalies.length > 0) {
-    anomaliesDiv.innerHTML = anomalies.map(a => `
-      <div class="anomaly-item">
-        <div>
-          <strong>${a.description || 'Brak opisu'}</strong>
-          <small>${a.category || 'Brak kategorii'} • ${formatDateLabel(a.date)}</small>
-          <div style="margin-top: 5px; color: #e85c6a; font-size: 0.9rem;">
-            <strong>⚠️ ${a.anomalyReason || 'Anomalia wykryta'}</strong>
-          </div>
-        </div>
-        <span class="amount">${a.amount.toFixed(2)} zł</span>
-      </div>
-    `).join('');
-  } else {
-    anomaliesDiv.innerHTML = '<p class="empty-state">Brak wykrytych anomalii</p>';
   }
 }
 
@@ -1405,7 +1386,7 @@ const saveSavingsAmount = async (e) => {
   try {
     await saveSavingGoal(amount);
     clearLimitsCache();
-    await updateDailyEnvelope();
+    await recalculateEnvelope();
 
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
@@ -1485,7 +1466,7 @@ const saveSettings = async (e) => {
   try {
     await saveEnvelopePeriod(envelopePeriod);
     await saveDynamicsPeriod(dynamicsPeriod);
-    await updateDailyEnvelope();
+    await recalculateEnvelope();
 
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
@@ -1502,6 +1483,89 @@ const saveSettings = async (e) => {
     console.error('❌ Błąd zapisywania ustawień:', error);
     showErrorMessage('Nie udało się zapisać ustawień');
   }
+};
+
+// === SYMULACJA WYDATKU ===
+function renderSimulationResult(result) {
+  const container = document.getElementById('simulationResult');
+  if (!container) return;
+
+  const riskColors = {
+    safe: '#10b981',
+    caution: '#f59e0b',
+    warning: '#f97316',
+    danger: '#ef4444'
+  };
+
+  const riskIcons = {
+    safe: '✅',
+    caution: '⚠️',
+    warning: '🔶',
+    danger: '🚨'
+  };
+
+  const riskBgs = {
+    safe: 'rgba(16, 185, 129, 0.1)',
+    caution: 'rgba(245, 158, 11, 0.1)',
+    warning: 'rgba(249, 115, 22, 0.1)',
+    danger: 'rgba(239, 68, 68, 0.1)'
+  };
+
+  const color = riskColors[result.riskLevel] || '#6b7280';
+  const icon = riskIcons[result.riskLevel] || '';
+  const bg = riskBgs[result.riskLevel] || 'transparent';
+
+  const findingsHTML = result.findings.map(f => `<li style="margin-bottom: 6px;">${f}</li>`).join('');
+
+  const dataHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-size: 0.85rem;">
+      <div><strong>Prognozowane środki:</strong> ${result.data.projectedAvailable.toFixed(2)} zł</div>
+      <div><strong>Po wydatku:</strong> ${result.data.availableAfterSimulation.toFixed(2)} zł</div>
+      <div><strong>Śr. dzienne wydatki:</strong> ${result.data.avgDailySpending.toFixed(2)} zł</div>
+      <div><strong>Mediana dzienna:</strong> ${result.data.medianDailySpending.toFixed(2)} zł</div>
+      ${result.data.dailyBudgetAfter > 0 ? `<div><strong>Budżet dzienny po:</strong> ${result.data.dailyBudgetAfter.toFixed(2)} zł</div>` : ''}
+      ${result.data.daysToNextIncome > 0 ? `<div><strong>Dni do wpływu:</strong> ${result.data.daysToNextIncome}</div>` : ''}
+    </div>
+  `;
+
+  const html = `
+    <div style="background: ${bg}; border: 2px solid ${color}; border-radius: 12px; padding: 20px; margin-top: 15px;">
+      <h4 style="color: ${color}; margin: 0 0 10px 0; font-size: 1.2rem;">${icon} ${result.title}</h4>
+      <p style="margin: 0 0 12px 0; font-size: 0.95rem;">${result.summary}</p>
+      <div style="margin-top: 12px;">
+        <strong>Szczegółowa analiza:</strong>
+        <ul style="margin: 8px 0; padding-left: 20px; line-height: 1.6;">
+          ${findingsHTML}
+        </ul>
+      </div>
+      ${dataHTML}
+    </div>
+  `;
+
+  container.innerHTML = sanitizeHTML(html);
+}
+
+const handleSimulateExpense = () => {
+  const dateInput = document.getElementById('simulationDate');
+  const amountInput = document.getElementById('simulationAmount');
+
+  if (!dateInput || !amountInput) return;
+
+  const date = dateInput.value;
+  const amount = parseFloat(amountInput.value);
+
+  if (!date) {
+    showErrorMessage('Wybierz datę wydatku');
+    return;
+  }
+
+  if (!amount || amount <= 0) {
+    showErrorMessage('Podaj prawidłową kwotę wydatku');
+    return;
+  }
+
+  const result = simulateExpense(date, amount);
+  renderSimulationResult(result);
 };
 
 // Eksport danych budżetowych do analizy LLM - wrapper dla event delegation
@@ -1902,6 +1966,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
+  const simulationDateInput = document.getElementById('simulationDate');
 
   // Śledź aktywność użytkownika
   const activityEvents = ['click', 'keydown', 'scroll', 'touchstart'];
@@ -1913,6 +1978,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
+  if (simulationDateInput) simulationDateInput.value = today;
 
   // Funkcja do przełączania zakładek autoryzacji
   const showAuthTab = (tabName) => {
@@ -2028,7 +2094,10 @@ document.addEventListener('DOMContentLoaded', () => {
     'apply-custom-period': () => applyCustomPeriod(),
 
     // Eksport danych
-    'export-budget-data': (el) => handleExportBudgetData(el.dataset.format)
+    'export-budget-data': (el) => handleExportBudgetData(el.dataset.format),
+
+    // Symulacja wydatku
+    'simulate-expense': () => handleSimulateExpense()
   });
 
   // Podpięcie formularzy (zamiast inline onsubmit)
