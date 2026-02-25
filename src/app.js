@@ -1519,14 +1519,14 @@ function renderSimulationResult(result) {
 
   const dataHTML = `
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-size: 0.85rem;">
-      <div><strong>Realne środki (na koncie):</strong> ${result.data.currentRealFunds.toFixed(2)} zł</div>
-      <div><strong>Dostępne na dzień symulacji:</strong> ${result.data.projectedAvailable.toFixed(2)} zł</div>
+      <div><strong>Realne środki (dziś):</strong> ${result.data.currentRealFunds.toFixed(2)} zł</div>
+      <div><strong>Prognoza na ${result.data.simulationDate}:</strong> ${result.data.projectedAvailable.toFixed(2)} zł</div>
       <div><strong>Po wydatku:</strong> ${result.data.availableAfterSimulation.toFixed(2)} zł</div>
-      <div><strong>Śr. dzienne wydatki:</strong> ${result.data.avgDailySpending.toFixed(2)} zł</div>
+      ${result.data.daysToSimulation > 0 ? `<div><strong>Szac. wydatki po drodze (${result.data.daysToSimulation} dni):</strong> ${result.data.estimatedSpendingUntilSim.toFixed(2)} zł</div>` : ''}
       <div><strong>Mediana dzienna:</strong> ${result.data.medianDailySpending.toFixed(2)} zł</div>
-      ${result.data.dailyBudgetAfter > 0 ? `<div><strong>Budżet dzienny po:</strong> ${result.data.dailyBudgetAfter.toFixed(2)} zł</div>` : ''}
-      ${result.data.daysToNextIncome > 0 ? `<div><strong>Dni do wpływu:</strong> ${result.data.daysToNextIncome}</div>` : ''}
-      ${result.data.plannedIncomesBeforeSim > 0 ? `<div><strong>Planowane wpływy (nierealizowane):</strong> ${result.data.plannedIncomesBeforeSim.toFixed(2)} zł</div>` : ''}
+      <div><strong>Średnia dzienna:</strong> ${result.data.avgDailySpending.toFixed(2)} zł</div>
+      ${result.data.dailyBudgetAfter > 0 ? `<div><strong>Budżet dzienny po wydatku:</strong> ${result.data.dailyBudgetAfter.toFixed(2)} zł</div>` : ''}
+      ${result.data.daysToNextIncome > 0 ? `<div><strong>Dni do wpływu (po symulacji):</strong> ${result.data.daysToNextIncome}</div>` : ''}
     </div>
   `;
 

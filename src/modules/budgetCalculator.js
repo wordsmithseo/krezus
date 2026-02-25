@@ -1166,8 +1166,7 @@ export function simulateExpense(simulationDate, simulationAmount) {
     const incomes = getIncomes();
     const savingGoal = getSavingGoal();
 
-    // 1. Oblicz REALNE dostępne środki - tylko zrealizowane transakcje
-    // NIE liczymy planowanych przychodów jako dostępnych środków (nie mamy ich fizycznie)
+    // === KROK 1: Realne środki DZIŚ (tylko zrealizowane transakcje) ===
     let realizedIncome = 0;
     let realizedExpense = 0;
 
@@ -1183,48 +1182,9 @@ export function simulateExpense(simulationDate, simulationAmount) {
         }
     });
 
-    // Realne dostępne środki - to, co fizycznie mamy
     const currentRealFunds = realizedIncome - realizedExpense - savingGoal;
 
-    // 2. Planowane WYDATKI między dziś a datą symulacji (zobowiązania, które pomniejszą saldo)
-    const plannedExpensesBeforeSim = expenses
-        .filter(e => e.type === 'planned' && e.date > today && e.date <= simulationDate)
-        .reduce((sum, e) => sum + (e.amount || 0), 0);
-
-    // Planowane PRZYCHODY do daty symulacji - tylko informacyjnie
-    const plannedIncomesBeforeSim = incomes
-        .filter(inc => inc.type === 'planned' && inc.date > today && inc.date <= simulationDate)
-        .reduce((sum, inc) => sum + (inc.amount || 0), 0);
-
-    // Prognozowane środki = realne środki - planowane wydatki (BEZ planowanych przychodów)
-    const projectedAvailable = currentRealFunds - plannedExpensesBeforeSim;
-    const availableAfterSimulation = projectedAvailable - simulationAmount;
-
-    // 3. Ile dni do następnego planowanego wpływu PO dacie symulacji
-    const futureIncomes = incomes
-        .filter(inc => inc.type === 'planned' && inc.date > simulationDate)
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-    const nextIncome = futureIncomes[0] || null;
-    let daysToNextIncome = 0;
-    if (nextIncome) {
-        const simDate = new Date(simulationDate);
-        const incDate = new Date(nextIncome.date);
-        daysToNextIncome = Math.ceil((incDate - simDate) / (1000 * 60 * 60 * 24));
-    }
-
-    // 3. Oblicz planowane wydatki między datą symulacji a następnym wpływem
-    const plannedExpensesAfterSim = expenses
-        .filter(e => e.type === 'planned' && e.date > simulationDate && (!nextIncome || e.date <= nextIncome.date))
-        .reduce((sum, e) => sum + (e.amount || 0), 0);
-
-    const availableAfterAllPlanned = availableAfterSimulation - plannedExpensesAfterSim;
-
-    // 4. Bazowy limit dzienny po symulacji do następnego wpływu
-    const daysForBudget = Math.max(1, daysToNextIncome || 30);
-    const dailyBudgetAfter = availableAfterAllPlanned / daysForBudget;
-
-    // 5. Analiza historyczna - średnie dzienne wydatki
+    // === KROK 2: Analiza historyczna (60 dni) - potrzebna do szacowania codziennych wydatków ===
     const d60 = new Date(today);
     d60.setDate(d60.getDate() - 60);
     const date60str = getWarsawDateString(d60);
@@ -1247,7 +1207,52 @@ export function simulateExpense(simulationDate, simulationAmount) {
         ? sortedDailyTotals[Math.floor(sortedDailyTotals.length / 2)]
         : 0;
 
-    // 6. Analiza dnia tygodnia - ile zwykle wydaje się w ten dzień
+    // === KROK 3: Planowane transakcje PRZED datą symulacji (te się zrealizują po drodze) ===
+    const plannedIncomesBeforeSim = incomes
+        .filter(inc => inc.type === 'planned' && inc.date > today && inc.date <= simulationDate)
+        .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+    const plannedExpensesBeforeSim = expenses
+        .filter(e => e.type === 'planned' && e.date > today && e.date <= simulationDate)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    // === KROK 4: Szacowane codzienne wydatki od dziś do daty symulacji ===
+    // Ile dni między dziś a datą symulacji (nie licząc dziś - dzisiejsze wydatki już się realizują)
+    const daysToSimulation = Math.max(0, Math.ceil((new Date(simulationDate) - new Date(today)) / (1000 * 60 * 60 * 24)));
+
+    // Używamy mediany dziennej jako bezpieczniejszego estymatora codziennych wydatków
+    // (mediana jest odporniejsza na jednorazowe duże wydatki niż średnia)
+    const estimatedDailyBurn = medianDailySpending > 0 ? medianDailySpending : avgDailySpending;
+    const estimatedSpendingUntilSim = estimatedDailyBurn * daysToSimulation;
+
+    // === KROK 5: Prognozowane środki na dzień symulacji ===
+    // Realne środki + planowane wpływy przed symulacją - planowane wydatki przed symulacją - szacowane codzienne wydatki
+    const projectedAvailable = currentRealFunds
+        + plannedIncomesBeforeSim    // planowane wpływy (zrealizują się przed datą symulacji)
+        - plannedExpensesBeforeSim   // planowane wydatki (zrealizują się przed datą symulacji)
+        - estimatedSpendingUntilSim; // szacowane codzienne wydatki po drodze (na bazie nawyków)
+
+    const availableAfterSimulation = projectedAvailable - simulationAmount;
+
+    // === KROK 6: Kontekst PO dacie symulacji (tylko informacyjnie, NIE wpływa na decyzję) ===
+    // Następny planowany wpływ po dacie symulacji
+    const futureIncomesAfterSim = incomes
+        .filter(inc => inc.type === 'planned' && inc.date > simulationDate)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    const nextIncomeAfterSim = futureIncomesAfterSim[0] || null;
+    let daysToNextIncome = 0;
+    if (nextIncomeAfterSim) {
+        const simDate = new Date(simulationDate);
+        const incDate = new Date(nextIncomeAfterSim.date);
+        daysToNextIncome = Math.ceil((incDate - simDate) / (1000 * 60 * 60 * 24));
+    }
+
+    // Szacowany dzienny budżet po wydatku (ile zostanie na dzień do następnego wpływu)
+    const daysForBudget = Math.max(1, daysToNextIncome || 30);
+    const dailyBudgetAfter = availableAfterSimulation / daysForBudget;
+
+    // === KROK 7: Analiza dnia tygodnia ===
     const simDayOfWeek = new Date(simulationDate).getDay();
     const dayNames = ['Niedziela', 'Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota'];
     const dayExpenses = historicalExpenses.filter(e => new Date(e.date).getDay() === simDayOfWeek);
@@ -1255,37 +1260,34 @@ export function simulateExpense(simulationDate, simulationAmount) {
         ? dayExpenses.reduce((sum, e) => sum + (e.amount || 0), 0) / new Set(dayExpenses.map(e => e.date)).size
         : avgDailySpending;
 
-    // 7. Ile razy taki wydatek był już dokonywany (analiza częstotliwości kwoty)
+    // === KROK 8: Podobne wydatki w historii ===
     const similarExpenses = historicalExpenses.filter(e =>
         Math.abs((e.amount || 0) - simulationAmount) < simulationAmount * 0.2
     );
 
-    // 8. Podejmij decyzję
+    // === KROK 9: Podejmij decyzję ===
     const findings = [];
     let riskLevel = 'safe'; // safe, caution, warning, danger
-
-    // Dni do daty symulacji
-    const daysToSimulation = Math.max(0, Math.ceil((new Date(simulationDate) - new Date(today)) / (1000 * 60 * 60 * 24)));
 
     // Czy starczy środków?
     if (availableAfterSimulation < 0) {
         riskLevel = 'danger';
-        findings.push(`Brak wystarczających środków. Po wydatku saldo wyniesie ${availableAfterSimulation.toFixed(2)} zł (ujemne).`);
-    } else if (availableAfterAllPlanned < 0) {
+        findings.push(`Brak wystarczających środków. Prognozowane saldo po wydatku: ${availableAfterSimulation.toFixed(2)} zł (ujemne).`);
+    } else if (dailyBudgetAfter < 0) {
         riskLevel = 'danger';
-        findings.push(`Po uwzględnieniu planowanych wydatków (${plannedExpensesAfterSim.toFixed(2)} zł) saldo będzie ujemne: ${availableAfterAllPlanned.toFixed(2)} zł.`);
-    } else if (dailyBudgetAfter < avgDailySpending * 0.3) {
+        findings.push(`Po wydatku zabraknie środków na codzienne wydatki do następnego wpływu.`);
+    } else if (dailyBudgetAfter < estimatedDailyBurn * 0.3) {
         riskLevel = 'warning';
-        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) spadnie poniżej 30% Twoich zwykłych wydatków (${avgDailySpending.toFixed(2)} zł/dzień).`);
-    } else if (dailyBudgetAfter < avgDailySpending * 0.6) {
+        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) spadnie poniżej 30% Twoich zwykłych wydatków (${estimatedDailyBurn.toFixed(2)} zł/dzień).`);
+    } else if (dailyBudgetAfter < estimatedDailyBurn * 0.6) {
         riskLevel = 'caution';
-        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) będzie ograniczony w porównaniu do zwykłych wydatków (${avgDailySpending.toFixed(2)} zł/dzień).`);
+        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) będzie ograniczony w porównaniu do zwykłych wydatków (${estimatedDailyBurn.toFixed(2)} zł/dzień).`);
     }
 
-    // Kontekst kwoty
-    if (simulationAmount > projectedAvailable * 0.5) {
+    // Kontekst kwoty vs dostępne środki
+    if (projectedAvailable > 0 && simulationAmount > projectedAvailable * 0.5) {
         if (riskLevel === 'safe') riskLevel = 'caution';
-        findings.push(`Wydatek stanowi ${((simulationAmount / projectedAvailable) * 100).toFixed(0)}% dostępnych środków - to znacząca część budżetu.`);
+        findings.push(`Wydatek stanowi ${((simulationAmount / projectedAvailable) * 100).toFixed(0)}% prognozowanych środków na dzień symulacji.`);
     }
 
     if (simulationAmount > avgDailySpending * 5 && avgDailySpending > 0) {
@@ -1302,27 +1304,27 @@ export function simulateExpense(simulationDate, simulationAmount) {
         findings.push(`Podobne wydatki (ok. ${simulationAmount.toFixed(0)} zł) pojawiały się ${similarExpenses.length} razy w ostatnich 60 dniach.`);
     }
 
-    // Planowane przychody
-    if (nextIncome) {
-        findings.push(`Następny planowany wpływ: ${nextIncome.source || 'Bez nazwy'} (${(nextIncome.amount || 0).toFixed(2)} zł) dnia ${nextIncome.date} (za ${daysToNextIncome} dni).`);
+    // Szacowane wydatki po drodze
+    if (daysToSimulation > 0 && estimatedSpendingUntilSim > 0) {
+        findings.push(`Szacowane codzienne wydatki do daty symulacji (${daysToSimulation} dni × ${estimatedDailyBurn.toFixed(2)} zł): ${estimatedSpendingUntilSim.toFixed(2)} zł.`);
+    }
+
+    // Planowane wpływy PRZED symulacją (zrealizują się po drodze)
+    if (plannedIncomesBeforeSim > 0) {
+        findings.push(`Planowane wpływy do dnia symulacji: +${plannedIncomesBeforeSim.toFixed(2)} zł (uwzględnione w prognozie).`);
+    }
+
+    // Planowane wydatki PRZED symulacją (zrealizują się po drodze)
+    if (plannedExpensesBeforeSim > 0) {
+        findings.push(`Planowane wydatki do dnia symulacji: -${plannedExpensesBeforeSim.toFixed(2)} zł (uwzględnione w prognozie).`);
+    }
+
+    // Informacja o następnym wpływie PO dacie symulacji (kontekst informacyjny)
+    if (nextIncomeAfterSim) {
+        findings.push(`Następny wpływ po wydatku: ${nextIncomeAfterSim.source || 'Bez nazwy'} (${(nextIncomeAfterSim.amount || 0).toFixed(2)} zł) dnia ${nextIncomeAfterSim.date} (za ${daysToNextIncome} dni od symulacji).`);
     } else {
         if (riskLevel === 'safe' || riskLevel === 'caution') riskLevel = 'caution';
-        findings.push(`Brak zaplanowanych przyszłych wpływów - zachowaj ostrożność.`);
-    }
-
-    // Planowane wydatki po symulacji
-    if (plannedExpensesAfterSim > 0) {
-        findings.push(`Planowane wydatki po tej dacie: ${plannedExpensesAfterSim.toFixed(2)} zł do następnego wpływu.`);
-    }
-
-    // Planowane wydatki PRZED datą symulacji
-    if (plannedExpensesBeforeSim > 0) {
-        findings.push(`Planowane wydatki do dnia symulacji: ${plannedExpensesBeforeSim.toFixed(2)} zł (odliczone od dostępnych środków).`);
-    }
-
-    // Informacja o planowanych przychodach (tylko kontekst, NIE liczone jako dostępne)
-    if (plannedIncomesBeforeSim > 0) {
-        findings.push(`Planowane przychody do dnia symulacji: ${plannedIncomesBeforeSim.toFixed(2)} zł (nieuwzględnione w saldzie - nie masz ich jeszcze fizycznie).`);
+        findings.push(`Brak zaplanowanych wpływów po dacie symulacji - zachowaj ostrożność.`);
     }
 
     // Pozytywne informacje jeśli bezpiecznie
@@ -1356,13 +1358,14 @@ export function simulateExpense(simulationDate, simulationAmount) {
             currentRealFunds,
             projectedAvailable,
             availableAfterSimulation,
-            availableAfterAllPlanned,
             dailyBudgetAfter,
+            daysToSimulation,
             daysToNextIncome,
-            nextIncome: nextIncome ? { source: nextIncome.source, amount: nextIncome.amount, date: nextIncome.date } : null,
-            plannedExpensesBeforeSim,
-            plannedExpensesAfterSim,
+            estimatedDailyBurn,
+            estimatedSpendingUntilSim,
             plannedIncomesBeforeSim,
+            plannedExpensesBeforeSim,
+            nextIncomeAfterSim: nextIncomeAfterSim ? { source: nextIncomeAfterSim.source, amount: nextIncomeAfterSim.amount, date: nextIncomeAfterSim.date } : null,
             avgDailySpending,
             medianDailySpending
         }
