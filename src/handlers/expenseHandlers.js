@@ -18,6 +18,7 @@ import { getCategoryIcon } from '../utils/iconMapper.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { log } from '../modules/logger.js';
+import { queueNotification } from '../modules/pushNotifications.js';
 
 let editingExpenseId = null;
 let getBudgetUserNameFn = null;
@@ -131,6 +132,16 @@ export async function addExpense(e) {
       type,
       budgetUser: budgetUserName
     });
+
+    if (!wasEditing) {
+      queueNotification('expense', {
+        amount,
+        category,
+        description,
+        transactionType: type,
+        addedBy: budgetUserName
+      }).catch(() => {});
+    }
 
     form.reset();
     form.expenseDate.value = getWarsawDateString();
@@ -248,6 +259,13 @@ export async function realiseExpense(expenseId) {
       description: expense.description,
       budgetUser: budgetUserName
     });
+
+    queueNotification('expense_realised', {
+      amount: expense.amount,
+      category: expense.category,
+      description: expense.description,
+      addedBy: budgetUserName
+    }).catch(() => {});
 
     clearLimitsCache();
     if (renderAfterChangeFn) renderAfterChangeFn('expense');
