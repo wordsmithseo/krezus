@@ -144,6 +144,16 @@ import { initializePresence, cleanupPresence, recordActivity } from './modules/p
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
 
+// Import modułu powiadomień push
+import {
+  initPushNotifications,
+  isPushSupported,
+  isVapidConfigured,
+  isPushEnabled,
+  enablePush,
+  disablePush
+} from './modules/pushNotifications.js';
+
 let currentCategoryPage = 1;
 let currentLogPage = 1;
 let budgetUsersCache = [];
@@ -1877,6 +1887,76 @@ const handleLogout = async () => {
   }
 };
 
+// ─── Powiadomienia push – inicjalizacja UI ──────────────────────────────────
+
+async function initPushUI() {
+  const enableBtn = document.getElementById('pushEnableBtn');
+  const disableBtn = document.getElementById('pushDisableBtn');
+  const statusText = document.getElementById('pushStatusText');
+  const notSupported = document.getElementById('pushNotSupported');
+  const vapidMissing = document.getElementById('pushVapidMissing');
+
+  if (!enableBtn || !disableBtn) return;
+
+  // Sprawdź czy VAPID key jest skonfigurowany
+  const vapidConfigured = isVapidConfigured();
+
+  if (!isPushSupported()) {
+    if (notSupported) notSupported.style.display = 'block';
+    return;
+  }
+
+  if (!vapidConfigured) {
+    if (vapidMissing) vapidMissing.style.display = 'block';
+    return;
+  }
+
+  async function refreshPushUI() {
+    const enabled = await isPushEnabled();
+    enableBtn.style.display = enabled ? 'none' : 'inline-flex';
+    disableBtn.style.display = enabled ? 'inline-flex' : 'none';
+    if (statusText) {
+      statusText.textContent = enabled
+        ? 'Powiadomienia aktywne na tym urządzeniu'
+        : 'Powiadomienia wyłączone';
+    }
+  }
+
+  enableBtn.addEventListener('click', async () => {
+    enableBtn.disabled = true;
+    enableBtn.textContent = 'Włączanie...';
+    try {
+      await enablePush();
+      showSuccessMessage('Powiadomienia push włączone!');
+    } catch (err) {
+      showErrorMessage(err.message || 'Nie udało się włączyć powiadomień');
+    } finally {
+      enableBtn.disabled = false;
+      enableBtn.textContent = '🔔 Włącz powiadomienia';
+      await refreshPushUI();
+    }
+  });
+
+  disableBtn.addEventListener('click', async () => {
+    disableBtn.disabled = true;
+    disableBtn.textContent = 'Wyłączanie...';
+    try {
+      await disablePush();
+      showSuccessMessage('Powiadomienia push wyłączone');
+    } catch (err) {
+      showErrorMessage(err.message || 'Nie udało się wyłączyć powiadomień');
+    } finally {
+      disableBtn.disabled = false;
+      disableBtn.textContent = '🔕 Wyłącz powiadomienia';
+      await refreshPushUI();
+    }
+  });
+
+  await refreshPushUI();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 onAuthChange(async (user) => {
   console.log('🔄 onAuthChange wywołane, user:', user ? user.email : 'null');
   
@@ -1930,6 +2010,10 @@ onAuthChange(async (user) => {
 
     // Inicjalizuj śledzenie obecności
     initializePresence();
+
+    // Inicjalizuj powiadomienia push
+    initPushNotifications();
+    initPushUI();
 
     // Wyświetl wersję aplikacji w nagłówku
     initVersion();

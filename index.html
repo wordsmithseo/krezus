@@ -562,6 +562,30 @@
                     </form>
                 </div>
 
+                <div class="section-card" id="pushNotificationCard">
+                    <h2>🔔 Powiadomienia push</h2>
+                    <p class="text-muted" style="margin-bottom: 15px;">
+                        Otrzymuj powiadomienia o nowych wydatkach i przychodach – nawet gdy przeglądarka jest zamknięta lub ekran telefonu jest wyłączony.
+                    </p>
+                    <div id="pushNotSupported" style="display:none; color: var(--danger, #e74c3c); margin-bottom: 12px;">
+                        ⚠️ Twoja przeglądarka nie obsługuje powiadomień push.
+                    </div>
+                    <div id="pushVapidMissing" style="display:none; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 12px; margin-bottom: 12px; font-size: 0.875rem;">
+                        ⚙️ <strong>Wymagana konfiguracja:</strong> Uzupełnij klucz VAPID w <code>src/modules/pushNotifications.js</code>
+                        i wdróż Firebase Cloud Functions (<code>cd functions &amp;&amp; npm install &amp;&amp; firebase deploy --only functions</code>).
+                        Szczegóły w <code>README.md</code>.
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                        <button id="pushEnableBtn" class="btn btn-success" style="display:none;">
+                            🔔 Włącz powiadomienia
+                        </button>
+                        <button id="pushDisableBtn" class="btn btn-danger" style="display:none;">
+                            🔕 Wyłącz powiadomienia
+                        </button>
+                        <span id="pushStatusText" style="opacity: 0.75; font-size: 0.9rem;"></span>
+                    </div>
+                </div>
+
                 <div class="section-card">
                     <h2>📊 Eksport danych do analizy LLM</h2>
                     <p class="text-muted" style="margin-bottom: 15px;">

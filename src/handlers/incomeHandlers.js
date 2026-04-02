@@ -17,6 +17,7 @@ import { validateAmount } from '../utils/validators.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { log } from '../modules/logger.js';
+import { queueNotification } from '../modules/pushNotifications.js';
 
 let editingIncomeId = null;
 let getBudgetUserNameFn = null;
@@ -108,6 +109,15 @@ export async function addIncome(e) {
       type,
       budgetUser: budgetUserName
     });
+
+    if (!wasEditing) {
+      queueNotification('income', {
+        amount,
+        source,
+        transactionType: type,
+        addedBy: budgetUserName
+      }).catch(() => {});
+    }
 
     form.reset();
     form.incomeDate.value = getWarsawDateString();
@@ -228,6 +238,12 @@ export async function realiseIncome(incomeId) {
       source: income.source,
       budgetUser: budgetUserName
     });
+
+    queueNotification('income_realised', {
+      amount: income.amount,
+      source: income.source,
+      addedBy: budgetUserName
+    }).catch(() => {});
 
     if (renderAfterChangeFn) renderAfterChangeFn('income');
     showSuccessMessage('Przychód zrealizowany');
