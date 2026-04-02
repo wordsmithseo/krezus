@@ -15,7 +15,7 @@ import { getUserId } from './auth.js';
 // KONFIGURACJA – uzupełnij po wygenerowaniu klucza VAPID w Firebase Console
 // Project Settings → Cloud Messaging → Web Push certificates
 // ─────────────────────────────────────────────
-const VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
+const VAPID_KEY = 'BJjN5BSemp0b3SAfpudZVV_1U-bZMYhlWdmkFdGwcvD0tsvi_5nJVjtXEs8H3cA7MzmjASneOhIDtffMLcOg-CM';
 const SW_PATH = '/firebase-messaging-sw.js';
 
 let _messaging = null;
