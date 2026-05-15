@@ -256,8 +256,19 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
     nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'stat-label';
+    dateDiv.style.fontSize = '0.85rem';
+    dateDiv.style.opacity = '0.7';
+    dateDiv.style.marginBottom = '4px';
+    if (limit.date) {
+      const [y, m, d] = limit.date.split('-');
+      dateDiv.textContent = `📅 ${d}.${m}.${y}`;
+    }
+
     const daysDiv = document.createElement('div');
-    daysDiv.className = 'stat-label mt-10';
+    daysDiv.className = 'stat-label';
+    daysDiv.style.marginTop = '2px';
 
     // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
     if (limit.showToday) {
@@ -321,6 +332,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     });
 
     card.appendChild(nameDiv);
+    if (limit.date) card.appendChild(dateDiv);
     card.appendChild(daysDiv);
     card.appendChild(realLabelDiv);
     card.appendChild(realValueDiv);
