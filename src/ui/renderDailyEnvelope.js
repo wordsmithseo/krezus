@@ -141,23 +141,17 @@ export function renderDailyEnvelope() {
     updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 'envelopeGaugeRemaining', 0, 0);
     updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', 0, 0);
 
-    if (envelopePeriodInfoEl) {
-      envelopePeriodInfoEl.innerHTML = '';
-    }
+    if (envelopePeriodInfoEl) envelopePeriodInfoEl.innerHTML = '';
 
     const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
     if (calcInfoDiv) {
-      if (calcInfo) {
-        calcInfoDiv.innerHTML = sanitizeHTML(`<small style="color: white; opacity: 0.95;">${calcInfo.description}</small>`);
-      } else {
-        calcInfoDiv.innerHTML = '<small style="color: white; opacity: 0.95;">Brak danych do wyliczenia koperty</small>';
-      }
+      calcInfoDiv.innerHTML = calcInfo
+        ? sanitizeHTML(`<small style="color:var(--ink-3);font-size:12px">${calcInfo.description}</small>`)
+        : '';
     }
 
     const overLimitDiv = document.getElementById('envelopeOverLimit');
-    if (overLimitDiv) {
-      overLimitDiv.style.display = 'none';
-    }
+    if (overLimitDiv) overLimitDiv.style.display = 'none';
 
     return;
   }
@@ -238,9 +232,9 @@ export function renderDailyEnvelope() {
     startCountdownTimers();
   }
 
-  const gaugeColor = percentage < 50 ? 'linear-gradient(90deg, #10b981, #059669)'
-    : percentage < 80 ? 'linear-gradient(90deg, #f59e0b, #d97706)'
-    : 'linear-gradient(90deg, #ef4444, #dc2626)';
+  const gaugeColor = percentage < 50 ? 'var(--success)'
+    : percentage < 80 ? 'var(--warning)'
+    : 'var(--danger)';
 
   if (spendingGaugeEl) {
     spendingGaugeEl.style.width = `${percentage}%`;
@@ -255,36 +249,25 @@ export function renderDailyEnvelope() {
   updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 'envelopeGaugeRemaining', spent, total);
   updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', spent, total);
 
-  const calcInfoHtml = calcInfo ? sanitizeHTML(`
-    <small style="font-size: 0.85rem; line-height: 1.4; opacity: 0.85;">
-      ${calcInfo.description}<br>
-      <strong>Składowe:</strong> ${calcInfo.formula}
-    </small>
-  `) : '';
-
   const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
   if (calcInfoDiv && calcInfo) {
-    calcInfoDiv.innerHTML = sanitizeHTML(`
-      <small style="color: white; font-size: 0.85rem; line-height: 1.4; opacity: 0.95;">
-        ${calcInfo.description}<br>
-        <strong>Składowe:</strong> ${calcInfo.formula}
-      </small>
-    `);
+    calcInfoDiv.innerHTML = sanitizeHTML(
+      `<small style="font-size:12px;color:var(--ink-3);line-height:1.5">${calcInfo.description}</small>`
+    );
   }
   if (envelopeCalcInfoFullEl && calcInfo) {
-    envelopeCalcInfoFullEl.innerHTML = calcInfoHtml;
+    envelopeCalcInfoFullEl.innerHTML = sanitizeHTML(
+      `<small style="font-size:12px;color:var(--ink-3);line-height:1.5">${calcInfo.description}<br><strong>Składowe:</strong> ${calcInfo.formula}</small>`
+    );
   }
 
   const overLimitDiv = document.getElementById('envelopeOverLimit');
   if (overLimitDiv) {
     if (spent > total) {
       const overAmount = (spent - total).toFixed(2);
-      const html = `
-        <div style="color: #fee; font-weight: 600; margin-top: 10px;">
-          ⚠️ Przekroczono kopertę o ${overAmount} zł
-        </div>
-      `;
-      overLimitDiv.innerHTML = sanitizeHTML(html);
+      overLimitDiv.innerHTML = sanitizeHTML(
+        `<div style="background:var(--danger-soft);color:var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:500;margin-top:6px">⚠️ Przekroczono kopertę o ${escapeHTML(overAmount)} zł</div>`
+      );
       overLimitDiv.style.display = 'block';
     } else {
       overLimitDiv.style.display = 'none';
