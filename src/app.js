@@ -120,7 +120,7 @@ import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch } from './ui/renderIncomes.js';
-import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
+import { renderSavingsGoals, selectSavingsGoal } from './ui/renderSavingsGoals.js';
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
@@ -1063,6 +1063,10 @@ const showSection = (sectionId) => {
     }
   }
 
+  if (sectionId === 'savingsGoalsSection') {
+    renderSavingsGoals();
+  }
+
   if (sectionId === 'settingsSection') {
     resetAndRenderLogs();
     const listEl = document.getElementById('sharedBudgetUsersList');
@@ -1464,7 +1468,14 @@ document.addEventListener('DOMContentLoaded', () => {
     'filter-expenses': (el) => setExpenseFilter(el.dataset.filter),
 
     // Filtry przychodów
-    'filter-incomes': (el) => setIncomeFilter(el.dataset.filter)
+    'filter-incomes': (el) => setIncomeFilter(el.dataset.filter),
+
+    // Cele oszczędzania
+    'open-add-savings-goal-modal': () => window.showAddSavingsGoalModal?.(),
+    'select-savings-goal': (el) => selectSavingsGoal(el.dataset.goalId),
+    'edit-savings-goal': (el) => window.editSavingsGoal?.(el.dataset.id),
+    'delete-savings-goal': (el) => window.deleteSavingsGoal?.(el.dataset.id),
+    'open-deposit-modal': (el) => window.showDepositModal?.(el.dataset.goalId),
   });
 
   // Zamknij dropdown kategorii przy kliknięciu poza nim

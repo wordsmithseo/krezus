@@ -79,21 +79,23 @@ export function renderSavingsGoals() {
 }
 
 function renderEmptyState() {
+  const emptyStats = { totalCurrentAmount: 0, totalTargetAmount: 0, activeGoals: 0, completedGoals: 0, progressPercentage: 0 };
   return `
-    <div class="row between" style="flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:20px">
-      <p class="lead" style="margin:0">Wiele celów oszczędnościowych. Łączna kwota odłożonych środków zostaje wyłączona z dostępnego budżetu.</p>
-      <button class="btn accent sm" data-action="open-add-savings-goal-modal">
-        ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
-      </button>
-    </div>
-    <div class="card">
-      <div class="empty-state" style="padding:60px 20px;text-align:center">
-        <p style="font-size:2rem;margin:0 0 12px">🎯</p>
-        <p style="font-weight:500;margin:0 0 8px">Brak celów oszczędzania</p>
-        <p class="text-mute text-sm" style="max-width:360px;margin:0 auto 16px">Dodaj swój pierwszy cel, a aplikacja będzie sugerować bezpieczne kwoty do odłożenia.</p>
-        <button class="btn accent sm" data-action="open-add-savings-goal-modal">
-          ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
-        </button>
+    ${renderHeader()}
+    ${renderStatGrid(emptyStats, 0)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+      <div class="card flush">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center">
+          <h3 style="flex:1">Twoje cele</h3>
+          <span class="tag">0</span>
+        </div>
+        <div class="empty-state" style="padding:48px 20px;text-align:center">
+          <p style="font-weight:500;margin:0 0 8px">Brak celów oszczędzania</p>
+          <p class="text-mute text-sm" style="max-width:300px;margin:0 auto 16px">Dodaj swój pierwszy cel, a aplikacja będzie sugerować bezpieczne kwoty do odłożenia.</p>
+          <button class="btn accent sm" data-action="open-add-savings-goal-modal">
+            ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -112,26 +114,24 @@ function renderHeader() {
 
 function renderStatGrid(stats, monthTotal) {
   return `
-    <div class="card" style="margin-bottom:20px">
-      <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
-        <div class="stat">
-          <div class="label">Łącznie odłożone</div>
-          <div class="value num">${Fmt.zl(stats.totalCurrentAmount)}<span class="unit">zł</span></div>
-          <div class="sub">z ${Fmt.zl(stats.totalTargetAmount)} zł</div>
-        </div>
-        <div class="stat">
-          <div class="label">Cele aktywne</div>
-          <div class="value">${stats.activeGoals}</div>
-          <div class="sub">${stats.completedGoals} osiągniętych</div>
-        </div>
-        <div class="stat">
-          <div class="label">Postęp ogólny</div>
-          <div class="value">${Math.round(stats.progressPercentage)}<span class="unit">%</span></div>
-        </div>
-        <div class="stat">
-          <div class="label">Wpłaty w tym mies.</div>
-          <div class="value num">${Fmt.zl(monthTotal)}<span class="unit">zł</span></div>
-        </div>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Łącznie odłożone</div>
+        <div class="value num">${Fmt.zl(stats.totalCurrentAmount)}<span class="unit">zł</span></div>
+        <div class="sub">z ${Fmt.zl(stats.totalTargetAmount)} zł</div>
+      </div>
+      <div class="stat">
+        <div class="label">Cele aktywne</div>
+        <div class="value">${stats.activeGoals}</div>
+        <div class="sub">${stats.completedGoals} osiągniętych</div>
+      </div>
+      <div class="stat">
+        <div class="label">Postęp ogólny</div>
+        <div class="value">${Math.round(stats.progressPercentage)}<span class="unit">%</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Wpłaty w tym mies.</div>
+        <div class="value num">${Fmt.zl(monthTotal)}<span class="unit">zł</span></div>
       </div>
     </div>
   `;
@@ -153,7 +153,7 @@ function renderGoalList(sortedGoals) {
         data-action="select-savings-goal"
         data-goal-id="${escapeHTML(goal.id)}"
       >
-        <div style="width:36px;height:36px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
+        <div style="width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,${color} 14%,transparent);color:${color};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(goal.name)}</div>
           <div class="text-mute" style="font-size:11px">${escapeHTML(relDate(goal.targetDate))}</div>
@@ -170,8 +170,9 @@ function renderGoalList(sortedGoals) {
 
   return `
     <div class="card flush">
-      <div class="card-header" style="padding:14px 18px">
-        <h3>Twoje cele <span class="tag" style="font-weight:400;font-size:12px">${sortedGoals.length}</span></h3>
+      <div style="padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center">
+        <h3 style="flex:1">Twoje cele</h3>
+        <span class="tag">${sortedGoals.length}</span>
       </div>
       <div>${items}</div>
     </div>
@@ -199,7 +200,7 @@ function renderGoalDetail(goal, goalIndex) {
     <div class="card">
       <!-- Top row -->
       <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
-        <div style="width:56px;height:56px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
+        <div style="width:56px;height:56px;border-radius:14px;background:color-mix(in srgb,${color} 14%,transparent);color:${color};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(goal.name)}</div>
           ${goal.targetDate ? `<div class="text-mute text-sm">Termin: <strong>${escapeHTML(longDate(goal.targetDate))}</strong> · ${escapeHTML(relDate(goal.targetDate))}</div>` : ''}

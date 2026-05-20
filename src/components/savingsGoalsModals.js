@@ -34,96 +34,44 @@ function createAddSavingsGoalModal() {
     modal.id = 'addSavingsGoalModal';
     modal.className = 'modal';
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:480px">
             <div class="modal-header">
-                <h2>Dodaj cel oszczędzania</h2>
-                <button class="modal-close" onclick="closeModal('addSavingsGoalModal')">✕</button>
+                <h3>Nowy cel oszczędnościowy</h3>
+                <button class="btn ghost icon-only" onclick="window.closeModal('addSavingsGoalModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-
             <form id="savingsGoalForm" onsubmit="window.handleAddSavingsGoal(event)">
-                <div class="form-group">
-                    <label for="savingsGoalName">Nazwa celu *</label>
-                    <input
-                        type="text"
-                        id="savingsGoalName"
-                        placeholder="np. Wakacje, Nowy laptop, Fundusz awaryjny"
-                        required
-                        minlength="2"
-                        maxlength="50"
-                    >
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="field full">
+                            <label>Nazwa celu</label>
+                            <input class="input" type="text" id="savingsGoalName" placeholder="np. Wakacje, Nowy laptop…" required minlength="2" maxlength="50">
+                        </div>
+                        <div class="field">
+                            <label>Kwota docelowa (zł)</label>
+                            <input class="input mono" type="number" id="savingsGoalAmount" placeholder="0" required min="1" step="0.01">
+                        </div>
+                        <div class="field">
+                            <label>Termin (opcjonalnie)</label>
+                            <input class="input" type="date" id="savingsGoalTargetDate">
+                        </div>
+                        <div class="field full">
+                            <label>Ikona</label>
+                            <input class="input" type="text" id="savingsGoalIcon" placeholder="🎯" maxlength="2" value="🎯" style="font-size:20px;width:60px">
+                            <div class="hint">Emoji reprezentujące cel</div>
+                        </div>
+                        <input type="hidden" id="savingsGoalPriority" value="2">
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="savingsGoalDescription">Opis (opcjonalnie)</label>
-                    <textarea
-                        id="savingsGoalDescription"
-                        placeholder="Krótki opis celu..."
-                        rows="3"
-                        maxlength="200"
-                    ></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="savingsGoalAmount">Docelowa kwota (PLN) *</label>
-                    <input
-                        type="number"
-                        id="savingsGoalAmount"
-                        placeholder="0.00"
-                        required
-                        min="10"
-                        step="0.01"
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="savingsGoalTargetDate">Data końcowa (opcjonalnie)</label>
-                    <input
-                        type="date"
-                        id="savingsGoalTargetDate"
-                        placeholder="RRRR-MM-DD"
-                    >
-                    <small class="form-hint">Jeśli określisz deadline, algorytm będzie bardziej agresywny w sugestiach</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="savingsGoalPriority">Priorytet</label>
-                    <select id="savingsGoalPriority">
-                        <option value="1">🔴 Wysoki</option>
-                        <option value="2" selected>🟡 Średni</option>
-                        <option value="3">🟢 Niski</option>
-                    </select>
-                    <small class="form-hint">Priorytet wpływa na kolejność i kwotę sugestii</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="savingsGoalIcon">Ikona (emoji)</label>
-                    <input
-                        type="text"
-                        id="savingsGoalIcon"
-                        placeholder="🎯"
-                        maxlength="2"
-                        value="🎯"
-                    >
-                </div>
-
-                <div class="modal-info-box">
-                    <p>ℹ️ <strong>Jak to działa?</strong></p>
-                    <p>Po dodaniu celu, aplikacja będzie automatycznie analizować Twoje finanse i sugerować bezpieczne kwoty do odłożenia. Nie musisz ręcznie dodawać pieniędzy - algorytm zadba o Twoje bezpieczeństwo finansowe.</p>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('addSavingsGoalModal')">
-                        Anuluj
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        Dodaj cel
-                    </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="window.closeModal('addSavingsGoalModal')">Anuluj</button>
+                    <button type="submit" class="btn accent">Utwórz cel</button>
                 </div>
             </form>
         </div>
     `;
 
     document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) window.closeModal('addSavingsGoalModal'); });
     return modal;
 }
 
@@ -189,14 +137,16 @@ export function showEditSavingsGoalModal(goalId) {
 
     const modal = document.getElementById('editSavingsGoalModal') || createEditSavingsGoalModal();
 
-    // Wypełnij formularz danymi celu
+    const titleEl = document.getElementById('editSavingsGoalTitle');
+    if (titleEl) titleEl.textContent = `Edytuj: ${goal.name}`;
+
     document.getElementById('editSavingsGoalId').value = goal.id;
     document.getElementById('editSavingsGoalName').value = goal.name;
     document.getElementById('editSavingsGoalDescription').value = goal.description || '';
     document.getElementById('editSavingsGoalAmount').value = goal.targetAmount;
     document.getElementById('editSavingsGoalTargetDate').value = goal.targetDate || '';
-    document.getElementById('editSavingsGoalPriority').value = goal.priority;
-    document.getElementById('editSavingsGoalIcon').value = goal.icon;
+    document.getElementById('editSavingsGoalPriority').value = goal.priority || 2;
+    document.getElementById('editSavingsGoalIcon').value = goal.icon || '🎯';
 
     modal.classList.add('active');
 }
@@ -206,91 +156,46 @@ function createEditSavingsGoalModal() {
     modal.id = 'editSavingsGoalModal';
     modal.className = 'modal';
     modal.innerHTML = `
-        <div class="modal-content">
+        <div class="modal-content" style="max-width:480px">
             <div class="modal-header">
-                <h2>Edytuj cel oszczędzania</h2>
-                <button class="modal-close" onclick="closeModal('editSavingsGoalModal')">✕</button>
+                <h3 id="editSavingsGoalTitle">Edytuj cel</h3>
+                <button class="btn ghost icon-only" onclick="window.closeModal('editSavingsGoalModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-
             <form id="editSavingsGoalForm" onsubmit="window.handleEditSavingsGoal(event)">
-                <input type="hidden" id="editSavingsGoalId">
-
-                <div class="form-group">
-                    <label for="editSavingsGoalName">Nazwa celu *</label>
-                    <input
-                        type="text"
-                        id="editSavingsGoalName"
-                        placeholder="np. Wakacje, Nowy laptop"
-                        required
-                        minlength="2"
-                        maxlength="50"
-                    >
+                <div class="modal-body">
+                    <input type="hidden" id="editSavingsGoalId">
+                    <input type="hidden" id="editSavingsGoalDescription" value="">
+                    <input type="hidden" id="editSavingsGoalPriority" value="2">
+                    <div class="form-grid">
+                        <div class="field full">
+                            <label>Nazwa celu</label>
+                            <input class="input" type="text" id="editSavingsGoalName" placeholder="np. Wakacje…" required minlength="2" maxlength="50">
+                        </div>
+                        <div class="field">
+                            <label>Kwota docelowa (zł)</label>
+                            <input class="input mono" type="number" id="editSavingsGoalAmount" placeholder="0" required min="1" step="0.01">
+                        </div>
+                        <div class="field">
+                            <label>Termin (opcjonalnie)</label>
+                            <input class="input" type="date" id="editSavingsGoalTargetDate">
+                        </div>
+                        <div class="field full">
+                            <label>Ikona</label>
+                            <input class="input" type="text" id="editSavingsGoalIcon" placeholder="🎯" maxlength="2" style="font-size:20px;width:60px">
+                            <div class="hint">Emoji reprezentujące cel</div>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="editSavingsGoalDescription">Opis (opcjonalnie)</label>
-                    <textarea
-                        id="editSavingsGoalDescription"
-                        placeholder="Krótki opis celu..."
-                        rows="3"
-                        maxlength="200"
-                    ></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="editSavingsGoalAmount">Docelowa kwota (PLN) *</label>
-                    <input
-                        type="number"
-                        id="editSavingsGoalAmount"
-                        placeholder="0.00"
-                        required
-                        min="10"
-                        step="0.01"
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label for="editSavingsGoalTargetDate">Data końcowa (opcjonalnie)</label>
-                    <input
-                        type="date"
-                        id="editSavingsGoalTargetDate"
-                        placeholder="RRRR-MM-DD"
-                    >
-                    <small class="form-hint">Jeśli określisz deadline, algorytm będzie bardziej agresywny w sugestiach</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="editSavingsGoalPriority">Priorytet</label>
-                    <select id="editSavingsGoalPriority">
-                        <option value="1">🔴 Wysoki</option>
-                        <option value="2">🟡 Średni</option>
-                        <option value="3">🟢 Niski</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="editSavingsGoalIcon">Ikona (emoji)</label>
-                    <input
-                        type="text"
-                        id="editSavingsGoalIcon"
-                        placeholder="🎯"
-                        maxlength="2"
-                    >
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('editSavingsGoalModal')">
-                        Anuluj
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        💾 Zapisz zmiany
-                    </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="window.closeModal('editSavingsGoalModal')">Anuluj</button>
+                    <button type="submit" class="btn accent">Zapisz</button>
                 </div>
             </form>
         </div>
     `;
 
     document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) window.closeModal('editSavingsGoalModal'); });
     return modal;
 }
 
@@ -554,7 +459,64 @@ window.removeContributionConfirm = async (contributionId, goalId) => {
 };
 
 /**
+ * Modal wpłaty na cel
+ */
+function showDepositModal(goalId) {
+    const goals = getSavingsGoals();
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) { showErrorMessage('Cel nie znaleziony'); return; }
+
+    const existing = document.getElementById('depositGoalModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'depositGoalModal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width:420px">
+            <div class="modal-header">
+                <h3>Wpłata: ${sanitizeHTML(goal.name)}</h3>
+                <button class="btn ghost icon-only" data-action="close-deposit-modal"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="field">
+                    <label>Kwota wpłaty (zł)</label>
+                    <input id="depositAmount" class="input mono lg" type="number" min="0.01" step="0.01" placeholder="0,00">
+                    <div class="hint">Kwota zostanie doliczona do celu i odjęta z dostępnych środków</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" data-action="close-deposit-modal">Anuluj</button>
+                <button class="btn accent" id="depositConfirmBtn">Wpłać</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.querySelector('#depositConfirmBtn').addEventListener('click', async () => {
+        const amountStr = modal.querySelector('#depositAmount').value;
+        const amount = parseFloat(amountStr);
+        if (!amount || amount <= 0) { showErrorMessage('Podaj kwotę większą niż 0'); return; }
+        const user = getCurrentUser();
+        if (!user) { showErrorMessage('Musisz być zalogowany'); return; }
+        try {
+            await addContribution(goalId, amount, user.uid);
+            modal.remove();
+            showSuccessMessage(`Wpłacono ${Fmt.zl(amount)} zł!`);
+            renderSavingsGoals();
+        } catch (e) {
+            showErrorMessage('Nie udało się wpłacić');
+        }
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal || e.target.closest('[data-action="close-deposit-modal"]')) modal.remove();
+    });
+}
+
+/**
  * Wrapper dla window funkcji używanych w innych miejscach
  */
 window.showAddSavingsGoalModal = showAddSavingsGoalModal;
 window.editSavingsGoal = showEditSavingsGoalModal;
+window.showDepositModal = showDepositModal;
