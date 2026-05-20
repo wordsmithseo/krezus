@@ -3,7 +3,6 @@ import { getDailyEnvelope, getExpenses } from '../modules/dataManager.js';
 import {
   calculateSpendingGauge,
   getGlobalMedian30d,
-  getEnvelopeCalculationInfo,
   calculateSpendingPeriods,
   getOrCalculateLimits
 } from '../modules/budgetCalculator.js';
@@ -129,7 +128,6 @@ export function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
   const { spent, total, percentage, remaining } = calculateSpendingGauge();
   const median = getGlobalMedian30d();
-  const calcInfo = getEnvelopeCalculationInfo();
 
   const envelopeAmountEl = document.getElementById('envelopeAmount');
   const envelopeSpentEl = document.getElementById('envelopeSpent');
@@ -146,7 +144,6 @@ export function renderDailyEnvelope() {
   const envelopeMedianFullEl = document.getElementById('envelopeMedianFull');
   const spendingGaugeFullEl = document.getElementById('spendingGaugeFull');
   const envelopePeriodInfoFullEl = document.getElementById('envelopePeriodInfoFull');
-  const envelopeCalcInfoFullEl = document.getElementById('envelopeCalculationInfoFull');
 
   if (!envelope) {
     if (envelopeAmountEl) envelopeAmountEl.textContent = '0.00';
@@ -162,13 +159,6 @@ export function renderDailyEnvelope() {
     updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', 0, 0);
 
     if (envelopePeriodInfoEl) envelopePeriodInfoEl.innerHTML = '';
-
-    const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
-    if (calcInfoDiv) {
-      calcInfoDiv.innerHTML = calcInfo
-        ? sanitizeHTML(`<small style="color:var(--ink-3);font-size:12px">${calcInfo.description}</small>`)
-        : '';
-    }
 
     const overLimitDiv = document.getElementById('envelopeOverLimit');
     if (overLimitDiv) overLimitDiv.style.display = 'none';
@@ -280,18 +270,6 @@ export function renderDailyEnvelope() {
   if (gaugeTotalEl) gaugeTotalEl.textContent = totalLabel;
   const gaugeTotalFullEl = document.getElementById('envelopeGaugeTotalFull');
   if (gaugeTotalFullEl) gaugeTotalFullEl.textContent = totalLabel;
-
-  const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
-  if (calcInfoDiv && calcInfo) {
-    calcInfoDiv.innerHTML = sanitizeHTML(
-      `<small style="font-size:12px;color:var(--ink-3);line-height:1.5">${calcInfo.description}</small>`
-    );
-  }
-  if (envelopeCalcInfoFullEl && calcInfo) {
-    envelopeCalcInfoFullEl.innerHTML = sanitizeHTML(
-      `<small style="font-size:12px;color:var(--ink-3);line-height:1.5">${calcInfo.description}<br><strong>Składowe:</strong> ${calcInfo.formula}</small>`
-    );
-  }
 
   const overLimitDiv = document.getElementById('envelopeOverLimit');
   if (overLimitDiv) {
