@@ -6,6 +6,7 @@ import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
 import { userChipHTML, catBadgeHTML } from './chips.js';
 import { Fmt } from '../utils/fmt.js';
+import { CAT_COLORS } from './renderCategories.js';
 
 let currentExpensePage = 1;
 let currentExpenseFilter = 'all'; // 'all' | 'normal' | 'planned'
@@ -82,7 +83,7 @@ export function renderExpenses() {
   const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
   const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
 
-  const categories = getCategories();
+  const categories = getCategories().map((cat, idx) => ({ ...cat, color: CAT_COLORS[idx % CAT_COLORS.length] }));
   const catByName = name => categories.find(c => c.name === name) || null;
 
   const html = paginatedExpenses.map(exp => {
