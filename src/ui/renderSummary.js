@@ -370,18 +370,28 @@ export function renderUpcomingTransactions() {
 
   const arrowDownIcon = icon('ArrowDown', { size: 14, strokeWidth: 2 });
   const arrowUpIcon   = icon('ArrowUp',   { size: 14, strokeWidth: 2 });
+  const calIcon       = icon('Calendar',  { size: 10, strokeWidth: 2 });
+
+  const relativeDate = dateStr => {
+    if (!dateStr) return '';
+    const diff = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
+    if (diff === 0) return 'Dziś';
+    if (diff === 1) return 'Jutro';
+    if (diff === 2) return 'Pojutrze';
+    return `Za ${diff} dni`;
+  };
 
   const html = upcoming.map(u => {
     const isExpense = u.kind === 'expense';
     const cat = isExpense ? catById(u.category) : null;
     const label = isExpense ? escapeHTML(u.description || '—') : escapeHTML(u.source || '—');
     const catName = cat ? escapeHTML(cat.name) : '';
-    const dateParts = u.date ? u.date.split('-') : [];
-    const dateStr = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : u.date || '';
+    const dateLabel = escapeHTML(relativeDate(u.date));
     const amountStr = Fmt.zl(u.amount || 0);
     const iconHtml = isExpense ? arrowDownIcon : arrowUpIcon;
     const colorCls = isExpense ? 'var(--danger)' : 'var(--success)';
     const bgCls    = isExpense ? 'var(--danger-soft)' : 'var(--success-soft)';
+    const metaTail = catName ? ` · ${catName}` : '';
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line)">
         <div style="width:36px;height:36px;border-radius:8px;background:${bgCls};color:${colorCls};display:grid;place-items:center;flex-shrink:0">
@@ -389,7 +399,7 @@ export function renderUpcomingTransactions() {
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
-          <div class="text-mute text-sm">${dateStr}${catName ? ' · ' + catName : ''}</div>
+          <div class="text-mute text-sm" style="display:flex;align-items:center;gap:4px">${calIcon}${dateLabel}${metaTail}</div>
         </div>
         <div class="num" style="font-size:13px;font-weight:500;color:${colorCls};white-space:nowrap">
           ${isExpense ? '−' : '+'}${amountStr} zł
