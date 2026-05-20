@@ -108,6 +108,23 @@ function updateEnvelopeGaugeSvg(fillId, remainingId, spent, total) {
   if (rem) rem.textContent = Fmt.zl(total - spent);
 }
 
+function getMiniDateLabel() {
+  return 'Dziś, ' + new Intl.DateTimeFormat('pl-PL', {
+    day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Warsaw'
+  }).format(new Date());
+}
+
+function getTimeLeft() {
+  const timeStr = getWarsawTimeString();
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const minsLeft = (24 * 60) - (hh * 60 + mm);
+  const h = Math.floor(minsLeft / 60);
+  const m = minsLeft % 60;
+  if (h === 0) return `~${m} min`;
+  if (m === 0) return `~${h}h`;
+  return `~${h}h ${m} min`;
+}
+
 export function renderDailyEnvelope() {
   const envelope = getDailyEnvelope();
   const { spent, total, percentage, remaining } = calculateSpendingGauge();
@@ -120,6 +137,8 @@ export function renderDailyEnvelope() {
   const envelopeMedianEl = document.getElementById('envelopeMedian');
   const spendingGaugeEl = document.getElementById('spendingGauge');
   const envelopePeriodInfoEl = document.getElementById('envelopePeriodInfo');
+  const envelopeMiniDateEl = document.getElementById('envelopeMiniDate');
+  const envelopeTimeLeftEl = document.getElementById('envelopeTimeLeft');
 
   // Full envelope section elements
   const envelopeAmountFullEl = document.getElementById('envelopeAmountFull');
@@ -154,6 +173,9 @@ export function renderDailyEnvelope() {
     const overLimitDiv = document.getElementById('envelopeOverLimit');
     if (overLimitDiv) overLimitDiv.style.display = 'none';
 
+    if (envelopeMiniDateEl) envelopeMiniDateEl.textContent = getMiniDateLabel();
+    if (envelopeTimeLeftEl) envelopeTimeLeftEl.textContent = getTimeLeft();
+
     return;
   }
 
@@ -161,6 +183,9 @@ export function renderDailyEnvelope() {
   if (envelopeSpentEl) envelopeSpentEl.textContent = Fmt.zl(spent);
   if (envelopeRemainingEl) envelopeRemainingEl.textContent = Fmt.zl(remaining);
   if (envelopeMedianEl) envelopeMedianEl.textContent = Fmt.zl(median);
+
+  if (envelopeMiniDateEl) envelopeMiniDateEl.textContent = getMiniDateLabel();
+  if (envelopeTimeLeftEl) envelopeTimeLeftEl.textContent = getTimeLeft();
 
   if (envelopeAmountFullEl) envelopeAmountFullEl.textContent = Fmt.zl(total);
   if (envelopeSpentFullEl) envelopeSpentFullEl.textContent = Fmt.zl(spent);
