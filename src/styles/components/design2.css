@@ -407,7 +407,6 @@ tbody tr { transition: background 80ms; }
 tbody tr:hover { background: var(--surface-2); }
 
 tr.planned { background: oklch(0.97 0.02 90 / 0.5); }
-tr.correction { background: var(--accent-soft); }
 tr.planned:hover, tr.correction:hover { filter: brightness(0.97); }
 
 .actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
