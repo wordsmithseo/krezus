@@ -4,6 +4,7 @@
  */
 
 import { escapeHTML } from '@utils/sanitizer.js';
+import { Fmt } from '@utils/fmt.js';
 
 /**
  * Kolor pierścienia wg procentu wypełnienia.
@@ -137,13 +138,13 @@ export function barChartHTML(items, total) {
 
   return items.map((it, i) => {
     const pct     = (it.value / maxVal * 100).toFixed(1);
-    const share   = (it.value / sum * 100).toFixed(1);
+    const share   = (it.value / sum * 100).toFixed(1).replace('.', ',');
     const color   = it.color ?? 'var(--accent)';
     const iconBg  = `color-mix(in srgb, ${color} 14%, transparent)`;
     const iconEl  = it.icon
       ? `<div class="bar-chart-icon" style="background:${iconBg};color:${color}">${escapeHTML(it.icon)}</div>`
       : '';
-    const amount  = it.value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const amount  = Fmt.zl(it.value);
 
     return `<div class="bar-chart-item">
   <div class="bar-chart-rank">#${i + 1}</div>
@@ -179,7 +180,7 @@ export function dailyChartHTML(data, opts = {}) {
     const dayObj  = new Date(d.date + 'T12:00:00');
     const isWeekend = [0, 6].includes(dayObj.getDay());
     const label   = dayObj.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
-    const amount  = d.value.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const amount  = Fmt.zl(d.value);
     const tip     = `${label}: ${amount} zł`;
     const weekendCls = isWeekend ? ' weekend' : '';
 

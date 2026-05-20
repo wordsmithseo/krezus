@@ -138,6 +138,7 @@ import { initializePresence, cleanupPresence, recordActivity } from './modules/p
 
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
+import { Fmt } from './utils/fmt.js';
 
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
@@ -250,11 +251,11 @@ function updateSectionStats() {
     .reduce((s, i) => s + (i.amount || 0), 0);
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('expensesMonthTotal', expensesMonthTotal.toFixed(2));
-  set('expensesPlannedTotal', expensesPlannedTotal.toFixed(2));
+  set('expensesMonthTotal', Fmt.zl(expensesMonthTotal));
+  set('expensesPlannedTotal', Fmt.zl(expensesPlannedTotal));
   set('expensesCount', expenses.length);
-  set('incomesMonthTotal', incomesMonthTotal.toFixed(2));
-  set('incomesPlannedTotal', incomesPlannedTotal.toFixed(2));
+  set('incomesMonthTotal', Fmt.zl(incomesMonthTotal));
+  set('incomesPlannedTotal', Fmt.zl(incomesPlannedTotal));
   set('incomesCount', incomes.length);
 }
 
@@ -443,7 +444,7 @@ function updateNavBadges() {
     const { remaining } = calculateSpendingGauge();
     const envelopeBadge = document.getElementById('navBadgeEnvelope');
     if (envelopeBadge) {
-      envelopeBadge.textContent = remaining.toFixed(0) + ' zł';
+      envelopeBadge.textContent = Fmt.int(remaining) + ' zł';
     }
   } catch (e) { /* ignore */ }
 
@@ -732,14 +733,14 @@ function renderSavingsSection() {
 
   if (statusDiv) {
     if (savingsAmount > 0) {
-      const percentage = totalAvailable > 0 ? ((savingsAmount / totalAvailable) * 100).toFixed(1) : 0;
+      const percentage = totalAvailable > 0 ? ((savingsAmount / totalAvailable) * 100).toFixed(1).replace('.', ',') : '0,0';
       statusDiv.innerHTML = `
         <div class="stat-card beige" style="margin-top: 10px;">
-          <div class="stat-label">Odlozone oszczednosci</div>
-          <div class="stat-value">${savingsAmount.toFixed(2)} <span class="stat-unit">zl</span></div>
+          <div class="stat-label">Odłożone oszczędności</div>
+          <div class="stat-value">${Fmt.zl(savingsAmount)} <span class="stat-unit">zł</span></div>
           <div style="margin-top: 8px; font-size: 0.85rem; opacity: 0.8;">
-            Stanowi ${percentage}% calkowitych srodkow (${totalAvailable.toFixed(2)} zl).<br>
-            Dostepne po odliczeniu: ${available.toFixed(2)} zl.
+            Stanowi ${percentage}% całkowitych środków (${Fmt.zl(totalAvailable)} zł).<br>
+            Dostępne po odliczeniu: ${Fmt.zl(available)} zł.
           </div>
         </div>
       `;
@@ -785,7 +786,7 @@ const saveSavingsAmount = async (e) => {
     renderSavingsGoals();
     renderSummary();
     renderDailyEnvelope();
-    showSuccessMessage(`Kwota oszczednosci zapisana: ${amount.toFixed(2)} zl`);
+    showSuccessMessage(`Kwota oszczędności zapisana: ${Fmt.zl(amount)} zł`);
   } catch (error) {
     console.error('Blad zapisywania kwoty oszczednosci:', error);
     showErrorMessage('Nie udalo sie zapisac kwoty oszczednosci');
@@ -885,7 +886,7 @@ function renderSimulationResult(result) {
   const risk = RISK[result.riskLevel] || RISK.caution;
   const d = result.data;
 
-  const fmt = v => (v ?? 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = v => Fmt.zl(v);
 
   const findingsHTML = result.findings
     .map(f => `<li>${escapeHTML(f)}</li>`).join('');

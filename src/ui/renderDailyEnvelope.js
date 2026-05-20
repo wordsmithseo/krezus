@@ -12,6 +12,7 @@ import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
 import { startCountdownTimers } from '../utils/countdownTimer.js';
 import { getWarsawDateString, getWarsawTimeString } from '../utils/dateHelpers.js';
 import { icon } from '../utils/icons.js';
+import { Fmt } from '../utils/fmt.js';
 
 function renderEnvelope14Days(total) {
   const container = document.getElementById('envelopeChart14');
@@ -34,7 +35,7 @@ function renderEnvelope14Days(total) {
 
   const maxVal = Math.max(...days.map(d => d.value), total, 1);
   const thresholdTopPx = total > 0 ? Math.round((1 - total / maxVal) * chartH) : -1;
-  const totalFmt = total.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalFmt = Fmt.zl(total);
 
   const barsHtml = days.map(d => {
     const barH = d.value > 0 ? Math.max(Math.round((d.value / maxVal) * chartH), 2) : 0;
@@ -76,8 +77,8 @@ function renderDayProgress(spent, total) {
   const diff = expectedSpend - spent;
   const isUnder = diff >= 0;
 
-  const diffFmt = Math.abs(diff).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const expectedFmt = expectedSpend.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const diffFmt = Fmt.zl(Math.abs(diff));
+  const expectedFmt = Fmt.zl(expectedSpend);
   const progressColor = isUnder ? 'var(--success)' : 'var(--danger)';
 
   progressEl.innerHTML = sanitizeHTML(`
@@ -104,7 +105,7 @@ function updateEnvelopeGaugeSvg(fillId, remainingId, spent, total) {
   fill.style.strokeDasharray = `${c * pct} ${c}`;
   fill.style.stroke = pct > 0.85 ? 'var(--danger)' : pct > 0.6 ? 'oklch(0.65 0.15 50)' : 'var(--accent)';
   const rem = document.getElementById(remainingId);
-  if (rem) rem.textContent = (total - spent).toLocaleString('pl-PL', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  if (rem) rem.textContent = Fmt.zl(total - spent);
 }
 
 export function renderDailyEnvelope() {
@@ -156,18 +157,18 @@ export function renderDailyEnvelope() {
     return;
   }
 
-  if (envelopeAmountEl) envelopeAmountEl.textContent = total.toFixed(2);
-  if (envelopeSpentEl) envelopeSpentEl.textContent = spent.toFixed(2);
-  if (envelopeRemainingEl) envelopeRemainingEl.textContent = remaining.toFixed(2);
-  if (envelopeMedianEl) envelopeMedianEl.textContent = median.toFixed(2);
+  if (envelopeAmountEl) envelopeAmountEl.textContent = Fmt.zl(total);
+  if (envelopeSpentEl) envelopeSpentEl.textContent = Fmt.zl(spent);
+  if (envelopeRemainingEl) envelopeRemainingEl.textContent = Fmt.zl(remaining);
+  if (envelopeMedianEl) envelopeMedianEl.textContent = Fmt.zl(median);
 
-  if (envelopeAmountFullEl) envelopeAmountFullEl.textContent = total.toFixed(2);
-  if (envelopeSpentFullEl) envelopeSpentFullEl.textContent = spent.toFixed(2);
-  if (envelopeMedianFullEl) envelopeMedianFullEl.textContent = median.toFixed(2);
+  if (envelopeAmountFullEl) envelopeAmountFullEl.textContent = Fmt.zl(total);
+  if (envelopeSpentFullEl) envelopeSpentFullEl.textContent = Fmt.zl(spent);
+  if (envelopeMedianFullEl) envelopeMedianFullEl.textContent = Fmt.zl(median);
 
   // Limit dzienny + dni do końca
   const limitFullEl = document.getElementById('envelopeLimitFull');
-  if (limitFullEl) limitFullEl.textContent = total.toFixed(2);
+  if (limitFullEl) limitFullEl.textContent = Fmt.zl(total);
 
   const daysLeftEl = document.getElementById('envelopeDaysLeft');
   if (daysLeftEl) {
@@ -264,7 +265,7 @@ export function renderDailyEnvelope() {
   const overLimitDiv = document.getElementById('envelopeOverLimit');
   if (overLimitDiv) {
     if (spent > total) {
-      const overAmount = (spent - total).toFixed(2);
+      const overAmount = Fmt.zl(spent - total);
       overLimitDiv.innerHTML = sanitizeHTML(
         `<div style="background:var(--danger-soft);color:var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:500;margin-top:6px">⚠️ Przekroczono kopertę o ${escapeHTML(overAmount)} zł</div>`
       );

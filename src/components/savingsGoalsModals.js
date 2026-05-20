@@ -14,6 +14,7 @@ import { showErrorMessage, showSuccessMessage } from '../utils/errorHandler.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
 import { renderSavingsGoals, showSavingsSuccessMessage } from '../ui/renderSavingsGoals.js';
 import { showConfirmModal } from './confirmModal.js';
+import { Fmt } from '../utils/fmt.js';
 
 /**
  * Modal dodawania nowego celu oszczędzania
@@ -362,7 +363,7 @@ window.deleteSavingsGoal = async (goalId) => {
 
     const confirmed = await showConfirmModal(
         'Czy na pewno chcesz usunąć ten cel?',
-        `Cel: ${goal.name}\nOdłożono: ${goal.currentAmount.toFixed(2)} zł\n\nTa operacja jest nieodwracalna.`
+        `Cel: ${goal.name}\nOdłożono: ${Fmt.zl(goal.currentAmount)} zł\n\nTa operacja jest nieodwracalna.`
     );
 
     if (!confirmed) return;
@@ -389,14 +390,14 @@ window.acceptSuggestion = async (goalId, amount) => {
 
     const confirmed = await showConfirmModal(
         'Potwierdź odłożenie pieniędzy',
-        `Czy na pewno chcesz odłożyć ${amount.toFixed(2)} zł na ten cel?\n\nTa kwota została obliczona przez algorytm jako bezpieczna.`
+        `Czy na pewno chcesz odłożyć ${Fmt.zl(amount)} zł na ten cel?\n\nTa kwota została obliczona przez algorytm jako bezpieczna.`
     );
 
     if (!confirmed) return;
 
     try {
         await addContribution(goalId, amount, user.uid);
-        showSavingsSuccessMessage(`Odłożono ${amount.toFixed(2)} zł! 🎉`);
+        showSavingsSuccessMessage(`Odłożono ${Fmt.zl(amount)} zł! 🎉`);
         renderSavingsGoals();
     } catch (error) {
         console.error('❌ Błąd akceptacji sugestii:', error);
@@ -459,7 +460,7 @@ window.showGoalHistory = (goalId) => {
                         <div class="contribution-type">${contrib.type === 'suggestion-accepted' ? '💡 Sugestia zaakceptowana' : '➕ Ręczna wpłata'}</div>
                     </div>
                     <div class="contribution-right">
-                        <div class="contribution-amount">+${contrib.amount.toFixed(2)} zł</div>
+                        <div class="contribution-amount">+${Fmt.zl(contrib.amount)} zł</div>
                         <button class="btn-danger-small" onclick="window.removeContributionConfirm('${contrib.id}', '${goalId}')" title="Wycofaj wpłatę">
                             ↩️ Wycofaj
                         </button>
@@ -480,11 +481,11 @@ window.showGoalHistory = (goalId) => {
                 </div>
                 <div class="summary-item">
                     <span class="label">Suma wpłat:</span>
-                    <span class="value">${totalAmount.toFixed(2)} zł</span>
+                    <span class="value">${Fmt.zl(totalAmount)} zł</span>
                 </div>
                 <div class="summary-item">
                     <span class="label">Średnia wpłata:</span>
-                    <span class="value">${(totalAmount / contributions.length).toFixed(2)} zł</span>
+                    <span class="value">${Fmt.zl(totalAmount / contributions.length)} zł</span>
                 </div>
             </div>
         `;
@@ -539,7 +540,7 @@ window.removeContributionConfirm = async (contributionId, goalId) => {
 
     try {
         const result = await removeContribution(contributionId, user.uid);
-        showSavingsSuccessMessage(`Wycofano wpłatę: ${result.contribution.amount.toFixed(2)} zł`);
+        showSavingsSuccessMessage(`Wycofano wpłatę: ${Fmt.zl(result.contribution.amount)} zł`);
 
         // Odśwież modal historii
         window.showGoalHistory(goalId);

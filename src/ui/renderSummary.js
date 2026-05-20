@@ -21,6 +21,7 @@ import { animateNumber } from '../utils/animateNumber.js';
 import { startCountdownTimers } from '../utils/countdownTimer.js';
 import { sparklineHTML, dailyChartHTML } from './charts.js';
 import { icon } from '../utils/icons.js';
+import { Fmt } from '../utils/fmt.js';
 
 function buildLastNDaysData(n = 30) {
   const expenses = getExpenses();
@@ -60,14 +61,14 @@ function renderSparkline(days = heroSparklineDays) {
   const prevNonZero = prevData.map(d => d.value).filter(v => v > 0);
   const prevAvg = prevNonZero.length > 0 ? prevNonZero.reduce((s, v) => s + v, 0) / prevNonZero.length : 0;
 
-  const avgFmt = avg.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const avgFmt = Fmt.zl(avg);
   let deltaHtml = '';
   if (prevAvg > 0) {
     const pct = ((avg - prevAvg) / prevAvg) * 100;
     const sign = pct >= 0 ? '+' : '';
     const tone = pct > 0 ? 'up bad' : 'down good';
     const arrow = pct > 0 ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
-    deltaHtml = `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1)}% vs poprzednie ${days}d</span>`;
+    deltaHtml = `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}% vs poprzednie ${days}d</span>`;
   }
   meta.innerHTML = sanitizeHTML(
     `<span style="color:var(--ink-3)">Średnia ${days}d: <strong class="num" style="color:var(--ink-1)">${avgFmt} zł</strong></span>${deltaHtml ? ' ' + deltaHtml : ''}`
@@ -96,7 +97,7 @@ function deltaHTML(current, prev, invert = false) {
   const up = pct > 0;
   const tone = invert ? (up ? 'up bad' : 'down good') : (up ? 'up good' : 'down bad');
   const arrow = up ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
-  return `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1)}%</span>`;
+  return `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}%</span>`;
 }
 
 function renderPeriodDeltas(todayExp, weekExp, monthExp) {
@@ -148,13 +149,13 @@ export function renderSummary() {
   // Podstawowe statystyki
   const availableFundsEl = document.getElementById('availableFunds');
 
-  if (availableFundsEl) animateNumber(availableFundsEl, available);
+  if (availableFundsEl) animateNumber(availableFundsEl, available, 1500, 2, 0, Fmt.zl);
 
   // Pokaż informację o oszczędnościach jeśli są zdefiniowane
   const savingsInfoEl = document.getElementById('savingsInfo');
   if (savingsInfoEl) {
     if (savingsAmount > 0) {
-      const amtFmt = savingsAmount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const amtFmt = Fmt.zl(savingsAmount);
       savingsInfoEl.innerHTML = sanitizeHTML(
         `<span class="tag success dot">Po odjęciu oszczędności <strong class="num">${amtFmt} zł</strong></span>`
       );
@@ -168,25 +169,25 @@ export function renderSummary() {
   const todayLabelEl = document.getElementById('todayExpensesLabel');
   if (todayLabelEl) todayLabelEl.textContent = `Dziś (${todayDate})`;
   const todayExpensesEl = document.getElementById('todayExpenses');
-  if (todayExpensesEl) animateNumber(todayExpensesEl, todayExpenses);
+  if (todayExpensesEl) animateNumber(todayExpensesEl, todayExpenses, 1500, 2, 0, Fmt.zl);
 
   // Wydatki w tym tygodniu
   const weekLabelEl = document.getElementById('weekExpensesLabel');
   if (weekLabelEl) weekLabelEl.textContent = `Tydzień (${weekRange.start}–${weekRange.end})`;
   const weekExpensesEl = document.getElementById('weekExpenses');
-  if (weekExpensesEl) animateNumber(weekExpensesEl, weekExpenses);
+  if (weekExpensesEl) animateNumber(weekExpensesEl, weekExpenses, 1500, 2, 0, Fmt.zl);
 
   // Wydatki w tym miesiącu
   const monthLabelEl = document.getElementById('monthExpensesLabel');
   if (monthLabelEl) monthLabelEl.textContent = `Miesiąc (${monthName})`;
   const monthExpensesEl = document.getElementById('monthExpenses');
-  if (monthExpensesEl) animateNumber(monthExpensesEl, monthExpenses);
+  if (monthExpensesEl) animateNumber(monthExpensesEl, monthExpenses, 1500, 2, 0, Fmt.zl);
 
   // Średnia dzienna (bieżący miesiąc)
   const daysElapsed = new Date().getDate();
   const dailyAvg = daysElapsed > 0 ? monthExpenses / daysElapsed : 0;
   const dailyAvgEl = document.getElementById('dailyAvgExpenses');
-  if (dailyAvgEl) animateNumber(dailyAvgEl, dailyAvg);
+  if (dailyAvgEl) animateNumber(dailyAvgEl, dailyAvg, 1500, 2, 0, Fmt.zl);
 
   // Delty pod statystykami
   renderPeriodDeltas(todayExpenses, weekExpenses, monthExpenses);
@@ -213,8 +214,8 @@ export function renderSummary() {
   const futureIncomeEl = document.getElementById('futureIncome');
   const futureExpenseEl = document.getElementById('futureExpense');
 
-  if (futureIncomeEl) animateNumber(futureIncomeEl, totalPlannedIncome);
-  if (futureExpenseEl) animateNumber(futureExpenseEl, totalPlannedExpense);
+  if (futureIncomeEl) animateNumber(futureIncomeEl, totalPlannedIncome, 1500, 2, 0, Fmt.zl);
+  if (futureExpenseEl) animateNumber(futureExpenseEl, totalPlannedExpense, 1500, 2, 0, Fmt.zl);
 
   // Dynamika wydatków
   renderSpendingDynamics();
@@ -345,7 +346,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
         <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 10px;background:var(--surface-2);border-radius:8px;gap:8px;flex-wrap:wrap">
           <div style="display:flex;flex-direction:column;gap:2px">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Wpływ</span>
-            <span class="num" style="font-size:16px;font-weight:600;color:var(--success)">+${(limit.amount || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł</span>
+            <span class="num" style="font-size:16px;font-weight:600;color:var(--success)">+${Fmt.zl(limit.amount || 0)} zł</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Data</span>
@@ -356,16 +357,16 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
           <div style="padding:10px 12px;display:flex;align-items:center;gap:8px">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3);white-space:nowrap">💰 Realny</span>
             <span style="font-size:11px;color:var(--ink-3)">· bez wpływu</span>
-            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:${realColor};white-space:nowrap">${realLimit.toFixed(2)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:${realColor};white-space:nowrap">${Fmt.zl(realLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
           </div>
           <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);background:color-mix(in srgb, var(--accent) 6%, transparent)">
             <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--accent);white-space:nowrap">✨ Planowany</span>
             <span style="font-size:11px;color:var(--ink-3)">· po wpływie</span>
-            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:var(--accent);white-space:nowrap">${plannedLimit.toFixed(2)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:var(--accent);white-space:nowrap">${Fmt.zl(plannedLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3);flex-wrap:wrap;gap:8px">
-          <span>Różnica: <strong class="num" style="color:var(--success)">+${delta.toFixed(2)} zł/d</strong></span>
+          <span>Różnica: <strong class="num" style="color:var(--success)">+${Fmt.zl(delta)} zł/d</strong></span>
         </div>
       </div>
     `;
@@ -419,7 +420,7 @@ export function renderUpcomingTransactions() {
     const catName = cat ? escapeHTML(cat.name) : '';
     const dateParts = u.date ? u.date.split('-') : [];
     const dateStr = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : u.date || '';
-    const amountStr = (u.amount || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const amountStr = Fmt.zl(u.amount || 0);
     const iconHtml = isExpense ? arrowDownIcon : arrowUpIcon;
     const colorCls = isExpense ? 'var(--danger)' : 'var(--success)';
     const bgCls    = isExpense ? 'var(--danger-soft)' : 'var(--success-soft)';

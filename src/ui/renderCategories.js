@@ -5,6 +5,7 @@ import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
 import { getMergingCategoryId } from '../handlers/categoryHandlers.js';
 import { PAGINATION } from '../utils/constants.js';
+import { Fmt } from '../utils/fmt.js';
 
 export const CAT_COLORS = [
   'oklch(0.6 0.12 155)', 'oklch(0.62 0.14 230)', 'oklch(0.58 0.15 25)',
@@ -84,9 +85,9 @@ export function renderCategories() {
           </div>
         ` : ''}
       </div>
-      <div class="num" style="font-size:20px;font-weight:500">${cat.totalAmount.toFixed(2)} <span class="text-mute text-sm">zł</span></div>
+      <div class="num" style="font-size:20px;font-weight:500">${Fmt.zl(cat.totalAmount)} <span class="text-mute text-sm">zł</span></div>
       <div class="progress" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%;height:100%;background:${cat.color};border-radius:inherit;transition:width 400ms ease"></div></div>
-      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1)}% wszystkich wydatków</div>
+      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1).replace('.', ',')}% wszystkich wydatków</div>
       ${isMergeCandidate ? `<div style="position:absolute;inset:0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:inherit;display:grid;place-items:center;pointer-events:none"><span class="tag accent">Scal tutaj →</span></div>` : ''}
     </div>`;
   }).join('');

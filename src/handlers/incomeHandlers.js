@@ -17,6 +17,7 @@ import { validateAmount } from '../utils/validators.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { log } from '../modules/logger.js';
+import { Fmt } from '../utils/fmt.js';
 
 let editingIncomeId = null;
 let getBudgetUserNameFn = null;
@@ -305,7 +306,7 @@ export async function addCorrection(e) {
 
     form.reset();
     if (renderAfterChangeFn) renderAfterChangeFn('income');
-    showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Math.abs(difference).toFixed(2)} zł`);
+    showSuccessMessage(`Korekta wprowadzona: ${correctionType} ${Fmt.zl(Math.abs(difference))} zł`);
   } catch (error) {
     console.error('Błąd wprowadzania korekty:', error);
     showErrorMessage('Nie udało się wprowadzić korekty');

@@ -1,320 +1,322 @@
 // src/ui/renderSavingsGoals.js
-import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
-import { getSavingsGoals } from '../modules/savingsGoalManager.js';
-import { calculateAllSuggestions, calculateGoalProgress, calculateSavingsStats } from '../modules/savingsGoalCalculator.js';
+import { escapeHTML } from '../utils/sanitizer.js';
+import { getSavingsGoals, getSavingsContributions } from '../modules/savingsGoalManager.js';
+import { calculateGoalProgress, calculateSavingsStats, getGoalContributionHistory } from '../modules/savingsGoalCalculator.js';
 import { icon } from '../utils/icons.js';
+import { ringGaugeHTML } from './charts.js';
+import { Fmt } from '../utils/fmt.js';
 
-const GOALS_PER_PAGE = 25;
-let currentGoalsPage = 1;
+let activeGoalId = null;
+
+const GOAL_COLORS = ['#4caf7d','#4c7daf','#9c4caf','#af9c4c','#af4c7d','#4cafaf'];
+
+function goalColor(index) {
+  return GOAL_COLORS[index % GOAL_COLORS.length];
+}
+
+function relDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const days = Math.round((d - Date.now()) / 86400000);
+  if (days < 0) return 'Po terminie';
+  if (days === 0) return 'Dziś';
+  if (days < 7) return `Za ${days} dni`;
+  if (days < 30) return `Za ${Math.round(days / 7)} tyg.`;
+  return `Za ${Math.round(days / 30)} mies.`;
+}
+
+function longDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('pl-PL', { year:'numeric', month:'long', day:'numeric' });
+}
+
+export function selectSavingsGoal(goalId) {
+  activeGoalId = goalId;
+  renderSavingsGoals();
+}
 
 export function renderSavingsGoals() {
-    const contentDiv = document.getElementById('savingsGoalsContent');
-    if (!contentDiv) return;
+  const contentDiv = document.getElementById('savingsGoalsContent');
+  if (!contentDiv) return;
 
-    const goals = getSavingsGoals();
-    const stats = calculateSavingsStats();
-    const suggestions = calculateAllSuggestions();
+  const goals = getSavingsGoals();
 
-    const html = `
-        <div class="card" style="margin-bottom:16px">
-            <div class="card-header">
-                <div>
-                    <h3>Oszczędzanie</h3>
-                    <span class="card-sub">Twoje cele i postępy</span>
-                </div>
-                <button class="btn accent sm" onclick="window.showAddSavingsGoalModal()">
-                    ${icon('Plus', { size: 13, strokeWidth: 2 })} Dodaj cel
-                </button>
-            </div>
-            ${renderSavingsStats(stats)}
+  if (goals.length === 0) {
+    contentDiv.innerHTML = renderEmptyState();
+    return;
+  }
+
+  const stats = calculateSavingsStats();
+  const allContribs = getSavingsContributions();
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const monthTotal = allContribs
+    .filter(c => (c.date || '').startsWith(thisMonth))
+    .reduce((s, c) => s + (c.amount || 0), 0);
+
+  const sortedGoals = [
+    ...goals.filter(g => g.status === 'active'),
+    ...goals.filter(g => g.status !== 'active'),
+  ];
+
+  if (!activeGoalId || !sortedGoals.find(g => g.id === activeGoalId)) {
+    activeGoalId = sortedGoals[0]?.id || null;
+  }
+
+  const activeIdx   = sortedGoals.findIndex(g => g.id === activeGoalId);
+  const activeGoal  = activeIdx >= 0 ? sortedGoals[activeIdx] : null;
+
+  contentDiv.innerHTML = `
+    ${renderHeader()}
+    ${renderStatGrid(stats, monthTotal)}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px">
+      ${renderGoalList(sortedGoals)}
+      <div id="savingsGoalDetail">
+        ${activeGoal ? renderGoalDetail(activeGoal, activeIdx) : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderEmptyState() {
+  return `
+    <div class="row between" style="flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:20px">
+      <p class="lead" style="margin:0">Wiele celów oszczędnościowych. Łączna kwota odłożonych środków zostaje wyłączona z dostępnego budżetu.</p>
+      <button class="btn accent sm" data-action="open-add-savings-goal-modal">
+        ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
+      </button>
+    </div>
+    <div class="card">
+      <div class="empty-state" style="padding:60px 20px;text-align:center">
+        <p style="font-size:2rem;margin:0 0 12px">🎯</p>
+        <p style="font-weight:500;margin:0 0 8px">Brak celów oszczędzania</p>
+        <p class="text-mute text-sm" style="max-width:360px;margin:0 auto 16px">Dodaj swój pierwszy cel, a aplikacja będzie sugerować bezpieczne kwoty do odłożenia.</p>
+        <button class="btn accent sm" data-action="open-add-savings-goal-modal">
+          ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderHeader() {
+  return `
+    <div class="row between" style="flex-wrap:wrap;gap:12px;align-items:flex-start;margin-bottom:20px">
+      <p class="lead" style="margin:0">Wiele celów oszczędnościowych. Łączna kwota odłożonych środków zostaje wyłączona z dostępnego budżetu.</p>
+      <button class="btn accent sm" data-action="open-add-savings-goal-modal">
+        ${icon('Plus', { size: 13, strokeWidth: 2 })} Nowy cel
+      </button>
+    </div>
+  `;
+}
+
+function renderStatGrid(stats, monthTotal) {
+  return `
+    <div class="card" style="margin-bottom:20px">
+      <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
+        <div class="stat">
+          <div class="label">Łącznie odłożone</div>
+          <div class="value num">${Fmt.zl(stats.totalCurrentAmount)}<span class="unit">zł</span></div>
+          <div class="sub">z ${Fmt.zl(stats.totalTargetAmount)} zł</div>
         </div>
-        ${renderSavingsGoalsList(goals, suggestions)}
-    `;
-
-    contentDiv.innerHTML = sanitizeHTML(html);
-}
-
-function renderSavingsStats(stats) {
-    if (stats.totalGoals === 0) {
-        return `
-            <div class="empty-state" style="padding:40px 20px">
-                <p style="font-size:2rem;margin:0 0 12px">🎯</p>
-                <p style="font-weight:500;margin:0 0 8px">Brak celów oszczędzania</p>
-                <p class="text-mute text-sm" style="max-width:360px;margin:0 auto 0">Dodaj swój pierwszy cel, a aplikacja automatycznie będzie sugerowała bezpieczne kwoty do odłożenia.</p>
-            </div>
-        `;
-    }
-
-    return `
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
-            <div class="metric">
-                <div class="metric-label">Aktywne cele</div>
-                <div class="metric-value">${stats.activeGoals}</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Ukończone</div>
-                <div class="metric-value">${stats.completedGoals}</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Odłożono razem</div>
-                <div class="metric-value num">${stats.totalCurrentAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Cel docelowy</div>
-                <div class="metric-value num">${stats.totalTargetAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Postęp ogólny</div>
-                <div class="metric-value">${stats.progressPercentage.toFixed(1)}%</div>
-            </div>
+        <div class="stat">
+          <div class="label">Cele aktywne</div>
+          <div class="value">${stats.activeGoals}</div>
+          <div class="sub">${stats.completedGoals} osiągniętych</div>
         </div>
-    `;
+        <div class="stat">
+          <div class="label">Postęp ogólny</div>
+          <div class="value">${Math.round(stats.progressPercentage)}<span class="unit">%</span></div>
+        </div>
+        <div class="stat">
+          <div class="label">Wpłaty w tym mies.</div>
+          <div class="value num">${Fmt.zl(monthTotal)}<span class="unit">zł</span></div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function renderSavingsGoalsList(goals, suggestions) {
-    if (goals.length === 0) return '';
-
-    const sortedGoals = [
-        ...goals.filter(g => g.status === 'active'),
-        ...goals.filter(g => g.status === 'completed'),
-        ...goals.filter(g => g.status === 'paused')
-    ];
-
-    const totalGoals = sortedGoals.length;
-    const totalPages = Math.ceil(totalGoals / GOALS_PER_PAGE);
-    const goalsToShow = sortedGoals.slice(
-        (currentGoalsPage - 1) * GOALS_PER_PAGE,
-        currentGoalsPage * GOALS_PER_PAGE
-    );
-
-    const iconArrowUp   = icon('ArrowUp',   { size: 13, strokeWidth: 1.5 });
-    const iconArrowDown = icon('ArrowDown', { size: 13, strokeWidth: 1.5 });
-
-    let html = `
-        <div class="card">
-            <div class="card-header">
-                <h3>Lista celów <span class="tag" style="font-weight:400;font-size:12px">${totalGoals}</span></h3>
-                <div style="display:flex;gap:6px">
-                    <button class="btn ghost sm" onclick="window.collapseAllGoals()">
-                        ${iconArrowUp} Zwiń
-                    </button>
-                    <button class="btn ghost sm" onclick="window.expandAllGoals()">
-                        ${iconArrowDown} Rozwiń
-                    </button>
-                </div>
-            </div>
-            <div class="savings-goals-list">
-    `;
-
-    goalsToShow.forEach(goal => {
-        const suggestion = suggestions.find(s => s.goal.id === goal.id);
-        html += renderSavingsGoalCard(goal, suggestion);
-    });
-
-    html += '</div>';
-    if (totalPages > 1) html += renderGoalsPagination(totalPages);
-    html += '</div>';
-    return html;
-}
-
-function renderGoalsPagination(totalPages) {
-    const chevLeft  = icon('ChevronLeft',  { size: 14, strokeWidth: 1.5 });
-    const chevRight = icon('ChevronRight', { size: 14, strokeWidth: 1.5 });
-    let html = '<div style="display:flex;justify-content:center;gap:4px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">';
-    html += `<button class="pagination-btn" ${currentGoalsPage === 1 ? 'disabled' : ''} onclick="window.changeGoalsPage(${currentGoalsPage - 1})">${chevLeft}</button>`;
-    for (let i = 1; i <= totalPages; i++) {
-        html += `<button class="pagination-btn ${i === currentGoalsPage ? 'active' : ''}" onclick="window.changeGoalsPage(${i})">${i}</button>`;
-    }
-    html += `<button class="pagination-btn" ${currentGoalsPage === totalPages ? 'disabled' : ''} onclick="window.changeGoalsPage(${currentGoalsPage + 1})">${chevRight}</button>`;
-    html += '</div>';
-    return html;
-}
-
-window.changeGoalsPage = function(page) {
-    currentGoalsPage = page;
-    renderSavingsGoals();
-};
-
-window.toggleGoalCollapse = function(goalId) {
-    const card = document.querySelector(`[data-goal-id="${goalId}"]`);
-    if (card) card.classList.toggle('collapsed');
-};
-
-window.collapseAllGoals = function() {
-    document.querySelectorAll('.savings-goal-card').forEach(c => c.classList.add('collapsed'));
-};
-
-window.expandAllGoals = function() {
-    document.querySelectorAll('.savings-goal-card').forEach(c => c.classList.remove('collapsed'));
-};
-
-function renderSavingsGoalCard(goal, suggestion) {
+function renderGoalList(sortedGoals) {
+  const items = sortedGoals.map((goal, i) => {
+    const color = goalColor(i);
     const progress = calculateGoalProgress(goal.id);
-    const remaining = goal.targetAmount - goal.currentAmount;
-
-    let deadlineHtml = '';
-    if (goal.targetDate) {
-        const targetDateObj = new Date(goal.targetDate);
-        const today = new Date();
-        const daysToDeadline = Math.max(0, Math.floor((targetDateObj - today) / (1000 * 60 * 60 * 24)));
-        const isUrgent = daysToDeadline < 7;
-        const isSoon   = daysToDeadline < 30;
-        const formattedDate = targetDateObj.toLocaleDateString('pl-PL');
-        const calColor = isUrgent ? 'var(--danger)' : isSoon ? 'oklch(0.62 0.17 60)' : 'var(--ink-2)';
-        deadlineHtml = `
-            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:${calColor};margin-bottom:10px">
-                ${icon('Calendar', { size: 13, strokeWidth: 1.5 })}
-                <span>Deadline: <strong>${escapeHTML(formattedDate)}</strong> (za ${daysToDeadline} ${daysToDeadline === 1 ? 'dzień' : 'dni'})</span>
-            </div>
-        `;
-    }
-
-    const priorityNames  = { 1: 'Wysoki', 2: 'Średni', 3: 'Niski' };
-    const priorityColors = { 1: 'var(--danger)', 2: 'var(--accent)', 3: 'var(--success)' };
-    const priorityName   = priorityNames[goal.priority]  || 'Średni';
-    const priorityColor  = priorityColors[goal.priority] || 'var(--accent)';
-
-    let statusBadge = '';
-    if      (goal.status === 'completed') statusBadge = '<span class="tag success dot">Ukończono</span>';
-    else if (goal.status === 'paused')    statusBadge = '<span class="tag dot">Wstrzymano</span>';
-
-    let suggestionHtml = '';
-    if (suggestion?.suggestion?.canSuggest) {
-        const sug = suggestion.suggestion;
-        suggestionHtml = `
-            <div style="background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:var(--radius-sm);padding:12px;margin-top:12px">
-                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-                    ${icon('Sparkles', { size: 14, strokeWidth: 1.5 })}
-                    <span style="font-size:12px;font-weight:600">Bezpieczna kwota do odłożenia</span>
-                </div>
-                <div class="num" style="font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:4px">${sug.amount.toFixed(2)} zł</div>
-                <div class="text-sm text-mute" style="margin-bottom:8px">${sanitizeHTML(sug.reason)}</div>
-                ${sug.details.length ? `<ul style="margin:0 0 10px;padding-left:16px;font-size:12px;color:var(--ink-2)">${sug.details.map(d => `<li>${sanitizeHTML(d)}</li>`).join('')}</ul>` : ''}
-                <div style="display:flex;gap:6px">
-                    <button class="btn accent sm" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
-                        ${icon('Check', { size: 12, strokeWidth: 2 })} Zaakceptuj
-                    </button>
-                    <button class="btn ghost sm" onclick="window.rejectSuggestion('${goal.id}')">
-                        ${icon('X', { size: 12, strokeWidth: 2 })} Odrzuć
-                    </button>
-                </div>
-            </div>
-        `;
-    } else if (suggestion && !suggestion.suggestion.canSuggest) {
-        const sug = suggestion.suggestion;
-        suggestionHtml = `
-            <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:10px;margin-top:10px;display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--ink-3)">
-                ${icon('Info', { size: 13, strokeWidth: 1.5 })}
-                <span>${sanitizeHTML(sug.reason)}</span>
-            </div>
-        `;
-    }
-
-    const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
-    const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
-    const iconChart = icon('Chart', { size: 13, strokeWidth: 1.5 });
     const pct = Math.min(progress.percentage, 100);
-    const fillColor = progress.percentage >= 100 ? 'var(--success)' : 'var(--accent)';
+    const isActive = goal.id === activeGoalId;
+    const btnStyle = isActive
+      ? `background:var(--surface-2);border-left:3px solid ${color};`
+      : `background:transparent;border-left:3px solid transparent;`;
 
     return `
-        <div class="savings-goal-card ${goal.status} collapsed" data-goal-id="${goal.id}">
-            <div class="goal-header-collapsible" onclick="window.toggleGoalCollapse('${goal.id}')">
-                <div class="goal-collapse-left">
-                    <button class="collapse-toggle" title="Rozwiń/Zwiń">
-                        <span class="collapse-icon">▶</span>
-                    </button>
-                    <span class="goal-icon">${sanitizeHTML(goal.icon)}</span>
-                    <div class="goal-title-section">
-                        <span style="font-weight:500">${sanitizeHTML(goal.name)}</span>
-                        ${statusBadge}
-                    </div>
-                </div>
-                <div class="goal-collapsed-info">
-                    <div class="num" style="font-size:13px">
-                        ${goal.currentAmount.toFixed(2)}<span class="text-mute"> / ${goal.targetAmount.toFixed(2)} zł</span>
-                    </div>
-                    <div class="text-mute text-sm">${progress.percentage.toFixed(0)}%</div>
-                </div>
-            </div>
-
-            <div class="goal-actions-bar">
-                ${goal.status === 'active' ? `
-                    <button class="btn ghost icon-only sm" onclick="event.stopPropagation(); window.editSavingsGoal('${goal.id}')" title="Edytuj">${iconEdit}</button>
-                ` : ''}
-                <button class="btn ghost icon-only sm" onclick="event.stopPropagation(); window.deleteSavingsGoal('${goal.id}')" title="Usuń">${iconTrash}</button>
-            </div>
-
-            <div class="goal-expandable-content">
-                ${goal.description ? `<p class="text-sm text-mute" style="margin:0 0 10px">${sanitizeHTML(goal.description)}</p>` : ''}
-
-                ${deadlineHtml}
-
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-                    <div class="metric">
-                        <div class="metric-label">Priorytet</div>
-                        <div class="metric-value" style="color:${priorityColor}">${escapeHTML(priorityName)}</div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Odłożono</div>
-                        <div class="metric-value num">${goal.currentAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Cel</div>
-                        <div class="metric-value num">${goal.targetAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
-                    </div>
-                    <div class="metric">
-                        <div class="metric-label">Pozostało</div>
-                        <div class="metric-value num">${remaining.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:12px">
-                    <div class="progress" style="height:6px">
-                        <div style="width:${pct}%;height:100%;background:${fillColor};border-radius:inherit;transition:width 400ms ease"></div>
-                    </div>
-                    <div class="text-sm text-mute" style="margin-top:4px;text-align:right">${progress.percentage.toFixed(1)}%</div>
-                </div>
-
-                ${suggestionHtml}
-
-                ${goal.status === 'active' ? `
-                    <button class="btn ghost sm" style="margin-top:10px" onclick="window.showGoalHistory('${goal.id}')">
-                        ${iconChart} Historia wpłat
-                    </button>
-                ` : ''}
-            </div>
+      <button
+        style="width:100%;padding:12px 18px;border-top:none;border-right:none;border-bottom:1px solid var(--line);${btnStyle}display:flex;gap:12px;align-items:center;text-align:left;cursor:pointer"
+        data-action="select-savings-goal"
+        data-goal-id="${escapeHTML(goal.id)}"
+      >
+        <div style="width:36px;height:36px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(goal.name)}</div>
+          <div class="text-mute" style="font-size:11px">${escapeHTML(relDate(goal.targetDate))}</div>
         </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div class="num" style="font-size:12px;font-weight:500">${Math.round(pct)}%</div>
+          <div class="progress" style="width:60px;margin-top:4px;height:4px">
+            <div style="width:${pct}%;height:100%;background:${color};border-radius:inherit;transition:width 400ms ease"></div>
+          </div>
+        </div>
+      </button>
     `;
+  }).join('');
+
+  return `
+    <div class="card flush">
+      <div class="card-header" style="padding:14px 18px">
+        <h3>Twoje cele <span class="tag" style="font-weight:400;font-size:12px">${sortedGoals.length}</span></h3>
+      </div>
+      <div>${items}</div>
+    </div>
+  `;
 }
 
-export function showSavingsSuccessMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'success-message';
-    messageDiv.textContent = message;
-    messageDiv.style.cssText = `
-        position:fixed;top:20px;right:20px;background:var(--success);color:white;
-        padding:14px 20px;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);
-        z-index:10000;font-size:14px;animation:slideInRight 0.3s ease-out
-    `;
-    document.body.appendChild(messageDiv);
-    setTimeout(() => {
-        messageDiv.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => messageDiv.remove(), 300);
-    }, 3000);
+function renderGoalDetail(goal, goalIndex) {
+  const color = goalColor(goalIndex);
+  const progress = calculateGoalProgress(goal.id);
+  const pct = Math.min(progress.percentage, 100);
+  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+
+  const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
+  const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
+  const iconPlus  = icon('Plus',  { size: 13, strokeWidth: 2 });
+
+  const ring = ringGaugeHTML(goal.currentAmount, goal.targetAmount, {
+    size: 180,
+    color,
+    label: `${Math.round(pct)}%`,
+    sublabel: 'celu',
+  });
+
+  return `
+    <div class="card">
+      <!-- Top row -->
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:16px">
+        <div style="width:56px;height:56px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${escapeHTML(goal.icon || '🎯')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(goal.name)}</div>
+          ${goal.targetDate ? `<div class="text-mute text-sm">Termin: <strong>${escapeHTML(longDate(goal.targetDate))}</strong> · ${escapeHTML(relDate(goal.targetDate))}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn sm" data-action="edit-savings-goal" data-id="${escapeHTML(goal.id)}">${iconEdit} Edytuj</button>
+          <button class="btn sm" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 30%,var(--line))" data-action="delete-savings-goal" data-id="${escapeHTML(goal.id)}">${iconTrash}</button>
+        </div>
+      </div>
+
+      <!-- Ring + Metrics -->
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin-bottom:20px">
+        ${ring}
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="stat">
+            <div class="label">Odłożone</div>
+            <div class="value num" style="color:var(--success)">${Fmt.zl(goal.currentAmount)}<span class="unit">zł</span></div>
+          </div>
+          <div class="stat">
+            <div class="label">Cel</div>
+            <div class="value num">${Fmt.zl(goal.targetAmount)}<span class="unit">zł</span></div>
+          </div>
+          <div class="stat">
+            <div class="label">Pozostało</div>
+            <div class="value num">${Fmt.zl(remaining)}<span class="unit">zł</span></div>
+          </div>
+          ${goal.status === 'active' ? `
+            <button class="btn accent sm" style="margin-top:6px" data-action="open-deposit-modal" data-goal-id="${escapeHTML(goal.id)}">
+              ${iconPlus} Wpłać na ten cel
+            </button>
+          ` : ''}
+        </div>
+      </div>
+
+      <hr class="divider"/>
+
+      <!-- Historia wpłat -->
+      <h3 style="margin-bottom:12px">Historia wpłat</h3>
+      ${renderContributionHistory(goal.id)}
+
+      <hr class="divider"/>
+
+      <!-- Sugestie -->
+      <h3 style="margin-bottom:12px">Sugestie</h3>
+      ${renderSuggestions(goal)}
+    </div>
+  `;
 }
 
-export function showSavingsErrorMessage(message) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'error-message';
-    messageDiv.textContent = message;
-    messageDiv.style.cssText = `
-        position:fixed;top:20px;right:20px;background:var(--danger);color:white;
-        padding:14px 20px;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);
-        z-index:10000;font-size:14px;animation:slideInRight 0.3s ease-out
-    `;
-    document.body.appendChild(messageDiv);
-    setTimeout(() => {
-        messageDiv.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => messageDiv.remove(), 300);
-    }, 3000);
+function renderContributionHistory(goalId) {
+  const history = getGoalContributionHistory(goalId);
+  if (history.length === 0) {
+    return '<p class="text-mute text-sm" style="margin-bottom:12px">Brak historii wpłat.</p>';
+  }
+  const sorted = [...history].sort((a, b) =>
+    (b.date + (b.time || '')).localeCompare(a.date + (a.time || ''))
+  );
+  const shown = sorted.slice(0, 5);
+  return `
+    <table class="table" style="font-size:13px;margin-bottom:12px">
+      <thead><tr>
+        <th>Data</th>
+        <th class="amount">Kwota</th>
+      </tr></thead>
+      <tbody>
+        ${shown.map(c => `
+          <tr>
+            <td>${escapeHTML(c.date || '—')}</td>
+            <td class="amount" style="color:var(--success);font-weight:500">+${Fmt.zl(c.amount || 0)} zł</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    ${history.length > 5 ? `<p class="text-mute text-sm">… i ${history.length - 5} wcześniejszych wpłat.</p>` : ''}
+  `;
 }
+
+function renderSuggestions(goal) {
+  const history = getGoalContributionHistory(goal.id);
+  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+  const rows = [];
+
+  if (remaining === 0) {
+    return '<p class="text-mute text-sm">Cel osiągnięty! 🎉</p>';
+  }
+
+  // Przy obecnym tempie
+  if (history.length >= 2) {
+    const oldest = [...history].sort((a, b) => a.date.localeCompare(b.date))[0];
+    const monthsSince = Math.max(1, (Date.now() - new Date(oldest.date)) / (1000 * 60 * 60 * 24 * 30));
+    const totalPaid = history.reduce((s, c) => s + (c.amount || 0), 0);
+    const monthlyRate = totalPaid / monthsSince;
+    if (monthlyRate > 0) {
+      const monthsLeft = Math.ceil(remaining / monthlyRate);
+      rows.push({ emoji: '🎯', text: `Przy obecnym tempie cel osiągniesz za ok. ${monthsLeft} ${monthsLeft === 1 ? 'miesiąc' : 'miesięcy'}.` });
+    }
+  }
+
+  // Aby zdążyć przed terminem
+  if (goal.targetDate) {
+    const months = Math.max(1, (new Date(goal.targetDate) - Date.now()) / (1000 * 60 * 60 * 24 * 30));
+    const requiredMonthly = remaining / months;
+    rows.push({ emoji: '💡', text: `Aby zdążyć przed ${longDate(goal.targetDate)}, wpłacaj co miesiąc ok. ${Fmt.zl(requiredMonthly)} zł.` });
+  }
+
+  if (rows.length === 0) {
+    return '<p class="text-mute text-sm">Brak sugestii — dodaj wpłaty, by zobaczyć tempo oszczędzania.</p>';
+  }
+
+  return `<div style="display:flex;flex-direction:column;gap:8px">
+    ${rows.map(r => `
+      <div style="display:flex;gap:10px;padding:12px;background:var(--surface-2);border-radius:10px">
+        <span style="font-size:18px;flex-shrink:0">${r.emoji}</span>
+        <span style="font-size:13px;color:var(--ink-2)">${escapeHTML(r.text)}</span>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+export { showSuccessMessage as showSavingsSuccessMessage, showErrorMessage as showSavingsErrorMessage } from '../utils/errorHandler.js';

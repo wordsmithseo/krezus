@@ -14,6 +14,7 @@ import { getWarsawDateString } from '../utils/dateHelpers.js';
 import { showErrorMessage, showSuccessMessage } from '../utils/errorHandler.js';
 import { barChartHTML, dailyChartHTML } from './charts.js';
 import { CAT_COLORS } from './renderCategories.js';
+import { Fmt } from '../utils/fmt.js';
 
 let categoriesChartInstance = null;
 let chartTooltip = null;
@@ -40,13 +41,13 @@ function comparisonCell(label, curr, prev, unit, lowerIsBetter) {
   const isGood = lowerIsBetter ? !isUp : isUp;
   const arrow = isUp ? '↑' : '↓';
   const deltaClass = `delta ${isUp ? 'up' : 'down'} ${isGood ? 'good' : 'bad'}`;
-  const fmt = v => v.toFixed(2);
+  const fmt = v => Fmt.zl(v);
   return `
     <div style="padding:14px;background:var(--surface-2);border-radius:10px">
       <div class="text-mute text-sm" style="margin-bottom:6px">${label}</div>
       <div style="display:flex;align-items:baseline;gap:8px">
         <div class="num" style="font-size:20px;font-weight:500">${fmt(curr)}${unit ? `<span class="text-mute" style="font-size:12px;margin-left:2px">${unit}</span>` : ''}</div>
-        <span class="${deltaClass}" style="font-size:11px">${arrow} ${Math.abs(delta).toFixed(1)}%</span>
+        <span class="${deltaClass}" style="font-size:11px">${arrow} ${Math.abs(delta).toFixed(1).replace('.', ',')}%</span>
       </div>
       <div class="text-mute" style="font-size:11px;margin-top:4px">Poprzednio: <span class="num">${fmt(prev)}${unit ? ' ' + unit : ''}</span></div>
     </div>`;
@@ -217,7 +218,7 @@ function renderCategoriesChart(breakdown) {
 
     ctx.fillStyle = '#6b7280';
     ctx.font = `${fontSize - 1}px system-ui, -apple-system, sans-serif`;
-    ctx.fillText(`${item.amount.toFixed(0)} zł (${item.percentage.toFixed(1)}%)`, legendX + boxSize + 10, y + boxSize / 2 + 11);
+    ctx.fillText(`${Fmt.int(item.amount)} zł (${item.percentage.toFixed(1).replace('.', ',')}%)`, legendX + boxSize + 10, y + boxSize / 2 + 11);
   });
 
   chartTooltip = document.createElement('div');
@@ -244,8 +245,8 @@ function renderCategoriesChart(breakdown) {
       html += `<div style="font-size:12px;color:#ccc;margin-bottom:6px;font-style:italic">${slice.categories}</div>`;
     }
     html += `<div style="display:flex;gap:12px;margin-top:4px">
-      <div><div style="font-size:11px;color:#999;text-transform:uppercase">Kwota</div><div style="font-size:15px;font-weight:bold">${slice.amount.toFixed(2)} zł</div></div>
-      <div><div style="font-size:11px;color:#999;text-transform:uppercase">Udział</div><div style="font-size:15px;font-weight:bold">${slice.percentage.toFixed(1)}%</div></div>
+      <div><div style="font-size:11px;color:#999;text-transform:uppercase">Kwota</div><div style="font-size:15px;font-weight:bold">${Fmt.zl(slice.amount)} zł</div></div>
+      <div><div style="font-size:11px;color:#999;text-transform:uppercase">Udział</div><div style="font-size:15px;font-weight:bold">${slice.percentage.toFixed(1).replace('.', ',')}%</div></div>
     </div>`;
     chartTooltip.innerHTML = html;
     chartTooltip.style.display = 'block';
@@ -320,14 +321,14 @@ export function renderAnalytics() {
   const breakdown = getCategoriesBreakdown();
   const userExpenses = getUserExpensesBreakdown();
 
-  document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
-  document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
+  document.getElementById('periodExpenses').textContent = Fmt.zl(stats.totalExpenses);
+  document.getElementById('periodIncomes').textContent = Fmt.zl(stats.totalIncomes);
 
   // Bilans
   const balance = stats.totalIncomes - stats.totalExpenses;
   const balEl = document.getElementById('periodBalance');
   if (balEl) {
-    balEl.textContent = balance.toFixed(2);
+    balEl.textContent = Fmt.zl(balance);
     balEl.style.color = balance > 0 ? 'var(--success)' : balance < 0 ? 'var(--danger)' : '';
   }
   const balSubEl = document.getElementById('periodBalanceSub');
@@ -350,7 +351,7 @@ export function renderAnalytics() {
     const isGood = lowerIsBetter ? !isUp : isUp;
     const arrow = isUp ? '↑' : '↓';
     const cls = `delta ${isUp ? 'up' : 'down'}${isGood ? ' good' : ' bad'}`;
-    return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1)}%</span> vs poprzedni okres`;
+    return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1).replace('.', ',')}%</span> vs poprzedni okres`;
   };
   const expDeltaEl = document.getElementById('periodExpensesDelta');
   if (expDeltaEl) expDeltaEl.innerHTML = buildDelta(stats.totalExpenses, prevExp, true);
@@ -382,7 +383,7 @@ export function renderAnalytics() {
             <span class="text-mute num" style="font-size:11px;width:16px;flex-shrink:0">#${i + 1}</span>
             <div style="width:28px;height:28px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catEmoji}</div>
             <span style="font-size:13px;font-weight:500;flex:1;min-width:0">${escapeHTML(cat.category)}</span>
-            <span class="num" style="font-weight:500;flex-shrink:0">${cat.amount.toFixed(2)} zł</span>
+            <span class="num" style="font-weight:500;flex-shrink:0">${Fmt.zl(cat.amount)} zł</span>
           </div>
         `;
       }).join('')}
@@ -398,10 +399,10 @@ export function renderAnalytics() {
             <div style="font-size:13px;font-weight:500">${escapeHTML(user.userName)}</div>
             <div class="text-mute text-sm">${user.count || ''} transakcji</div>
           </div>
-          <div class="num" style="font-weight:500;flex-shrink:0">${user.amount.toFixed(2)} zł</div>
+          <div class="num" style="font-weight:500;flex-shrink:0">${Fmt.zl(user.amount)} zł</div>
         </div>
         <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease"></div></div>
-        <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1)}%</div>
+        <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1).replace('.', ',')}%</div>
       </div>
     `).join('') + top3HTML;
   } else {

@@ -6,6 +6,7 @@ import { getSourceIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
 import { userChipHTML } from './chips.js';
+import { Fmt } from '../utils/fmt.js';
 
 let currentIncomePage = 1;
 let currentIncomeFilter = 'all'; // 'all' | 'normal' | 'planned'
@@ -104,7 +105,7 @@ export function renderSources() {
         : inc.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
           : '<span class="tag success dot">Zrealizowany</span>'}</td>
-      <td class="amount" style="color:var(--success);font-weight:500">${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)}</td>
+      <td class="amount" style="color:var(--success);font-weight:500">${inc.amount >= 0 ? '+' : ''}${Fmt.zl(Math.abs(inc.amount))}</td>
       <td class="actions">
         ${!isCorrection ? `
           ${inc.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
@@ -125,7 +126,7 @@ export function renderSources() {
     const sign = sum >= 0 ? '+' : '';
     tfoot.innerHTML = `<tr>
       <td colspan="4" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
-      <td class="amount" style="font-weight:600;color:var(--success)">${sign}${sum.toFixed(2)}</td>
+      <td class="amount" style="font-weight:600;color:var(--success)">${sign}${Fmt.zl(Math.abs(sum))}</td>
       <td></td>
     </tr>`;
   }

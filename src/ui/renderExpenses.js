@@ -6,6 +6,7 @@ import { getCategoryIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
 import { userChipHTML } from './chips.js';
+import { Fmt } from '../utils/fmt.js';
 
 let currentExpensePage = 1;
 let currentExpenseFilter = 'all'; // 'all' | 'normal' | 'planned'
@@ -100,7 +101,7 @@ export function renderExpenses() {
         <td>${exp.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
           : '<span class="tag success dot">Zrealizowany</span>'}</td>
-        <td class="amount" style="color:var(--danger);font-weight:500">−${exp.amount.toFixed(2)}</td>
+        <td class="amount" style="color:var(--danger);font-weight:500">−${Fmt.zl(exp.amount)}</td>
         <td class="actions">
           ${exp.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
           <div class="row-actions">
@@ -119,7 +120,7 @@ export function renderExpenses() {
     const sum = filtered.reduce((acc, e) => acc + e.amount, 0);
     tfoot.innerHTML = `<tr>
       <td colspan="5" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
-      <td class="amount" style="font-weight:600;color:var(--danger)">−${sum.toFixed(2)}</td>
+      <td class="amount" style="font-weight:600;color:var(--danger)">−${Fmt.zl(sum)}</td>
       <td></td>
     </tr>`;
   }

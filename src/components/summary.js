@@ -1,6 +1,7 @@
 // src/components/summary.js
 // Ten plik jest opcjonalny - renderowanie podsumowania jest już w app.js
 // Możesz go pominąć lub użyć jako template do refaktoryzacji w przyszłości
+import { Fmt } from '../utils/fmt.js';
 
 /**
  * Utwórz kartę podsumowania
@@ -49,7 +50,7 @@ export function createSummaryGroup(config) {
  * Formatuj kwotę do wyświetlenia
  */
 export function formatCurrency(amount, currency = 'PLN') {
-  return `${amount.toFixed(2)} ${currency}`;
+  return `${Fmt.zl(amount)} ${currency}`;
 }
 
 /**

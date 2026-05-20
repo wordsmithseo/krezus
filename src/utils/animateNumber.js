@@ -8,45 +8,38 @@
  * @param {number} decimals - Liczba miejsc po przecinku (domyślnie 2)
  * @param {number} startValue - Wartość początkowa (domyślnie 0)
  */
-export function animateNumber(element, targetValue, duration = 1500, decimals = 2, startValue = 0) {
+export function animateNumber(element, targetValue, duration = 1500, decimals = 2, startValue = 0, formatter = null) {
   if (!element) return;
 
-  // Jeśli wartość docelowa jest taka sama jak obecna, nie animuj
-  const currentText = element.textContent.replace(/[^\d.-]/g, '');
+  const fmt = formatter ?? (v => v.toFixed(decimals));
+
+  // Parse current value handling PL format (space thousands, comma decimal)
+  const currentText = element.textContent.replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
   const currentValue = parseFloat(currentText) || startValue;
 
   if (Math.abs(currentValue - targetValue) < 0.01) {
-    element.textContent = targetValue.toFixed(decimals);
+    element.textContent = fmt(targetValue);
     return;
   }
 
   const startTime = performance.now();
   const valueDiff = targetValue - startValue;
 
-  // Funkcja easing - efekt przyspieszenia i zwolnienia
-  const easeOutCubic = (t) => {
-    return 1 - Math.pow(1 - t, 3);
-  };
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
   function update(currentTime) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
-    // Użyj easing dla płynniejszej animacji
     const easedProgress = easeOutCubic(progress);
-
-    // Oblicz bieżącą wartość
     const currentValue = startValue + (valueDiff * easedProgress);
 
-    // Zaktualizuj tekst
-    element.textContent = currentValue.toFixed(decimals);
+    element.textContent = fmt(currentValue);
 
-    // Kontynuuj animację jeśli nie dotarliśmy do końca
     if (progress < 1) {
       requestAnimationFrame(update);
     } else {
-      // Upewnij się, że końcowa wartość jest dokładna
-      element.textContent = targetValue.toFixed(decimals);
+      element.textContent = fmt(targetValue);
       element.classList.remove('animating-number');
     }
   }

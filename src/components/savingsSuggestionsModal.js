@@ -2,6 +2,7 @@
 import { getSavingsGoals } from '../modules/savingsGoalManager.js';
 import { calculateSafeSavingsAmount } from '../modules/savingsGoalCalculator.js';
 import { sanitizeHTML } from '../utils/sanitizer.js';
+import { Fmt } from '../utils/fmt.js';
 
 /**
  * Klucz localStorage dla odrzuconych sugestii
@@ -145,8 +146,8 @@ function renderSuggestionsList(suggestions) {
                         <div class="goal-details">
                             <h3 class="goal-name">${sanitizeHTML(goal.name)}</h3>
                             <div class="goal-progress-mini">
-                                <span class="progress-text">${goal.currentAmount.toFixed(2)} zł / ${goal.targetAmount.toFixed(2)} zł</span>
-                                <span class="progress-percent">(${progress.toFixed(0)}%)</span>
+                                <span class="progress-text">${Fmt.zl(goal.currentAmount)} zł / ${Fmt.zl(goal.targetAmount)} zł</span>
+                                <span class="progress-percent">(${Math.round(progress)}%)</span>
                             </div>
                         </div>
                     </div>
@@ -155,7 +156,7 @@ function renderSuggestionsList(suggestions) {
                 <div class="suggestion-card-body">
                     <div class="suggestion-amount-box">
                         <div class="suggestion-label">Sugerowana kwota:</div>
-                        <div class="suggestion-amount-large">${suggestion.amount.toFixed(2)} zł</div>
+                        <div class="suggestion-amount-large">${Fmt.zl(suggestion.amount)} zł</div>
                     </div>
 
                     <div class="suggestion-reason-box">
@@ -172,7 +173,7 @@ function renderSuggestionsList(suggestions) {
 
                     <div class="suggestion-card-actions">
                         <button class="btn btn-success" onclick="window.acceptSuggestionFromModal('${goal.id}', ${suggestion.amount})">
-                            ✅ Zaakceptuj (${suggestion.amount.toFixed(2)} zł)
+                            ✅ Zaakceptuj (${Fmt.zl(suggestion.amount)} zł)
                         </button>
                         <button class="btn btn-secondary" onclick="window.rejectSuggestionFromModal('${goal.id}')">
                             ❌ Odrzuć
