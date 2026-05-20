@@ -813,16 +813,23 @@ export function showAddCategoryModal() {
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h2>Nowa kategoria</h2>
-          <button class="modal-close" onclick="closeModal('addCategoryModal')">✕</button>
+          <h3>Nowa kategoria</h3>
+          <button class="btn ghost icon-only" onclick="window.closeModal('addCategoryModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label>Nazwa kategorii</label>
-          <input type="text" id="newCategoryNameModal" class="input" placeholder="np. Jedzenie" minlength="2" maxlength="30" style="width:100%">
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+          <div class="field">
+            <label>Nazwa</label>
+            <input type="text" id="newCategoryNameModal" placeholder="np. Hobby" minlength="2" maxlength="30">
+          </div>
+          <div class="field">
+            <label>Ikona (emoji)</label>
+            <input type="text" id="newCategoryIconModal" maxlength="2" placeholder="🎨">
+            <div class="hint">Możesz pominąć — wybierzemy automatycznie na podstawie nazwy</div>
+          </div>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button type="button" class="btn sm" onclick="closeModal('addCategoryModal')">Anuluj</button>
-          <button type="button" class="btn accent sm" data-action="add-category">Dodaj kategorię</button>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="window.closeModal('addCategoryModal')">Anuluj</button>
+          <button type="button" class="btn accent" data-action="add-category">Dodaj kategorię</button>
         </div>
       </div>
     `;

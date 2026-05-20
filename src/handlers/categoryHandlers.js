@@ -29,6 +29,7 @@ export function getMergingCategoryId() {
 
 export async function addCategory() {
   const input = document.getElementById('newCategoryNameModal');
+  const iconInput = document.getElementById('newCategoryIconModal');
   const name = input?.value.trim() ?? '';
 
   if (!validateCategoryName(name)) {
@@ -46,7 +47,7 @@ export async function addCategory() {
   const newCategory = {
     id: `cat_${Date.now()}`,
     name: escapeHTML(name.trim()),
-    icon: getCategoryIcon(name)
+    icon: iconInput?.value.trim() || getCategoryIcon(name)
   };
 
   const updated = [...categories, newCategory];
@@ -54,6 +55,7 @@ export async function addCategory() {
   try {
     await saveCategories(updated);
     if (input) input.value = '';
+    if (iconInput) iconInput.value = '';
     window.closeModal('addCategoryModal');
 
     const user = getCurrentUser();
