@@ -237,26 +237,55 @@ function updateSectionStats() {
   const incomes = getIncomes();
   const now = getWarsawDateString().slice(0, 7); // YYYY-MM
 
-  const expensesMonthTotal = expenses
-    .filter(e => e.type === 'normal' && e.date && e.date.startsWith(now))
-    .reduce((s, e) => s + (e.amount || 0), 0);
-  const expensesPlannedTotal = expenses
-    .filter(e => e.type === 'planned')
-    .reduce((s, e) => s + (e.amount || 0), 0);
-  const incomesMonthTotal = incomes
-    .filter(i => i.type === 'normal' && i.date && i.date.startsWith(now))
-    .reduce((s, i) => s + (i.amount || 0), 0);
-  const incomesPlannedTotal = incomes
-    .filter(i => i.type === 'planned')
-    .reduce((s, i) => s + (i.amount || 0), 0);
+  const [yr, mo] = now.split('-').map(Number);
+  const prevDate = new Date(yr, mo - 2, 1);
+  const prev = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const expNow  = expenses.filter(e => e.type === 'normal' && e.date?.startsWith(now));
+  const expPrev = expenses.filter(e => e.type === 'normal' && e.date?.startsWith(prev));
+  const expPlanned = expenses.filter(e => e.type === 'planned');
+
+  const incNow  = incomes.filter(i => i.type === 'normal' && i.date?.startsWith(now));
+  const incPrev = incomes.filter(i => i.type === 'normal' && i.date?.startsWith(prev));
+  const incPlanned = incomes.filter(i => i.type === 'planned');
+
+  const sum = arr => arr.reduce((s, x) => s + (x.amount || 0), 0);
+
+  const expMonthTotal   = sum(expNow);
+  const expPrevTotal    = sum(expPrev);
+  const expAvg          = expNow.length > 0 ? expMonthTotal / expNow.length : 0;
+  const expPlannedTotal = sum(expPlanned);
+
+  const incMonthTotal   = sum(incNow);
+  const incPrevTotal    = sum(incPrev);
+  const incAvg          = incNow.length > 0 ? incMonthTotal / incNow.length : 0;
+  const incPlannedTotal = sum(incPlanned);
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('expensesMonthTotal', Fmt.zl(expensesMonthTotal));
-  set('expensesPlannedTotal', Fmt.zl(expensesPlannedTotal));
-  set('expensesCount', expenses.length);
-  set('incomesMonthTotal', Fmt.zl(incomesMonthTotal));
-  set('incomesPlannedTotal', Fmt.zl(incomesPlannedTotal));
-  set('incomesCount', incomes.length);
+
+  set('expensesMonthTotal',  Fmt.zl(expMonthTotal));
+  set('expensesAvg',         Fmt.zl(expAvg));
+  set('expensesPlannedTotal', Fmt.zl(expPlannedTotal));
+  set('expensesPlannedCount', `${expPlanned.length} transakcji`);
+
+  set('incomesMonthTotal',   Fmt.zl(incMonthTotal));
+  set('incomesAvg',          Fmt.zl(incAvg));
+  set('incomesPlannedTotal', Fmt.zl(incPlannedTotal));
+  set('incomesPlannedCount', `${incPlanned.length} transakcji`);
+
+  const deltaHtml = (current, previous, upGood) => {
+    if (previous === 0) return '';
+    const pct = ((current - previous) / previous) * 100;
+    const isUp = pct > 0;
+    const color = (isUp === upGood) ? 'var(--success)' : 'var(--danger)';
+    const arrow = isUp ? '↑' : '↓';
+    const sign  = isUp ? '+' : '';
+    return `<span style="color:${color}">${arrow} ${sign}${pct.toFixed(1).replace('.', ',')}% vs poprzedni miesiąc</span>`;
+  };
+
+  const setDelta = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  setDelta('expensesMonthDelta', deltaHtml(expMonthTotal, expPrevTotal, false));
+  setDelta('incomesMonthDelta',  deltaHtml(incMonthTotal, incPrevTotal, true));
 }
 
 
