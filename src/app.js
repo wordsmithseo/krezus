@@ -1326,6 +1326,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicjalizuj event delegation dla bezpiecznej obsługi kliknięć
   initClickDelegation({
     // Kategorie
+    'toggle-cat-menu': (el, e) => {
+      e.stopImmediatePropagation();
+      const id = el.dataset.id;
+      const dropdown = document.getElementById(`cat-menu-${id}`);
+      const isOpen = dropdown && dropdown.style.display !== 'none';
+      document.querySelectorAll('.cat-menu-dropdown').forEach(d => { d.style.display = 'none'; });
+      if (!isOpen && dropdown) dropdown.style.display = 'block';
+    },
     'cancel-merge-category': () => cancelMergeCategory(),
     'start-merge-category': (el) => startMergeCategory(getDataAttributes(el).id),
     'edit-category': (el) => {
@@ -1425,6 +1433,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtry przychodów
     'filter-incomes': (el) => setIncomeFilter(el.dataset.filter)
+  });
+
+  // Zamknij dropdown kategorii przy kliknięciu poza nim
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.cat-menu-dropdown').forEach(d => { d.style.display = 'none'; });
   });
 
   // Wyszukiwanie wydatków i przychodów
