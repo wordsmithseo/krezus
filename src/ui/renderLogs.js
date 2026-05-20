@@ -1,12 +1,30 @@
 // src/ui/renderLogs.js
 import { getLogs, calculateLogsSize, clearAllLogs, formatLogEntry } from '../modules/logger.js';
-import { PAGINATION } from '../utils/constants.js';
 import { showPasswordModal } from '../components/modals.js';
 import { showSuccessMessage, showErrorMessage } from '../utils/errorHandler.js';
-import { icon } from '../utils/icons.js';
 
-const LOGS_PER_PAGE = 20;
-let currentLogPage = 1;
+const ACTION_COLORS = {
+  EXPENSE_ADD: 'var(--danger)', EXPENSE_EDIT: 'var(--danger)', EXPENSE_DELETE: 'var(--danger)',
+  EXPENSE_REALISE: 'var(--danger)',
+  INCOME_ADD: 'var(--success)', INCOME_EDIT: 'var(--success)', INCOME_DELETE: 'var(--success)',
+  INCOME_REALISE: 'var(--success)', CORRECTION_ADD: 'var(--success)',
+  CATEGORY_ADD: 'var(--accent)', CATEGORY_EDIT: 'var(--accent)', CATEGORY_DELETE: 'var(--accent)',
+  CATEGORY_MERGE: 'var(--accent)',
+};
+
+const ACTION_SHORT = {
+  EXPENSE_ADD: 'EXPENSE', EXPENSE_EDIT: 'EXPENSE', EXPENSE_DELETE: 'EXPENSE', EXPENSE_REALISE: 'EXPENSE',
+  INCOME_ADD: 'INCOME', INCOME_EDIT: 'INCOME', INCOME_DELETE: 'INCOME',
+  INCOME_REALISE: 'INCOME', CORRECTION_ADD: 'INCOME',
+  CATEGORY_ADD: 'CATEGORY', CATEGORY_EDIT: 'CATEGORY', CATEGORY_DELETE: 'CATEGORY', CATEGORY_MERGE: 'CATEGORY',
+  USER_LOGIN: 'AUTH', USER_LOGOUT: 'AUTH', USER_REGISTER: 'AUTH',
+  PROFILE_UPDATE: 'USER', BUDGET_USER_ADD: 'USER', BUDGET_USER_EDIT: 'USER', BUDGET_USER_DELETE: 'USER',
+  LOGS_CLEARED: 'SYSTEM', SETTINGS_UPDATE: 'SYSTEM', AUTO_REALISE: 'SYSTEM',
+};
+
+function stripEmoji(str) {
+  return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/gu, '').trim();
+}
 
 export async function renderLogs() {
   try {
@@ -23,50 +41,22 @@ export async function renderLogs() {
       return;
     }
 
-    const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
-    const startIdx = (currentLogPage - 1) * LOGS_PER_PAGE;
-    const endIdx = startIdx + LOGS_PER_PAGE;
-    const paginatedLogs = logs.slice(startIdx, endIdx);
-
-    const html = paginatedLogs.map((logEntry, index) => {
+    const lines = logs.map(logEntry => {
       const formatted = formatLogEntry(logEntry);
-      const logNumber = startIdx + index + 1;
-      return `
-        <div class="log-entry">
-          <div class="log-header">
-            <span class="log-number">#${logNumber}</span>
-            <span class="log-action">${formatted.label}</span>
-            <span class="log-timestamp">${formatted.timestamp}</span>
-          </div>
-          ${formatted.userName ? `
-            <div class="log-user">
-              <strong>Użytkownik:</strong> ${formatted.userName}
-            </div>
-          ` : ''}
-          ${formatted.details && Object.keys(formatted.details).length > 0 ? `
-            <div class="log-details">
-              ${Object.entries(formatted.details).map(([key, value]) =>
-                `<span class="log-detail-item"><strong>${key}:</strong> ${value}</span>`
-              ).join(' • ')}
-            </div>
-          ` : ''}
-        </div>
-      `;
+      const timeStr = (logEntry.time || '00:00:00').slice(0, 8);
+      const action = logEntry.action || '';
+      const shortAction = ACTION_SHORT[action] || action;
+      const color = ACTION_COLORS[action] || 'var(--ink-3)';
+      const label = stripEmoji(formatted.label);
+      const user = formatted.userName && formatted.userName !== 'System' ? ` — ${formatted.userName}` : '';
+      return `<div style="white-space:nowrap"><span style="color:var(--ink-3)">${timeStr}</span> · <span style="color:${color};font-weight:600">${shortAction}</span> · ${label}${user}</div>`;
     }).join('');
 
-    logsList.innerHTML = html;
+    logsList.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;max-height:200px;overflow-y:auto;background:var(--surface-sunken);border-radius:var(--radius-sm);padding:10px 12px">${lines}</div>`;
 
-    if (totalPages > 1) {
-      renderLogsPagination(totalPages);
-    } else {
-      const paginationContainer = logsList.nextElementSibling;
-      if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
-        paginationContainer.innerHTML = '';
-      } else {
-        const newPagination = document.createElement('div');
-        newPagination.className = 'pagination-container';
-        logsList.parentNode.insertBefore(newPagination, logsList.nextSibling);
-      }
+    const paginationContainer = logsList.nextElementSibling;
+    if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
+      paginationContainer.innerHTML = '';
     }
   } catch (error) {
     console.error('❌ Błąd renderowania logów:', error);
@@ -74,56 +64,7 @@ export async function renderLogs() {
   }
 }
 
-function renderLogsPagination(totalPages) {
-  const logsList = document.getElementById('logsList');
-  let paginationContainer = logsList.nextElementSibling;
-
-  if (!paginationContainer || !paginationContainer.classList.contains('pagination-container')) {
-    paginationContainer = document.createElement('div');
-    paginationContainer.className = 'pagination-container';
-    logsList.parentNode.insertBefore(paginationContainer, logsList.nextSibling);
-  }
-
-  if (totalPages <= 1) {
-    paginationContainer.innerHTML = '';
-    return;
-  }
-
-  const chevLeft  = icon('ChevronLeft',  { size: 14, strokeWidth: 1.5 });
-  const chevRight = icon('ChevronRight', { size: 14, strokeWidth: 1.5 });
-
-  let html = '';
-  html += `<button class="pagination-btn" ${currentLogPage === 1 ? 'disabled' : ''} data-action="change-log-page" data-page="${currentLogPage - 1}">${chevLeft}</button>`;
-
-  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
-  let startPage = Math.max(1, currentLogPage - Math.floor(maxButtons / 2));
-  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-  if (endPage - startPage + 1 < maxButtons) {
-    startPage = Math.max(1, endPage - maxButtons + 1);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentLogPage ? 'active' : ''}" data-action="change-log-page" data-page="${i}">${i}</button>`;
-  }
-
-  html += `<button class="pagination-btn" ${currentLogPage === totalPages ? 'disabled' : ''} data-action="change-log-page" data-page="${currentLogPage + 1}">${chevRight}</button>`;
-
-  paginationContainer.innerHTML = html;
-}
-
-export async function changeLogPage(page) {
-  const logs = await getLogs();
-  const totalPages = Math.ceil(logs.length / LOGS_PER_PAGE);
-
-  if (page < 1 || page > totalPages) return;
-
-  currentLogPage = page;
-  await renderLogs();
-
-  const logsList = document.getElementById('logsList');
-  if (logsList) logsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+export async function changeLogPage() {}
 
 export async function clearLogs() {
   const confirmed = await showPasswordModal(
@@ -135,7 +76,6 @@ export async function clearLogs() {
 
   try {
     await clearAllLogs('System');
-    currentLogPage = 1;
     await renderLogs();
     showSuccessMessage('Logi wyczyszczone');
   } catch (error) {
@@ -145,6 +85,5 @@ export async function clearLogs() {
 }
 
 export function resetAndRenderLogs() {
-  currentLogPage = 1;
   renderLogs();
 }
