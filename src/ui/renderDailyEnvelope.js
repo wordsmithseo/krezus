@@ -51,8 +51,8 @@ function renderEnvelope14Days(total) {
 
   const html = `
     <div style="position:relative">
-      ${thresholdLineHtml}
       <div style="display:flex;align-items:flex-end;gap:3px;height:${chartH}px">${barsHtml}</div>
+      ${thresholdLineHtml}
     </div>
     <div style="display:flex;gap:3px;margin-top:4px">${dayLabels}</div>
     <div style="display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-3);margin-top:14px;flex-wrap:wrap">
