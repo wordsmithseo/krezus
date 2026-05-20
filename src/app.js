@@ -945,13 +945,17 @@ function renderSimulationResult(result) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
       <div class="metric"><div class="metric-label">Środki po wydatku</div><div class="metric-value">${fmt(d.availableAfterSimulation)} <span class="text-mute text-sm">zł</span></div></div>
       <div class="metric"><div class="metric-label">Nowy limit dzienny</div><div class="metric-value">${fmt(d.dailyBudgetAfter)} <span class="text-mute text-sm">zł/d</span></div></div>
-      <div class="metric"><div class="metric-label">Mediana dzienna</div><div class="metric-value">${fmt(d.medianDailySpending)} <span class="text-mute text-sm">zł/d</span></div></div>
-      <div class="metric"><div class="metric-label">Dni do symulacji</div><div class="metric-value">${d.daysToSimulation ?? 0}</div></div>
+      <div class="metric"><div class="metric-label">Wpływ na limit</div><div class="metric-value">${d.dailyBudgetBefore > 0 ? Fmt.pct(((d.dailyBudgetAfter - d.dailyBudgetBefore) / d.dailyBudgetBefore) * 100) : '—'}</div></div>
+      <div class="metric"><div class="metric-label">Zobowiązania planowane</div><div class="metric-value">${fmt(d.plannedExpensesBeforeSim ?? 0)} <span class="text-mute text-sm">zł</span></div></div>
     </div>
     <hr class="divider">
     <h3 style="margin:0 0 10px">Analiza krok po kroku</h3>
     <ol style="padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.7;margin:0">
-      ${findingsHTML}
+      <li>Aktualne dostępne środki: <strong class="num">${fmt(d.projectedAvailable)}</strong> zł (prognozowane na dzień wydatku)</li>
+      <li>Po wydatku zostanie: <strong class="num">${fmt(d.availableAfterSimulation)}</strong> zł</li>
+      <li>Po odjęciu planowanych zobowiązań (<strong class="num">${fmt(d.plannedExpensesBeforeSim ?? 0)}</strong> zł): <strong class="num">${fmt(Math.max(0, d.availableAfterSimulation - (d.plannedExpensesBeforeSim ?? 0)))}</strong> zł</li>
+      <li>Podzielone na <strong>${d.daysToNextIncome ?? 30}</strong> dni → nowy limit dzienny: <strong class="num">${fmt(d.dailyBudgetAfter)}</strong> zł/d</li>
+      <li>Mediana historyczna <strong class="num">${fmt(d.medianDailySpending)}</strong> zł — limit <strong>${d.dailyBudgetAfter >= d.medianDailySpending ? 'POWYŻEJ' : 'PONIŻEJ'}</strong> mediany</li>
     </ol>
   `;
 

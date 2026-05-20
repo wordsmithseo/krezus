@@ -1258,6 +1258,7 @@ export function simulateExpense(simulationDate, simulationAmount) {
 
     // Szacowany dzienny budżet po wydatku (ile zostanie na dzień do następnego wpływu)
     const daysForBudget = Math.max(1, daysToNextIncome || 30);
+    const dailyBudgetBefore = projectedAvailable / daysForBudget;
     const dailyBudgetAfter = availableAfterSimulation / daysForBudget;
 
     // === KROK 7: Analiza dnia tygodnia ===
@@ -1366,6 +1367,7 @@ export function simulateExpense(simulationDate, simulationAmount) {
             currentRealFunds,
             projectedAvailable,
             availableAfterSimulation,
+            dailyBudgetBefore,
             dailyBudgetAfter,
             daysToSimulation,
             daysToNextIncome,
