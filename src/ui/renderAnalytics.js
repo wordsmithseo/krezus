@@ -394,14 +394,14 @@ export function renderAnalytics() {
     userExpDiv.innerHTML = userExpenses.map(user => `
       <div style="margin-bottom:12px">
         <div class="row" style="margin-bottom:6px">
-          <div class="avatar sm" style="background:var(--accent)">${escapeHTML((user.userName || '?')[0])}</div>
+          <div class="avatar sm" style="background:${user.color}">${escapeHTML((user.userName || '?')[0])}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500">${escapeHTML(user.userName)}</div>
             <div class="text-mute text-sm">${user.count || ''} transakcji</div>
           </div>
           <div class="num" style="font-weight:500;flex-shrink:0">${Fmt.zl(user.amount)} zł</div>
         </div>
-        <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease"></div></div>
+        <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:${user.color};border-radius:inherit;transition:width 400ms ease"></div></div>
         <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1).replace('.', ',')}%</div>
       </div>
     `).join('') + top3HTML;

@@ -7,6 +7,13 @@ let customDateFrom = null;
 let customDateTo = null;
 let budgetUsersCache = [];
 
+const USER_COLORS = [
+  'oklch(0.66 0.13 60)',   // amber
+  'oklch(0.6 0.15 320)',   // violet-pink
+  'oklch(0.6 0.12 155)',
+  'oklch(0.62 0.14 230)',
+];
+
 export function setBudgetUsersCache(users) {
   budgetUsersCache = users || [];
 }
@@ -248,11 +255,14 @@ export function getUserExpensesBreakdown() {
   const breakdown = Array.from(userMap.entries())
     .map(([userId, amount]) => {
       const userName = getBudgetUserName(userId);
+      const userIndex = budgetUsersCache.findIndex(u => u.id === userId);
+      const color = USER_COLORS[userIndex >= 0 ? userIndex % USER_COLORS.length : 0];
       return {
         userId,
         userName,
         amount,
-        percentage: total > 0 ? (amount / total) * 100 : 0
+        percentage: total > 0 ? (amount / total) * 100 : 0,
+        color
       };
     })
     .filter(item => item.userName !== null)
