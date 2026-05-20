@@ -62,13 +62,15 @@ export function renderCategories() {
   const cardsHtml = categoryStats.map(cat => {
     const isMergingThis = mergingId === cat.id;
     const isMergeCandidate = mergingId && !isMergingThis;
+    const isEmpty = cat.totalAmount === 0;
     const pct = totalAll > 0 ? (cat.totalAmount / totalAll * 100) : 0;
     const catIcon = getCategoryIcon(cat.name);
     const mergeOverlayStyle = isMergingThis
       ? 'outline:2px solid var(--accent);opacity:0.6;'
       : isMergeCandidate ? 'outline:1px dashed var(--accent);cursor:pointer;position:relative;' : '';
+    const emptyStyle = isEmpty && !isMergingThis ? 'opacity:0.5;' : '';
 
-    return `<div class="card" style="padding:18px;${mergeOverlayStyle}"
+    return `<div class="card" style="padding:18px;${mergeOverlayStyle}${emptyStyle}"
       ${isMergeCandidate ? `data-action="select-merge-target" data-id="${cat.id}"` : ''}>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <div class="limit-tile-icon" style="background:color-mix(in srgb,${cat.color} 14%,transparent);color:${cat.color};font-size:18px">${catIcon}</div>
@@ -88,8 +90,8 @@ export function renderCategories() {
         ` : ''}
       </div>
       <div class="num" style="font-size:20px;font-weight:500">${Fmt.zl(cat.totalAmount)} <span class="text-mute text-sm">zł</span></div>
-      <div class="progress" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%;height:100%;background:${cat.color};border-radius:inherit;transition:width 400ms ease"></div></div>
-      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1).replace('.', ',')}% wszystkich wydatków</div>
+      ${!isEmpty ? `<div class="progress" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%;height:100%;background:${cat.color};border-radius:inherit;transition:width 400ms ease"></div></div>
+      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1).replace('.', ',')}% wszystkich wydatków</div>` : ''}
       ${isMergeCandidate ? `<div style="position:absolute;inset:0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:inherit;display:grid;place-items:center;pointer-events:none"><span class="tag accent">Scal tutaj →</span></div>` : ''}
     </div>`;
   }).join('');
