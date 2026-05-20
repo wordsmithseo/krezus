@@ -498,63 +498,53 @@ function createEditExpenseModal() {
   modal.id = 'editExpenseModal';
   modal.className = 'modal';
   modal.innerHTML = `
-    <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-content" style="max-width:540px">
       <div class="modal-header">
-        <h2>✏️ Edytuj wydatek</h2>
-        <button class="modal-close" onclick="closeModal('editExpenseModal')">✕</button>
+        <h3>Edytuj wydatek</h3>
+        <button class="btn ghost icon-only" onclick="window.closeModal('editExpenseModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      
       <form id="editExpenseForm">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Kwota (zł)</label>
-            <input type="number" id="editExpenseAmount" step="0.01" required>
-          </div>
-          <div class="form-group">
-            <label>Typ transakcji</label>
-            <select id="editExpenseType" required onchange="toggleEditExpenseTypeFields()">
-              <option value="normal">Zwykły</option>
-              <option value="planned">Planowany</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group" id="editExpenseDateGroup">
-            <label>Data</label>
-            <input type="date" id="editExpenseDate" required>
-          </div>
-          <div class="form-group" id="editExpenseTimeGroup">
-            <label>Godzina (opcjonalnie)</label>
-            <input type="time" id="editExpenseTime">
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label>Użytkownik</label>
-            <select id="editExpenseUser" required>
-              <option value="">Wybierz użytkownika</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Kategoria</label>
-            <input type="text" id="editExpenseCategory" list="editExpenseCategoriesDatalist" required autocomplete="off">
-            <datalist id="editExpenseCategoriesDatalist"></datalist>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field">
+              <label>Kwota (zł)</label>
+              <input type="number" id="editExpenseAmount" step="0.01" required class="num">
+            </div>
+            <div class="field">
+              <label>Typ transakcji</label>
+              <select id="editExpenseType" required onchange="window.toggleEditExpenseTypeFields()">
+                <option value="normal">Zwykły</option>
+                <option value="planned">Planowany</option>
+              </select>
+            </div>
+            <div class="field" id="editExpenseDateGroup">
+              <label>Data</label>
+              <input type="date" id="editExpenseDate" required>
+            </div>
+            <div class="field" id="editExpenseTimeGroup">
+              <label>Godzina (opcjonalnie)</label>
+              <input type="time" id="editExpenseTime">
+            </div>
+            <div class="field full">
+              <label>Użytkownik</label>
+              <select id="editExpenseUser" required>
+                <option value="">Wybierz użytkownika</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>Kategoria</label>
+              <input type="text" id="editExpenseCategory" list="editExpenseCategoriesDatalist" required autocomplete="off">
+              <datalist id="editExpenseCategoriesDatalist"></datalist>
+            </div>
+            <div class="field full">
+              <label>Opis</label>
+              <input type="text" id="editExpenseDescription" required autocomplete="off">
+            </div>
           </div>
         </div>
-        
-        <div class="form-group">
-          <label>Opis</label>
-          <input type="text" id="editExpenseDescription" required autocomplete="off">
-        </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editExpenseModal')">Anuluj</button>
-          <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="window.closeModal('editExpenseModal')">Anuluj</button>
+          <button type="submit" class="btn accent">Zapisz zmiany</button>
         </div>
       </form>
     </div>
@@ -639,54 +629,48 @@ function createEditIncomeModal() {
   modal.id = 'editIncomeModal';
   modal.className = 'modal';
   modal.innerHTML = `
-    <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-content" style="max-width:540px">
       <div class="modal-header">
-        <h2>✏️ Edytuj przychód</h2>
-        <button class="modal-close" onclick="closeModal('editIncomeModal')">✕</button>
+        <h3>Edytuj przychód</h3>
+        <button class="btn ghost icon-only" onclick="window.closeModal('editIncomeModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      
       <form id="editIncomeForm">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Kwota (zł)</label>
-            <input type="number" id="editIncomeAmount" step="0.01" required>
-          </div>
-          <div class="form-group">
-            <label>Typ transakcji</label>
-            <select id="editIncomeType" required onchange="toggleEditIncomeTypeFields()">
-              <option value="normal">Zwykły</option>
-              <option value="planned">Planowany</option>
-            </select>
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label>Data</label>
-            <input type="date" id="editIncomeDate" required>
-          </div>
-          <div class="form-group">
-            <label>Godzina (opcjonalnie)</label>
-            <input type="time" id="editIncomeTime">
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="form-group">
-            <label>Użytkownik</label>
-            <select id="editIncomeUser" required>
-              <option value="">Wybierz użytkownika</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Źródło</label>
-            <input type="text" id="editIncomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="field">
+              <label>Kwota (zł)</label>
+              <input type="number" id="editIncomeAmount" step="0.01" required class="num">
+            </div>
+            <div class="field">
+              <label>Typ transakcji</label>
+              <select id="editIncomeType" required onchange="window.toggleEditIncomeTypeFields()">
+                <option value="normal">Zwykły</option>
+                <option value="planned">Planowany</option>
+              </select>
+            </div>
+            <div class="field" id="editIncomeDateField">
+              <label>Data</label>
+              <input type="date" id="editIncomeDate" required>
+            </div>
+            <div class="field" id="editIncomeTimeField">
+              <label>Godzina (opcjonalnie)</label>
+              <input type="time" id="editIncomeTime">
+            </div>
+            <div class="field full">
+              <label>Użytkownik</label>
+              <select id="editIncomeUser" required>
+                <option value="">Wybierz użytkownika</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>Źródło</label>
+              <input type="text" id="editIncomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
+            </div>
           </div>
         </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editIncomeModal')">Anuluj</button>
-          <button type="submit" class="btn btn-primary">Zapisz zmiany</button>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="window.closeModal('editIncomeModal')">Anuluj</button>
+          <button type="submit" class="btn accent">Zapisz zmiany</button>
         </div>
       </form>
     </div>
@@ -698,11 +682,11 @@ function createEditIncomeModal() {
 
 window.toggleEditIncomeTypeFields = function() {
   const type = document.getElementById('editIncomeType').value;
-  const dateGroup = document.querySelector('#editIncomeDate')?.closest('.form-group');
-  const timeGroup = document.querySelector('#editIncomeTime')?.closest('.form-group');
-  
+  const dateGroup = document.getElementById('editIncomeDateField');
+  const timeGroup = document.getElementById('editIncomeTimeField');
+
   if (!dateGroup || !timeGroup) return;
-  
+
   if (type === 'normal') {
     dateGroup.style.display = 'none';
     timeGroup.style.display = 'none';
@@ -766,23 +750,22 @@ function createPasswordModal() {
   modal.id = 'passwordModal';
   modal.className = 'modal';
   modal.innerHTML = `
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:420px">
       <div class="modal-header">
-        <h2 id="passwordModalTitle">Potwierdź hasło</h2>
-        <button class="modal-close" onclick="closePasswordModal()">✕</button>
+        <h3 id="passwordModalTitle">Potwierdź hasło</h3>
+        <button class="btn ghost icon-only" onclick="window.closePasswordModal()"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      
-      <p id="passwordModalMessage" style="margin-bottom: 20px;"></p>
-      
       <form id="passwordModalForm">
-        <div class="form-group">
-          <label>Wprowadź swoje hasło</label>
-          <input type="password" id="passwordModalInput" required>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+          <p id="passwordModalMessage" style="font-size:13px;color:var(--ink-2);margin:0"></p>
+          <div class="field">
+            <label>Wprowadź swoje hasło</label>
+            <input type="password" id="passwordModalInput" required>
+          </div>
         </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <button type="button" id="passwordModalCancel" class="btn btn-secondary">Anuluj</button>
-          <button type="submit" class="btn btn-primary">Potwierdź</button>
+        <div class="modal-footer">
+          <button type="button" id="passwordModalCancel" class="btn">Anuluj</button>
+          <button type="submit" class="btn accent">Potwierdź</button>
         </div>
       </form>
     </div>
