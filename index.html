@@ -622,10 +622,7 @@
                         <div style="display:flex;flex-direction:column;gap:20px">
                             <div class="row between" style="flex-wrap:wrap;gap:12px;align-items:flex-start">
                                 <p class="lead" style="margin:0">Organizuj wydatki według własnych kategorii. Statystyki za ostatnie 30 dni.</p>
-                                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-                                    <input type="text" id="newCategoryName" placeholder="Nazwa kategorii" class="input" style="width:180px">
-                                    <button class="btn accent sm" data-action="add-category" data-icon="Plus">Nowa kategoria</button>
-                                </div>
+                                <button class="btn accent sm" data-action="open-add-category-modal">+ Nowa kategoria</button>
                             </div>
                             <!-- Category list rendered by JS -->
                             <div id="categoriesList"></div>

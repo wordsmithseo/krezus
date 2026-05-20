@@ -79,6 +79,7 @@ import {
 import {
   showProfileModal,
   showPasswordModal,
+  showAddCategoryModal,
   showEditCategoryModal,
   showEditExpenseModal,
   showEditIncomeModal
@@ -1334,6 +1335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.cat-menu-dropdown').forEach(d => { d.style.display = 'none'; });
       if (!isOpen && dropdown) dropdown.style.display = 'block';
     },
+    'open-add-category-modal': () => showAddCategoryModal(),
     'cancel-merge-category': () => cancelMergeCategory(),
     'start-merge-category': (el) => startMergeCategory(getDataAttributes(el).id),
     'edit-category': (el) => {

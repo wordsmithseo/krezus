@@ -804,6 +804,37 @@ function closePasswordModal() {
 
 // ==================== MODAL DODAWANIA/EDYCJI BUDŻETU CELOWEGO ====================
 
+// ==================== MODAL: NOWA KATEGORIA ====================
+
+export function showAddCategoryModal() {
+  let modal = document.getElementById('addCategoryModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'addCategoryModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Nowa kategoria</h2>
+          <button class="modal-close" onclick="closeModal('addCategoryModal')">✕</button>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+          <label>Nazwa kategorii</label>
+          <input type="text" id="newCategoryNameModal" class="input" placeholder="np. Jedzenie" minlength="2" maxlength="30" style="width:100%">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" class="btn sm" onclick="closeModal('addCategoryModal')">Anuluj</button>
+          <button type="button" class="btn accent sm" data-action="add-category">Dodaj kategorię</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) window.closeModal('addCategoryModal'); });
+  }
+  modal.classList.add('active');
+  setTimeout(() => document.getElementById('newCategoryNameModal')?.focus(), 50);
+}
+
 // ==================== ZAMYKANIE MODALI ====================
 
 window.closeModal = (modalId) => {

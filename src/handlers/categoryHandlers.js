@@ -28,8 +28,8 @@ export function getMergingCategoryId() {
 }
 
 export async function addCategory() {
-  const input = document.getElementById('newCategoryName');
-  const name = input.value.trim();
+  const input = document.getElementById('newCategoryNameModal');
+  const name = input?.value.trim() ?? '';
 
   if (!validateCategoryName(name)) {
     showErrorMessage('Nazwa kategorii musi mieć od 2 do 30 znaków');
@@ -53,7 +53,8 @@ export async function addCategory() {
 
   try {
     await saveCategories(updated);
-    input.value = '';
+    if (input) input.value = '';
+    window.closeModal('addCategoryModal');
 
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
