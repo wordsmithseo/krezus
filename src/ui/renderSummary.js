@@ -275,6 +275,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
     const usersCache = _getBudgetUsersCache();
     const limitUser = limit.userId ? (usersCache.find(u => u.id === limit.userId) || null) : null;
+    const futureExpense = plannedTotals?.periodTotals?.[index]?.futureExpense || 0;
 
     let timeText;
     if (limit.showToday) {
@@ -329,6 +330,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3);flex-wrap:wrap;gap:8px">
           <span>Różnica: <strong class="num" style="color:var(--success)">+${Fmt.zl(delta)} zł/d</strong></span>
+          ${futureExpense > 0 ? `<span>Zobowiązania: <strong class="num" style="color:var(--danger)">${Fmt.zl(futureExpense)} zł</strong></span>` : ''}
         </div>
       </div>
     `;
