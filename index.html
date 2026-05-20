@@ -592,6 +592,10 @@
                                         <input class="input" id="incomeSearch" placeholder="Szukaj…" style="padding-left:32px">
                                     </div>
                                     <div style="margin-left:auto;display:flex;gap:8px">
+                                        <button class="btn sm" title="Wkrótce" disabled>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                            Filtry
+                                        </button>
                                         <button class="btn btn-sm" data-action="open-correction-modal">
                                             <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12zm.5-8.5a.5.5 0 0 0-1 0V7H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V8H10a.5.5 0 0 0 0-1H8.5V5.5z"/></svg>
                                             Korekta budżetu
@@ -604,7 +608,15 @@
                                 </div>
                                 <!-- Table -->
                                 <div style="overflow-x:auto">
-                                    <table class="table">
+                                    <table class="table" style="table-layout:fixed;width:100%">
+                                        <colgroup>
+                                            <col style="width:130px">
+                                            <col>
+                                            <col style="width:140px">
+                                            <col style="width:130px">
+                                            <col style="width:120px">
+                                            <col style="width:1px">
+                                        </colgroup>
                                         <thead>
                                             <tr>
                                                 <th>Data</th>
