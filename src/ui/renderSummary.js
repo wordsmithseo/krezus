@@ -282,14 +282,10 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     } else if (limit.countdownFormat) {
       timeText = `<span class="countdown-timer" data-end-date="${limit.date}" data-end-time="${limit.time || ''}">${limit.countdownFormat}</span>`;
     } else {
-      timeText = limit.timeFormatted || `${limit.daysLeft} dni`;
+      timeText = `${limit.daysLeft}d`;
     }
 
-    let dateStr = '';
-    if (limit.date) {
-      const [y, m, d] = limit.date.split('-');
-      dateStr = `${d}.${m}.${y}`;
-    }
+    const dateStr = limit.date ? Fmt.date(limit.date) : '';
 
     const realColor = realLimit < 50 ? 'var(--danger)' : 'var(--ink-1)';
 
