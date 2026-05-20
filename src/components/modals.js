@@ -70,34 +70,37 @@ function createProfileModal() {
   modal.id = 'profileModal';
   modal.className = 'modal';
   modal.innerHTML = `
-    <div class="modal-content">
+    <div class="modal-content" style="max-width:520px">
       <div class="modal-header">
-        <h2>👤 Twój profil</h2>
-        <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+        <h3>Profil i użytkownicy</h3>
+        <button class="btn ghost icon-only" onclick="window.closeModal('profileModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
-      
-      <div class="form-group">
-        <label>Email</label>
-        <p id="profileEmail" style="color: var(--ink-3);"></p>
-      </div>
-
-      <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--line);">
-
-      <h3>👥 Użytkownicy budżetu</h3>
-      <div id="budgetUsersList"></div>
-
-      <form id="addBudgetUserForm" onsubmit="handleAddBudgetUser(event)" style="margin-top: 20px;">
-        <div class="form-group">
-          <label>Dodaj nowego użytkownika</label>
-          <div style="display: flex; gap: 10px;">
-            <input type="text" id="newBudgetUserName" placeholder="Imię użytkownika" required minlength="2" style="flex: 1;">
-            <button type="submit" class="btn btn-success">Dodaj</button>
-          </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:20px">
+        <div class="field">
+          <label>Adres email</label>
+          <p id="profileEmail" style="font-size:13px;color:var(--ink-2);margin:0"></p>
         </div>
-      </form>
+        <hr class="divider" style="margin:0">
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px">Użytkownicy budżetu</div>
+          <div id="budgetUsersList"></div>
+          <form id="addBudgetUserForm" onsubmit="window.handleAddBudgetUser(event)" style="margin-top:12px">
+            <div class="field">
+              <label>Dodaj użytkownika</label>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="newBudgetUserName" placeholder="Imię użytkownika" required minlength="2" style="flex:1">
+                <button type="submit" class="btn accent sm">Dodaj</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="window.closeModal('profileModal')">Zamknij</button>
+      </div>
     </div>
   `;
-  
+
   document.body.appendChild(modal);
   return modal;
 }
@@ -124,44 +127,40 @@ async function loadBudgetUsers(uid) {
       const isOwner = user.isOwner;
 
       const itemDiv = document.createElement('div');
-      itemDiv.className = 'budget-user-item';
+      itemDiv.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)';
 
-      const infoDiv = document.createElement('div');
-      infoDiv.className = 'budget-user-info';
-
-      const nameStrong = document.createElement('strong');
-      nameStrong.textContent = user.name;
-      infoDiv.appendChild(nameStrong);
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = 'font-size:13px;font-weight:500;flex:1';
+      nameSpan.textContent = escapeHTML(user.name);
+      itemDiv.appendChild(nameSpan);
 
       if (isOwner) {
-        const ownerBadge = document.createElement('span');
-        ownerBadge.className = 'owner-badge';
-        ownerBadge.textContent = 'Właściciel';
-        infoDiv.appendChild(ownerBadge);
-      }
+        const badge = document.createElement('span');
+        badge.className = 'tag';
+        badge.textContent = 'Właściciel';
+        itemDiv.appendChild(badge);
+      } else {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.style.cssText = 'display:flex;gap:4px';
 
-      const actionsDiv = document.createElement('div');
-      actionsDiv.className = 'budget-user-actions';
-
-      if (!isOwner) {
         const editBtn = document.createElement('button');
-        editBtn.className = 'btn-icon';
+        editBtn.className = 'btn ghost icon-only sm';
         editBtn.title = 'Edytuj';
-        editBtn.textContent = '✏️';
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
         editBtn.addEventListener('click', () => window.handleEditBudgetUser(user.id, user.name));
 
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'btn-icon';
+        deleteBtn.className = 'btn ghost icon-only sm';
         deleteBtn.title = 'Usuń';
-        deleteBtn.textContent = '🗑️';
+        deleteBtn.style.color = 'var(--danger)';
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
         deleteBtn.addEventListener('click', () => window.handleDeleteBudgetUser(user.id, user.name));
 
         actionsDiv.appendChild(editBtn);
         actionsDiv.appendChild(deleteBtn);
+        itemDiv.appendChild(actionsDiv);
       }
 
-      itemDiv.appendChild(infoDiv);
-      itemDiv.appendChild(actionsDiv);
       container.appendChild(itemDiv);
     });
   });
