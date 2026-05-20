@@ -957,119 +957,107 @@
 
     <!-- Add Expense Modal -->
     <div id="addExpenseModal" class="modal">
-        <div class="modal-content" style="max-width:640px">
+        <div class="modal-content" style="max-width:540px">
             <div class="modal-header">
                 <h3 id="expenseFormTitle">Nowy wydatek</h3>
-                <button class="modal-close" onclick="closeModal('addExpenseModal')">✕</button>
+                <button class="btn ghost icon-only" onclick="window.closeModal('addExpenseModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-            <div class="modal-body">
-                <form id="expenseForm">
-                    <div class="form-row">
-                        <div class="form-group">
+            <form id="expenseForm">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="field">
                             <label>Kwota (zł)</label>
-                            <input type="number" name="expenseAmount" step="0.01" required class="num" style="font-size:15px">
+                            <input type="number" name="expenseAmount" step="0.01" required class="num" placeholder="0,00">
                         </div>
-                        <div class="form-group">
+                        <div class="field">
                             <label>Typ transakcji</label>
                             <select id="expenseType" name="expenseType" required>
                                 <option value="normal">Zwykły</option>
                                 <option value="planned">Planowany</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-row" id="expenseDateTimeRow">
-                        <div class="form-group">
+                        <div class="field" id="expenseDateField">
                             <label>Data</label>
                             <input type="date" id="expenseDate" name="expenseDate" required>
                         </div>
-                        <div class="form-group">
+                        <div class="field" id="expenseTimeField">
                             <label>Godzina (opcjonalnie)</label>
                             <input type="time" id="expenseTime" name="expenseTime">
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Użytkownik</label>
-                            <select id="expenseUser" name="expenseUser" required>
-                                <option value="">Wybierz użytkownika</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
+                        <div class="field full">
                             <label>Kategoria</label>
                             <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off" placeholder="Wpisz lub wybierz kategorię">
                             <div id="categoryButtons" class="top-categories-buttons"></div>
                             <div id="categorySuggestions" class="suggestions-container"></div>
                         </div>
+                        <div class="field full">
+                            <label>Opis</label>
+                            <input type="text" id="expenseDescription" name="expenseDescription" required autocomplete="off" placeholder="np. Biedronka, zakupy tygodniowe">
+                            <div id="descriptionButtons" class="top-categories-buttons"></div>
+                            <div id="descriptionSuggestions" class="suggestions-container"></div>
+                        </div>
+                        <div class="field full">
+                            <label>Użytkownik</label>
+                            <div id="expenseUserToggle" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+                            <input type="hidden" id="expenseUserId" name="expenseUser">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Opis</label>
-                        <input type="text" id="expenseDescription" name="expenseDescription" required autocomplete="off" placeholder="np. Biedronka, zakupy tygodniowe">
-                        <div id="descriptionButtons" class="top-categories-buttons"></div>
-                        <div id="descriptionSuggestions" class="suggestions-container"></div>
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn" onclick="closeModal('addExpenseModal')">Anuluj</button>
-                        <button type="submit" class="btn btn-accent">Zapisz wydatek</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="window.closeModal('addExpenseModal')">Anuluj</button>
+                    <button type="submit" class="btn accent">Zapisz wydatek</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Add Income Modal -->
     <div id="addIncomeModal" class="modal">
-        <div class="modal-content" style="max-width:560px">
+        <div class="modal-content" style="max-width:540px">
             <div class="modal-header">
                 <h3 id="incomeFormTitle">Nowy przychód</h3>
-                <button class="modal-close" onclick="closeModal('addIncomeModal')">✕</button>
+                <button class="btn ghost icon-only" onclick="window.closeModal('addIncomeModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-            <div class="modal-body">
-                <form id="incomeForm">
-                    <div class="form-row">
-                        <div class="form-group">
+            <form id="incomeForm">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="field">
                             <label>Kwota (zł)</label>
-                            <input type="number" name="incomeAmount" step="0.01" required class="num" style="font-size:15px">
+                            <input type="number" name="incomeAmount" step="0.01" required class="num" placeholder="0,00">
                         </div>
-                        <div class="form-group">
+                        <div class="field">
                             <label>Typ transakcji</label>
                             <select id="incomeType" name="incomeType" required>
                                 <option value="normal">Zwykły</option>
                                 <option value="planned">Planowany</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
+                        <div class="field" id="incomeDateField">
                             <label>Data</label>
                             <input type="date" id="incomeDate" name="incomeDate" required>
                         </div>
-                        <div class="form-group">
+                        <div class="field" id="incomeTimeField">
                             <label>Godzina (opcjonalnie)</label>
                             <input type="time" id="incomeTime" name="incomeTime">
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Użytkownik</label>
-                            <select id="incomeUser" name="incomeUser" required>
-                                <option value="">Wybierz użytkownika</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
+                        <div class="field full">
                             <label>Źródło</label>
                             <input type="text" id="incomeSource" name="incomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
                             <div id="sourceButtons" class="top-sources-buttons"></div>
                             <div id="sourceSuggestions" class="suggestions-container"></div>
                         </div>
+                        <div class="field full">
+                            <label>Użytkownik</label>
+                            <div id="incomeUserToggle" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+                            <input type="hidden" id="incomeUserId" name="incomeUser">
+                        </div>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn" onclick="closeModal('addIncomeModal')">Anuluj</button>
-                        <button type="submit" class="btn btn-accent">Zapisz przychód</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="window.closeModal('addIncomeModal')">Anuluj</button>
+                    <button type="submit" class="btn accent">Zapisz przychód</button>
+                </div>
+            </form>
         </div>
     </div>
 

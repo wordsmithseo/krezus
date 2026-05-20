@@ -410,36 +410,51 @@ async function loadBudgetUsers(uid) {
   
   budgetUsersUnsubscribe = subscribeToBudgetUsers(uid, (users) => {
     budgetUsersCache = users;
-    updateBudgetUsersSelects();
+    updateBudgetUserToggles();
     setBudgetUsersCache(users);
     setPresenceBudgetUsers(users, uid);
   });
 }
 
-function updateBudgetUsersSelects() {
-  const expenseUserSelect = document.getElementById('expenseUser');
-  const incomeUserSelect = document.getElementById('incomeUser');
-  
-  if (!expenseUserSelect || !incomeUserSelect) return;
-  
-  const currentExpenseValue = expenseUserSelect.value;
-  const currentIncomeValue = incomeUserSelect.value;
-  
-  const optionsHTML = '<option value="">Wybierz użytkownika</option>' +
-    budgetUsersCache.map(user => 
-      `<option value="${user.id}">${user.name}${user.isOwner ? ' (Właściciel)' : ''}</option>`
-    ).join('');
-  
-  expenseUserSelect.innerHTML = optionsHTML;
-  incomeUserSelect.innerHTML = optionsHTML;
-  
-  if (currentExpenseValue && budgetUsersCache.some(u => u.id === currentExpenseValue)) {
-    expenseUserSelect.value = currentExpenseValue;
-  }
-  
-  if (currentIncomeValue && budgetUsersCache.some(u => u.id === currentIncomeValue)) {
-    incomeUserSelect.value = currentIncomeValue;
-  }
+function updateBudgetUserToggles() {
+  const expenseToggle = document.getElementById('expenseUserToggle');
+  const expenseHidden = document.getElementById('expenseUserId');
+  const incomeToggle = document.getElementById('incomeUserToggle');
+  const incomeHidden = document.getElementById('incomeUserId');
+
+  if (!expenseToggle || !incomeToggle) return;
+
+  const renderToggle = (container, hiddenInput) => {
+    const currentValue = hiddenInput.value;
+    container.innerHTML = budgetUsersCache.map((user, i) => {
+      const isActive = currentValue ? user.id === currentValue : i === 0;
+      const activeStyle = isActive
+        ? 'border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)'
+        : '';
+      return `<button type="button" class="btn sm" style="flex:1;${activeStyle}" data-user-id="${user.id}">${user.name}</button>`;
+    }).join('');
+
+    if (!currentValue && budgetUsersCache.length > 0) {
+      hiddenInput.value = budgetUsersCache[0].id;
+    }
+
+    container.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('button').forEach(b => {
+          b.style.borderColor = '';
+          b.style.color = '';
+          b.style.background = '';
+        });
+        btn.style.borderColor = 'var(--accent)';
+        btn.style.color = 'var(--accent)';
+        btn.style.background = 'color-mix(in srgb,var(--accent) 8%,transparent)';
+        hiddenInput.value = btn.dataset.userId;
+      });
+    });
+  };
+
+  renderToggle(expenseToggle, expenseHidden);
+  renderToggle(incomeToggle, incomeHidden);
 }
 
 function getBudgetUserName(userId) {
@@ -508,23 +523,17 @@ function updateNavBadges() {
 
 function setupExpenseTypeToggle() {
   const expenseTypeSelect = document.getElementById('expenseType');
-  const expenseDateGroup = document.querySelector('#expenseDate')?.closest('.form-group');
-  const expenseTimeGroup = document.querySelector('#expenseTime')?.closest('.form-group');
-  
-  if (!expenseTypeSelect || !expenseDateGroup || !expenseTimeGroup) return;
-  
+  const expenseDateField = document.getElementById('expenseDateField');
+  const expenseTimeField = document.getElementById('expenseTimeField');
+
+  if (!expenseTypeSelect || !expenseDateField || !expenseTimeField) return;
+
   const toggleDateTimeFields = () => {
-    const type = expenseTypeSelect.value;
-    
-    if (type === 'normal') {
-      expenseDateGroup.style.display = 'none';
-      expenseTimeGroup.style.display = 'none';
-    } else {
-      expenseDateGroup.style.display = 'block';
-      expenseTimeGroup.style.display = 'block';
-    }
+    const isPlanned = expenseTypeSelect.value === 'planned';
+    expenseDateField.style.display = isPlanned ? '' : 'none';
+    expenseTimeField.style.display = isPlanned ? '' : 'none';
   };
-  
+
   expenseTypeSelect.removeEventListener('change', toggleDateTimeFields);
   expenseTypeSelect.addEventListener('change', toggleDateTimeFields);
   toggleDateTimeFields();
@@ -532,23 +541,17 @@ function setupExpenseTypeToggle() {
 
 function setupIncomeTypeToggle() {
   const incomeTypeSelect = document.getElementById('incomeType');
-  const incomeDateGroup = document.querySelector('#incomeDate')?.closest('.form-group');
-  const incomeTimeGroup = document.querySelector('#incomeTime')?.closest('.form-group');
-  
-  if (!incomeTypeSelect || !incomeDateGroup || !incomeTimeGroup) return;
-  
+  const incomeDateField = document.getElementById('incomeDateField');
+  const incomeTimeField = document.getElementById('incomeTimeField');
+
+  if (!incomeTypeSelect || !incomeDateField || !incomeTimeField) return;
+
   const toggleDateTimeFields = () => {
-    const type = incomeTypeSelect.value;
-    
-    if (type === 'normal') {
-      incomeDateGroup.style.display = 'none';
-      incomeTimeGroup.style.display = 'none';
-    } else {
-      incomeDateGroup.style.display = 'block';
-      incomeTimeGroup.style.display = 'block';
-    }
+    const isPlanned = incomeTypeSelect.value === 'planned';
+    incomeDateField.style.display = isPlanned ? '' : 'none';
+    incomeTimeField.style.display = isPlanned ? '' : 'none';
   };
-  
+
   incomeTypeSelect.removeEventListener('change', toggleDateTimeFields);
   incomeTypeSelect.addEventListener('change', toggleDateTimeFields);
   toggleDateTimeFields();
