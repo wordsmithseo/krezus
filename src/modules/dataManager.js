@@ -1,6 +1,6 @@
 // src/modules/dataManager.js - Z AUTOMATYCZNĄ MIGRACJĄ realised → type
 
-import { ref, get, set, update, onValue } from 'firebase/database';
+import { ref, get, set, update, push, serverTimestamp, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
 import { getWarsawDateString, getCurrentTimeString, shouldBeRealisedNow, getWarsawTimeString } from '../utils/dateHelpers.js';
@@ -11,7 +11,7 @@ let incomesCache = [];
 let expensesCache = [];
 let endDate1Cache = '';
 let endDate2Cache = '';
-let savingGoalCache = 0;
+let savingsCache = { current: 0, history: [] };
 let dailyEnvelopeCache = null;
 let envelopePeriodCache = 0; // Indeks okresu dla koperty dnia
 let dynamicsPeriodCache = 0; // Indeks okresu dla dynamiki wydatków
@@ -66,7 +66,7 @@ function clearCacheInternal() {
   expensesCache = [];
   endDate1Cache = '';
   endDate2Cache = '';
-  savingGoalCache = 0;
+  savingsCache = { current: 0, history: [] };
   dailyEnvelopeCache = null;
   currentCachedUserId = null;
 }
@@ -255,19 +255,22 @@ export async function loadEndDates() {
 }
 
 /**
- * Załaduj cel oszczędności
+ * Załaduj oszczędności (current + history) z Firebase
  */
-export async function loadSavingGoal() {
+export async function loadSavings() {
   try {
-    const snapshot = await get(ref(db, getUserBudgetPath('savingGoal')));
-    const val = snapshot.val();
-    const parsed = val ? parseFloat(val) : 0;
-    // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
-    savingGoalCache = Number.isFinite(parsed) ? parsed : 0;
-    return savingGoalCache;
+    const uid = getUserId();
+    const snapshot = await get(ref(db, `users/${uid}/savings`));
+    const val = snapshot.val() ?? {};
+    const current = Number.isFinite(Number(val.current)) ? Number(val.current) : 0;
+    const history = Object.entries(val.history ?? {})
+      .map(([id, h]) => ({ id, ...h }))
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    savingsCache = { current, history };
+    return savingsCache;
   } catch (error) {
-    console.error('❌ Błąd ładowania celu oszczędności:', error);
-    return 0;
+    console.error('❌ Błąd ładowania oszczędności:', error);
+    return { current: 0, history: [] };
   }
 }
 
@@ -442,14 +445,26 @@ export async function saveEndDates(primary, secondary) {
 }
 
 /**
- * Zapisz cel oszczędności
+ * Zaktualizuj kwotę oszczędności i zapisz wpis w historii
  */
-export async function saveSavingGoal(goal) {
+export async function updateSavings({ newAmount, note = '', date, byUserId }) {
   try {
-    await set(ref(db, getUserBudgetPath('savingGoal')), goal);
-    savingGoalCache = goal;
+    const uid = getUserId();
+    const historyRef = ref(db, `users/${uid}/savings/history`);
+    const newEntryRef = push(historyRef);
+    await update(ref(db), {
+      [`users/${uid}/savings/current`]: newAmount,
+      [`users/${uid}/savings/history/${newEntryRef.key}`]: {
+        date,
+        fromAmount: savingsCache.current,
+        toAmount: newAmount,
+        userId: byUserId,
+        note,
+        createdAt: serverTimestamp()
+      }
+    });
   } catch (error) {
-    console.error('❌ Błąd zapisywania celu oszczędności:', error);
+    console.error('❌ Błąd zapisywania oszczędności:', error);
     throw error;
   }
 }
@@ -527,12 +542,12 @@ export async function fetchAllData() {
     const userId = getUserId();
     console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
 
-    const [categories, expenses, incomes, endDates, savingGoal, envelopePeriod, dynamicsPeriod] = await Promise.all([
+    const [categories, expenses, incomes, endDates, savings, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
       loadIncomes(),
       loadEndDates(),
-      loadSavingGoal(),
+      loadSavings(),
       loadEnvelopePeriod(),
       loadDynamicsPeriod()
     ]);
@@ -552,7 +567,7 @@ export async function fetchAllData() {
       expenses,
       incomes,
       endDates,
-      savingGoal,
+      savings,
       dailyEnvelope: dailyEnvelopeCache
     };
   } catch (error) {
@@ -751,19 +766,18 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
     }
   });
   
-  // SavingGoal
-  const savingGoalRef = ref(db, getUserBudgetPath('savingGoal'));
-  activeListeners.savingGoal = onValue(savingGoalRef, (snapshot) => {
-    const val = snapshot.val();
-    const parsed = val ? parseFloat(val) : 0;
-    // Walidacja Number.isFinite - zapobiega NaN, Infinity, -Infinity
-    const newGoal = Number.isFinite(parsed) ? parsed : 0;
-
-    if (savingGoalCache !== newGoal) {
-      savingGoalCache = newGoal;
-      if (callbacks.onSavingGoalChange) {
-        callbacks.onSavingGoalChange(savingGoalCache);
-      }
+  // Savings
+  const savingsRef = ref(db, `users/${userId}/savings`);
+  activeListeners.savings = onValue(savingsRef, (snapshot) => {
+    const val = snapshot.val() ?? {};
+    const newCurrent = Number.isFinite(Number(val.current)) ? Number(val.current) : 0;
+    const history = Object.entries(val.history ?? {})
+      .map(([id, h]) => ({ id, ...h }))
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const changed = savingsCache.current !== newCurrent;
+    savingsCache = { current: newCurrent, history };
+    if (changed && callbacks.onSavingGoalChange) {
+      callbacks.onSavingGoalChange(newCurrent);
     }
   });
 
@@ -814,7 +828,11 @@ export function getEndDates() {
 }
 
 export function getSavingGoal() {
-  return savingGoalCache;
+  return savingsCache.current;
+}
+
+export function getSavings() {
+  return { ...savingsCache, history: [...savingsCache.history] };
 }
 
 export function getEnvelopePeriod() {
