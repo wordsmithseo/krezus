@@ -174,8 +174,9 @@ export function dailyChartHTML(data, opts = {}) {
   if (!data || data.length === 0) return `<div class="daily-chart" style="height:${h}px"></div>`;
 
   const maxVal = Math.max(...data.map(d => d.value), 1);
+  const last = data.length - 1;
 
-  const bars = data.map(d => {
+  const bars = data.map((d, i) => {
     const barH    = d.value > 0 ? Math.max(Math.round((d.value / maxVal) * h), 2) : 0;
     const dayObj  = new Date(d.date + 'T12:00:00');
     const isWeekend = [0, 6].includes(dayObj.getDay());
@@ -189,5 +190,20 @@ export function dailyChartHTML(data, opts = {}) {
 </div>`;
   }).join('');
 
-  return `<div class="daily-chart" style="height:${h}px">${bars}</div>`;
+  const ticks = data.map((d, i) => {
+    const showTick = i % 5 === 0 || i === last;
+    const inner = showTick
+      ? (() => {
+          const dayObj = new Date(d.date + 'T12:00:00');
+          const tickLabel = dayObj.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }).replace('.', '');
+          return `<span style="position:absolute;left:50%;transform:translateX(-50%);font-size:10px;color:var(--ink-3);font-family:monospace;white-space:nowrap">${escapeHTML(tickLabel)}</span>`;
+        })()
+      : '';
+    return `<div style="flex:1;position:relative;height:16px">${inner}</div>`;
+  }).join('');
+
+  return `<div style="display:flex;flex-direction:column">
+  <div class="daily-chart" style="height:${h}px">${bars}</div>
+  <div style="display:flex;gap:3px;margin-top:2px">${ticks}</div>
+</div>`;
 }
