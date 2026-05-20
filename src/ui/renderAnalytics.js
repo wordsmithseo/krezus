@@ -7,7 +7,7 @@ import {
   getCategoriesBreakdown,
   getUserExpensesBreakdown,
 } from '../modules/analytics.js';
-import { getExpenses } from '../modules/dataManager.js';
+import { getExpenses, getCategories } from '../modules/dataManager.js';
 import { getCategoryIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { getWarsawDateString } from '../utils/dateHelpers.js';
@@ -371,17 +371,20 @@ export function renderAnalytics() {
   const userExpDiv = document.getElementById('userExpensesBreakdown');
 
   const top3 = breakdown.slice(0, 3);
+  const allCats = getCategories();
   const top3HTML = top3.length > 0 ? `
     <hr class="divider"/>
     <h3 style="margin-bottom:12px">Top 3 kategorii</h3>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${top3.map((cat, i) => {
-        const catEmoji = getCategoryIcon(cat.category);
-        const color = CAT_COLORS[i % CAT_COLORS.length];
+        const catObj = allCats.find(c => c.name === cat.category);
+        const color = catObj?.color || CAT_COLORS[i % CAT_COLORS.length];
+        const catEmoji = catObj?.icon || getCategoryIcon(cat.category);
+        const bgColor = `color-mix(in srgb, ${color} 14%, var(--surface))`;
         return `
           <div style="display:flex;align-items:center;gap:10px">
             <span class="text-mute num" style="font-size:11px;width:16px;flex-shrink:0">#${i + 1}</span>
-            <div style="width:28px;height:28px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catEmoji}</div>
+            <div style="width:28px;height:28px;border-radius:6px;background:${bgColor};color:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${catEmoji}</div>
             <span style="font-size:13px;font-weight:500;flex:1;min-width:0">${escapeHTML(cat.category)}</span>
             <span class="num" style="font-weight:500;flex-shrink:0">${Fmt.zl(cat.amount)} zł</span>
           </div>
