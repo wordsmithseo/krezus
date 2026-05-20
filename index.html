@@ -713,18 +713,19 @@
                             </div>
 
                             <!-- Custom period -->
-                            <div id="customPeriodInputs" class="custom-period" style="display:none">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Data od</label>
-                                        <input type="date" id="analyticsDateFrom">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Data do</label>
-                                        <input type="date" id="analyticsDateTo">
-                                    </div>
-                                    <div class="form-group" style="display:flex;align-items:flex-end">
-                                        <button class="btn btn-primary" data-action="apply-custom-period">Zastosuj</button>
+                            <div id="customPeriodInputs" style="display:none">
+                                <div class="card" style="margin-bottom:0">
+                                    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                                        <div class="field" style="min-width:160px">
+                                            <label>Data od</label>
+                                            <input class="input" type="date" id="analyticsDateFrom">
+                                        </div>
+                                        <div class="field" style="min-width:160px">
+                                            <label>Data do</label>
+                                            <input class="input" type="date" id="analyticsDateTo">
+                                        </div>
+                                        <div id="customRangeInfo" class="text-mute text-sm" style="padding-bottom:10px"></div>
+                                        <button class="btn accent" data-action="apply-custom-period" style="margin-left:auto">Zastosuj</button>
                                     </div>
                                 </div>
                             </div>

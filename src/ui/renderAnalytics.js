@@ -455,6 +455,16 @@ export function selectPeriod(days, targetEl) {
 
   if (days === 'custom') {
     document.getElementById('customPeriodInputs').style.display = 'block';
+    const fromEl = document.getElementById('analyticsDateFrom');
+    const toEl = document.getElementById('analyticsDateTo');
+    const updateRangeInfo = () => {
+      const info = document.getElementById('customRangeInfo');
+      if (!info || !fromEl?.value || !toEl?.value) return;
+      const d = Math.round((new Date(toEl.value) - new Date(fromEl.value)) / 86400000) + 1;
+      if (d > 0) info.innerHTML = `Zakres: <strong class="num">${d}</strong> dni · porównanie z poprzedzającymi ${d} dniami`;
+    };
+    fromEl?.addEventListener('change', updateRangeInfo);
+    toEl?.addEventListener('change', updateRangeInfo);
   } else {
     document.getElementById('customPeriodInputs').style.display = 'none';
     setAnalyticsPeriod(days);
