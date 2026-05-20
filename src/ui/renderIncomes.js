@@ -8,6 +8,8 @@ import { icon } from '../utils/icons.js';
 import { userChipHTML } from './chips.js';
 
 let currentIncomePage = 1;
+let currentIncomeFilter = 'all'; // 'all' | 'normal' | 'planned'
+let currentIncomeSearch = '';
 let getBudgetUserNameFn = null;
 
 export function setIncomeDeps({ getBudgetUserName }) {
@@ -18,26 +20,57 @@ export function resetIncomePage() {
   currentIncomePage = 1;
 }
 
-export function renderSources() {
-  const incomes = getIncomes();
-  const totalIncomes = incomes.length;
+export function setIncomeFilter(filter) {
+  currentIncomeFilter = filter;
+  currentIncomePage = 1;
+  renderSources();
+}
 
-  const sorted = [...incomes].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'planned' ? -1 : 1;
-    }
+export function setIncomeSearch(query) {
+  currentIncomeSearch = query.toLowerCase();
+  currentIncomePage = 1;
+  renderSources();
+}
+
+function getFilteredIncomes() {
+  const sorted = [...getIncomes()].sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'planned' ? -1 : 1;
     return b.date.localeCompare(a.date);
   });
+  return sorted.filter(inc => {
+    // 'normal' includes corrections (type !== 'planned')
+    if (currentIncomeFilter === 'normal' && inc.type === 'planned') return false;
+    if (currentIncomeFilter === 'planned' && inc.type !== 'planned') return false;
+    if (currentIncomeSearch) {
+      const q = currentIncomeSearch;
+      return (inc.source || '').toLowerCase().includes(q) ||
+             (inc.description || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+}
+
+export function renderSources() {
+  const filtered = getFilteredIncomes();
+  const total = filtered.length;
 
   const startIdx = (currentIncomePage - 1) * PAGINATION.INCOMES_PER_PAGE;
-  const endIdx = startIdx + PAGINATION.INCOMES_PER_PAGE;
-  const paginatedIncomes = sorted.slice(startIdx, endIdx);
+  const paginatedIncomes = filtered.slice(startIdx, startIdx + PAGINATION.INCOMES_PER_PAGE);
 
   const tbody = document.getElementById('sourcesTableBody');
 
-  if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
-    updatePaginationVisibility('sourcesTableBody', totalIncomes);
+  // Sync segmented control active state
+  document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === currentIncomeFilter);
+  });
+
+  if (total === 0) {
+    const msg = getIncomes().length === 0
+      ? 'Brak przychodów do wyświetlenia'
+      : 'Brak wyników dla wybranych filtrów';
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${msg}</td></tr>`;
+    renderIncomesPagination(0);
+    updatePaginationVisibility(0);
     return;
   }
 
@@ -80,8 +113,8 @@ export function renderSources() {
   `}).join('');
 
   tbody.innerHTML = html;
-  renderIncomesPagination(totalIncomes);
-  updatePaginationVisibility('sourcesTableBody', totalIncomes);
+  renderIncomesPagination(total);
+  updatePaginationVisibility(total);
 }
 
 function renderIncomesPagination(total) {
@@ -116,8 +149,7 @@ function renderIncomesPagination(total) {
 }
 
 export function changeIncomePage(page) {
-  const total = getIncomes().length;
-  const totalPages = Math.ceil(total / PAGINATION.INCOMES_PER_PAGE);
+  const totalPages = Math.ceil(getFilteredIncomes().length / PAGINATION.INCOMES_PER_PAGE);
 
   if (page < 1 || page > totalPages) return;
 
@@ -130,15 +162,8 @@ export function changeIncomePage(page) {
   }
 }
 
-function updatePaginationVisibility(tableId, totalItems) {
-  const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
-  if (!paginationContainer) return;
-
-  const itemsPerPage = PAGINATION.INCOMES_PER_PAGE;
-
-  if (totalItems <= itemsPerPage) {
-    paginationContainer.style.display = 'none';
-  } else {
-    paginationContainer.style.display = 'flex';
-  }
+function updatePaginationVisibility(totalItems) {
+  const container = document.getElementById('incomesPagination');
+  if (!container) return;
+  container.style.display = totalItems > PAGINATION.INCOMES_PER_PAGE ? 'flex' : 'none';
 }

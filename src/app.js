@@ -117,8 +117,8 @@ import { initClickDelegation, getDataAttributes } from './handlers/clickDelegati
 // Import funkcji renderowania UI
 import { renderSummary } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
-import { renderExpenses, changeExpensePage, setExpenseDeps } from './ui/renderExpenses.js';
-import { renderSources, changeIncomePage, setIncomeDeps } from './ui/renderIncomes.js';
+import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch } from './ui/renderExpenses.js';
+import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch } from './ui/renderIncomes.js';
 import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
@@ -1390,66 +1390,15 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     // Filtry wydatków
-    'filter-expenses': (el) => {
-      const filter = el.dataset.filter;
-      document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-      });
-      document.querySelectorAll('#expensesTableBody tr').forEach(row => {
-        if (filter === 'all') {
-          row.style.display = '';
-        } else if (filter === 'normal') {
-          row.style.display = row.classList.contains('realised') ? '' : 'none';
-        } else {
-          row.style.display = row.classList.contains('planned') ? '' : 'none';
-        }
-      });
-    },
+    'filter-expenses': (el) => setExpenseFilter(el.dataset.filter),
 
     // Filtry przychodów
-    'filter-incomes': (el) => {
-      const filter = el.dataset.filter;
-      document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-      });
-      document.querySelectorAll('#sourcesTableBody tr').forEach(row => {
-        if (filter === 'all') {
-          row.style.display = '';
-        } else if (filter === 'normal') {
-          row.style.display = (row.classList.contains('realised') || row.classList.contains('correction')) ? '' : 'none';
-        } else {
-          row.style.display = row.classList.contains('planned') ? '' : 'none';
-        }
-      });
-    }
+    'filter-incomes': (el) => setIncomeFilter(el.dataset.filter)
   });
 
-  // Wyszukiwanie wydatków
-  const expenseSearchEl = document.getElementById('expenseSearch');
-  if (expenseSearchEl) {
-    expenseSearchEl.addEventListener('input', (e) => {
-      const val = e.target.value.toLowerCase();
-      document.querySelectorAll('#expensesTableBody tr').forEach(row => {
-        row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
-      });
-    });
-  }
-  const incomeSearchEl = document.getElementById('incomeSearch');
-  if (incomeSearchEl) {
-    incomeSearchEl.addEventListener('input', (e) => {
-      const val = e.target.value.toLowerCase();
-      document.querySelectorAll('#sourcesTableBody tr').forEach(row => {
-        row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
-      });
-    });
-  }
-  document.addEventListener('expense-search', (e) => {
-    const val = e.detail.toLowerCase();
-    document.querySelectorAll('#expensesTableBody tr').forEach(row => {
-      row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
-    });
-  });
-
+  // Wyszukiwanie wydatków i przychodów
+  document.getElementById('expenseSearch')?.addEventListener('input', (e) => setExpenseSearch(e.target.value));
+  document.getElementById('incomeSearch')?.addEventListener('input', (e) => setIncomeSearch(e.target.value));
   // Podpięcie formularzy (zamiast inline onsubmit)
   document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
   document.getElementById('registerForm')?.addEventListener('submit', handleRegister);

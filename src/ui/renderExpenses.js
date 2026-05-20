@@ -8,6 +8,8 @@ import { icon } from '../utils/icons.js';
 import { userChipHTML } from './chips.js';
 
 let currentExpensePage = 1;
+let currentExpenseFilter = 'all'; // 'all' | 'normal' | 'planned'
+let currentExpenseSearch = '';
 let getBudgetUserNameFn = null;
 
 export function setExpenseDeps({ getBudgetUserName }) {
@@ -18,26 +20,56 @@ export function resetExpensePage() {
   currentExpensePage = 1;
 }
 
-export function renderExpenses() {
-  const expenses = getExpenses();
-  const totalExpenses = expenses.length;
+export function setExpenseFilter(filter) {
+  currentExpenseFilter = filter;
+  currentExpensePage = 1;
+  renderExpenses();
+}
 
-  const sorted = [...expenses].sort((a, b) => {
-    if (a.type !== b.type) {
-      return a.type === 'planned' ? -1 : 1;
-    }
+export function setExpenseSearch(query) {
+  currentExpenseSearch = query.toLowerCase();
+  currentExpensePage = 1;
+  renderExpenses();
+}
+
+function getFilteredExpenses() {
+  const sorted = [...getExpenses()].sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'planned' ? -1 : 1;
     return b.date.localeCompare(a.date);
   });
+  return sorted.filter(exp => {
+    if (currentExpenseFilter === 'normal' && exp.type !== 'normal') return false;
+    if (currentExpenseFilter === 'planned' && exp.type !== 'planned') return false;
+    if (currentExpenseSearch) {
+      const q = currentExpenseSearch;
+      return (exp.description || '').toLowerCase().includes(q) ||
+             (exp.category || '').toLowerCase().includes(q);
+    }
+    return true;
+  });
+}
+
+export function renderExpenses() {
+  const filtered = getFilteredExpenses();
+  const total = filtered.length;
 
   const startIdx = (currentExpensePage - 1) * PAGINATION.EXPENSES_PER_PAGE;
-  const endIdx = startIdx + PAGINATION.EXPENSES_PER_PAGE;
-  const paginatedExpenses = sorted.slice(startIdx, endIdx);
+  const paginatedExpenses = filtered.slice(startIdx, startIdx + PAGINATION.EXPENSES_PER_PAGE);
 
   const tbody = document.getElementById('expensesTableBody');
 
-  if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
-    updatePaginationVisibility('expensesTableBody', totalExpenses);
+  // Sync segmented control active state
+  document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === currentExpenseFilter);
+  });
+
+  if (total === 0) {
+    const msg = getExpenses().length === 0
+      ? 'Brak wydatków do wyświetlenia'
+      : 'Brak wyników dla wybranych filtrów';
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${msg}</td></tr>`;
+    renderExpensesPagination(0);
+    updatePaginationVisibility(0);
     return;
   }
 
@@ -76,8 +108,8 @@ export function renderExpenses() {
   }).join('');
 
   tbody.innerHTML = html;
-  renderExpensesPagination(totalExpenses);
-  updatePaginationVisibility('expensesTableBody', totalExpenses);
+  renderExpensesPagination(total);
+  updatePaginationVisibility(total);
 }
 
 function renderExpensesPagination(total) {
@@ -112,8 +144,7 @@ function renderExpensesPagination(total) {
 }
 
 export function changeExpensePage(page) {
-  const total = getExpenses().length;
-  const totalPages = Math.ceil(total / PAGINATION.EXPENSES_PER_PAGE);
+  const totalPages = Math.ceil(getFilteredExpenses().length / PAGINATION.EXPENSES_PER_PAGE);
 
   if (page < 1 || page > totalPages) return;
 
@@ -126,15 +157,8 @@ export function changeExpensePage(page) {
   }
 }
 
-function updatePaginationVisibility(tableId, totalItems) {
-  const paginationContainer = document.querySelector(`#${tableId} + .pagination-container`);
-  if (!paginationContainer) return;
-
-  const itemsPerPage = PAGINATION.EXPENSES_PER_PAGE;
-
-  if (totalItems <= itemsPerPage) {
-    paginationContainer.style.display = 'none';
-  } else {
-    paginationContainer.style.display = 'flex';
-  }
+function updatePaginationVisibility(totalItems) {
+  const container = document.getElementById('expensesPagination');
+  if (!container) return;
+  container.style.display = totalItems > PAGINATION.EXPENSES_PER_PAGE ? 'flex' : 'none';
 }
