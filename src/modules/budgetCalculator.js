@@ -48,8 +48,12 @@ function getLimitsCache() {
             return null;
         }
 
-        // NOWE: Sprawdź czy cache ma pola czasu (totalDays, timeFormatted, calendarDays, seconds, countdownFormat, showToday)
         if (firstLimit && (firstLimit.totalDays === undefined || firstLimit.timeFormatted === undefined || firstLimit.calendarDays === undefined || firstLimit.seconds === undefined || firstLimit.showToday === undefined)) {
+            return null;
+        }
+
+        // Inwaliduj jeśli brakuje pola userId (cache sprzed tej wersji)
+        if (firstLimit && !('userId' in firstLimit)) {
             return null;
         }
 
@@ -142,9 +146,10 @@ function getNextPlannedIncomeDates() {
         .filter(inc => inc.type === 'planned' && inc.date >= today)
         .map(inc => ({
             date: inc.date,
-            time: inc.time || null,  // NOWE: zachowaj czas wpływu (null jeśli nie podano)
+            time: inc.time || null,
             name: inc.source || 'Bez nazwy',
-            amount: inc.amount || 0
+            amount: inc.amount || 0,
+            userId: inc.userId || null,
         }))
         .sort((a, b) => a.date.localeCompare(b.date)); // Sortuj chronologicznie
 
@@ -190,10 +195,11 @@ export function calculateSpendingPeriods() {
         // Dodajemy nowe pola dla dokładniejszych obliczeń
         return {
             date: income.date,
-            time: income.time,  // NOWE: czas wpływu (może być null)
+            time: income.time,
             name: income.name,
             amount: income.amount,
-            daysLeft,  // Liczba całkowita dni (dla wyświetlania)
+            userId: income.userId || null,
+            daysLeft,
             totalDays: timeInfo.totalDays,  // Zmiennoprzecinkowa liczba dni (dokładny czas, dla wyświetlania)
             calendarDays: timeInfo.calendarDays,  // Pełne dni kalendarzowe (dla obliczeń limitów)
             hours: timeInfo.hours,
@@ -245,6 +251,7 @@ export function calculateCurrentLimits() {
                 time: period.time,
                 name: period.name,
                 amount: period.amount,
+                userId: period.userId || null,
                 daysLeft: period.daysLeft,
                 hours: period.hours,
                 minutes: period.minutes,
@@ -277,7 +284,8 @@ export function calculateCurrentLimits() {
             date: period.date,
             time: period.time,
             name: period.name,
-            amount: period.amount, // Kwota planowanego przychodu
+            amount: period.amount,
+            userId: period.userId || null,
             daysLeft: period.daysLeft,
             hours: period.hours,
             minutes: period.minutes,

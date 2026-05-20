@@ -116,7 +116,7 @@ import { showConfirmModal } from './components/confirmModal.js';
 import { initClickDelegation, getDataAttributes } from './handlers/clickDelegation.js';
 
 // Import funkcji renderowania UI
-import { renderSummary } from './ui/renderSummary.js';
+import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch } from './ui/renderIncomes.js';
@@ -1315,6 +1315,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setExpenseDeps({ getBudgetUserName });
   setIncomeDeps({ getBudgetUserName });
   setCategoryHandlerDeps({ renderCategories, renderExpenses });
+  setSummaryDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setExpenseHandlerDeps({
     getBudgetUserName,
     getBudgetUsersCache: () => budgetUsersCache,

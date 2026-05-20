@@ -21,6 +21,12 @@ import { startCountdownTimers } from '../utils/countdownTimer.js';
 import { sparklineHTML, dailyChartHTML } from './charts.js';
 import { icon } from '../utils/icons.js';
 import { Fmt } from '../utils/fmt.js';
+import { userChipHTML } from './chips.js';
+
+let _getBudgetUsersCache = () => [];
+export function setSummaryDeps({ getBudgetUsersCache }) {
+  _getBudgetUsersCache = getBudgetUsersCache;
+}
 
 function buildLastNDaysData(n = 30) {
   const expenses = getExpenses();
@@ -267,6 +273,8 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
     const delta = plannedLimit - realLimit;
     const isFirst = index === 0;
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
+    const usersCache = _getBudgetUsersCache();
+    const limitUser = limit.userId ? (usersCache.find(u => u.id === limit.userId) || null) : null;
 
     let timeText;
     if (limit.showToday) {
@@ -295,7 +303,10 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
           <div class="limit-tile-icon">${limitIcon}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(limit.name || 'Planowany wpływ')}</div>
-            ${isFirst ? '<span class="badge" style="background:var(--accent);color:var(--accent-ink);font-size:10px;padding:1px 7px">Następny</span>' : ''}
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
+              ${limitUser ? userChipHTML(limitUser) : ''}
+              ${isFirst ? '<span class="tag accent dot" style="font-size:10px">Następny</span>' : ''}
+            </div>
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 10px;background:var(--surface-2);border-radius:8px;gap:8px;flex-wrap:wrap">
