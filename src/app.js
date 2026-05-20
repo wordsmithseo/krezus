@@ -463,6 +463,17 @@ async function renderAll() {
   setupExpenseTypeToggle();
   setupIncomeTypeToggle();
   updateNavBadges();
+  populateSimulationCategorySelect();
+}
+
+function populateSimulationCategorySelect() {
+  const sel = document.getElementById('simulationCategory');
+  if (!sel) return;
+  const categories = getCategories();
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Bez kategorii</option>' +
+    categories.map(c => `<option value="${c.name}">${c.icon ? c.icon + ' ' : ''}${c.name}</option>`).join('');
+  if (current) sel.value = current;
 }
 
 function updateNavBadges() {
