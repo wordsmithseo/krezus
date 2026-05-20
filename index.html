@@ -505,6 +505,10 @@
                                         <input class="input" id="expenseSearch" placeholder="Szukaj…" style="padding-left:32px">
                                     </div>
                                     <div style="margin-left:auto;display:flex;gap:8px">
+                                        <button class="btn sm" title="Wkrótce" disabled>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                            Filtry
+                                        </button>
                                         <button class="btn btn-accent btn-sm" data-action="open-add-expense-modal">
                                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
                                             Dodaj wydatek
@@ -513,7 +517,16 @@
                                 </div>
                                 <!-- Table -->
                                 <div style="overflow-x:auto">
-                                    <table class="table">
+                                    <table class="table" style="table-layout:fixed;width:100%">
+                                        <colgroup>
+                                            <col style="width:130px">
+                                            <col style="width:200px">
+                                            <col>
+                                            <col style="width:140px">
+                                            <col style="width:130px">
+                                            <col style="width:120px">
+                                            <col style="width:1px">
+                                        </colgroup>
                                         <thead>
                                             <tr>
                                                 <th>Data</th>

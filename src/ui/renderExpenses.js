@@ -1,11 +1,10 @@
 // src/ui/renderExpenses.js
-import { getExpenses } from '../modules/dataManager.js';
+import { getExpenses, getCategories } from '../modules/dataManager.js';
 import { PAGINATION } from '../utils/constants.js';
 import { formatDateLabel } from '../utils/dateHelpers.js';
-import { getCategoryIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
-import { userChipHTML } from './chips.js';
+import { userChipHTML, catBadgeHTML } from './chips.js';
 import { Fmt } from '../utils/fmt.js';
 
 let currentExpensePage = 1;
@@ -83,10 +82,13 @@ export function renderExpenses() {
   const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
   const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
 
+  const categories = getCategories();
+  const catByName = name => categories.find(c => c.name === name) || null;
+
   const html = paginatedExpenses.map(exp => {
-    const categoryIcon = exp.category ? getCategoryIcon(exp.category) : '';
-    const catHtml = exp.category
-      ? `<span class="cat-badge sm"><span class="cat-emoji">${categoryIcon}</span>${escapeHTML(exp.category)}</span>`
+    const cat = exp.category ? catByName(exp.category) : null;
+    const catHtml = cat
+      ? catBadgeHTML(cat, true)
       : '<span class="text-mute text-sm">—</span>';
 
     return `
