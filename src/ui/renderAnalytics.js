@@ -368,6 +368,27 @@ export function renderAnalytics() {
   }
 
   const userExpDiv = document.getElementById('userExpensesBreakdown');
+
+  const top3 = breakdown.slice(0, 3);
+  const top3HTML = top3.length > 0 ? `
+    <hr class="divider"/>
+    <h3 style="margin-bottom:12px">Top 3 kategorii</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${top3.map((cat, i) => {
+        const catEmoji = getCategoryIcon(cat.category);
+        const color = CAT_COLORS[i % CAT_COLORS.length];
+        return `
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="text-mute num" style="font-size:11px;width:16px;flex-shrink:0">#${i + 1}</span>
+            <div style="width:28px;height:28px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${catEmoji}</div>
+            <span style="font-size:13px;font-weight:500;flex:1;min-width:0">${escapeHTML(cat.category)}</span>
+            <span class="num" style="font-weight:500;flex-shrink:0">${cat.amount.toFixed(2)} zł</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  ` : '';
+
   if (userExpenses.length > 0) {
     userExpDiv.innerHTML = userExpenses.map(user => `
       <div style="margin-bottom:12px">
@@ -382,7 +403,7 @@ export function renderAnalytics() {
         <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease"></div></div>
         <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1)}%</div>
       </div>
-    `).join('');
+    `).join('') + top3HTML;
   } else {
     userExpDiv.innerHTML = '<div class="empty-state" style="padding:24px"><h3>Brak wydatków</h3><p class="hint">Brak danych w wybranym okresie</p></div>';
   }
