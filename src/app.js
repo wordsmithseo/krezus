@@ -501,7 +501,7 @@ function updateNavBadges() {
     const { remaining } = calculateSpendingGauge();
     const envelopeBadge = document.getElementById('navBadgeEnvelope');
     if (envelopeBadge) {
-      envelopeBadge.textContent = Fmt.int(remaining) + ' zł';
+      envelopeBadge.textContent = Fmt.zl(remaining) + ' zł';
     }
   } catch (e) { /* ignore */ }
 
