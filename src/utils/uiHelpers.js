@@ -36,7 +36,7 @@ export function updateDisplayNameInUI(displayName) {
   if (usernameSpan) usernameSpan.textContent = safeName;
 
   const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) profileBtn.textContent = `👤 ${safeName}`;
+  if (profileBtn) profileBtn.textContent = safeName;
 
   document.querySelectorAll('[data-username]').forEach(el => {
     el.textContent = safeName;

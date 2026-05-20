@@ -114,7 +114,7 @@ export async function addIncome(e) {
     form.incomeDate.value = getWarsawDateString();
     form.incomeType.value = 'normal';
     editingIncomeId = null;
-    document.getElementById('incomeFormTitle').textContent = '💰 Dodaj przychód';
+    document.getElementById('incomeFormTitle').textContent = 'Dodaj przychód';
     document.getElementById('sourceSuggestions').innerHTML = '';
 
     if (setupIncomeTypeToggleFn) setupIncomeTypeToggleFn();

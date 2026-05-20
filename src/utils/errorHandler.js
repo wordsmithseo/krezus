@@ -10,12 +10,6 @@ export function showErrorMessage(message, type = 'error') {
     info: '#3498db'
   };
   
-  const icons = {
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️'
-  };
-  
   const toast = document.createElement('div');
   toast.className = 'error-toast';
   toast.style.cssText = `
@@ -34,7 +28,6 @@ export function showErrorMessage(message, type = 'error') {
   
   toast.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 1.2rem;">${icons[type] || icons.error}</span>
       <span>${message}</span>
     </div>
   `;
@@ -71,7 +64,6 @@ export function showSuccessMessage(message) {
   
   toast.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-size: 1.2rem;">✅</span>
       <span>${message}</span>
     </div>
   `;

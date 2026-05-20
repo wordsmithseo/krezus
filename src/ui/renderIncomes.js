@@ -89,7 +89,7 @@ export function renderSources() {
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
     const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
     const sourceHtml = isCorrection
-      ? `<span style="font-weight:600">⚙️ KOREKTA</span>${inc.correctionReason ? `<br><span class="text-mute text-sm">${escapeHTML(inc.correctionReason)}</span>` : ''}`
+      ? `<span style="font-weight:600">KOREKTA</span>${inc.correctionReason ? `<br><span class="text-mute text-sm">${escapeHTML(inc.correctionReason)}</span>` : ''}`
       : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
     return `

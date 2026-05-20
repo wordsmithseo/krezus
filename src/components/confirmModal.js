@@ -33,16 +33,10 @@ export function showConfirmModal(title, message, options = {}) {
       info: '#3498db'
     };
 
-    const typeIcons = {
-      warning: '⚠️',
-      danger: '🗑️',
-      info: 'ℹ️'
-    };
-
     const html = `
       <div class="modal-content" style="max-width: 500px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 0; overflow: hidden;">
         <div class="modal-header" style="background-color: rgba(255, 255, 255, 0.95); color: ${typeColors[type]}; padding: 25px; margin: 0; border-bottom: none; border-radius: 12px 12px 0 0;">
-          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">${typeIcons[type]} ${escapeHTML(title)}</h2>
+          <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">${escapeHTML(title)}</h2>
         </div>
         <div class="modal-body" style="background: rgba(255, 255, 255, 0.95); padding: 25px;">
           <p style="font-size: 1.1rem; line-height: 1.6; margin: 0; color: #2d3748;">${escapeHTML(message)}</p>

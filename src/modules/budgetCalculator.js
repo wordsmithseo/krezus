@@ -1007,7 +1007,7 @@ export function calculateSpendingDynamics() {
     if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
         return {
             status: 'no-date',
-            title: '⚠️ Brak wybranego okresu',
+            title: 'Brak wybranego okresu',
             summary: 'Aby zobaczyć analizę dynamiki wydatków, wybierz okres w ustawieniach.',
             details: [],
             recommendation: 'Przejdź do ustawień i wybierz okres dla dynamiki wydatków.'
@@ -1085,17 +1085,17 @@ export function calculateSpendingDynamics() {
         recommendation = 'Świetna robota! Masz dużo przestrzeni w budżecie. Możesz kontynuować obecny styl życia lub rozważyć zwiększenie oszczędności.';
     } else if (ratio <= 0.8) {
         status = 'good';
-        title = '✅ Dobra sytuacja budżetowa';
+        title = 'Dobra sytuacja budżetowa';
         summary = `Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, co stanowi ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). Trzymasz się budżetu.`;
         recommendation = 'Dobrze Ci idzie! Kontynuuj obecne tempo wydatków, ale uważaj na większe zakupy.';
     } else if (ratio <= 1.0) {
         status = 'moderate';
-        title = '⚡ Wydatki zbliżone do limitu';
+        title = 'Wydatki zbliżone do limitu';
         summary = `Średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) zbliżają się do limitu (${targetDaily.toFixed(2)} zł). Stanowią ${percentageOfLimit}% dostępnego budżetu dziennego.`;
         recommendation = 'Sytuacja jest pod kontrolą, ale nie masz dużego marginesu błędu. Uważaj na spontaniczne zakupy i monitoruj wydatki częściej.';
     } else if (ratio <= 1.3) {
         status = 'warning';
-        title = '⚠️ Przekraczasz limit!';
+        title = 'Przekraczasz limit!';
         summary = `Uwaga! Wydajesz średnio ${dailyAvg7.toFixed(2)} zł dziennie, czyli ${percentageOfLimit}% limitu dziennego (${targetDaily.toFixed(2)} zł). To ${(dailyAvg7 - targetDaily).toFixed(2)} zł ponad limit!`;
         recommendation = 'Czas na większą ostrożność! Ogranicz niepotrzebne wydatki i skup się na priorytetach. Jeśli tak dalej pójdzie, możesz nie zmieścić się w budżecie do końca okresu.';
     } else {

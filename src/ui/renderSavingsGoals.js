@@ -283,7 +283,7 @@ function renderSuggestions(goal) {
   const rows = [];
 
   if (remaining === 0) {
-    return '<p class="text-mute text-sm">Cel osiągnięty! 🎉</p>';
+    return '<p class="text-mute text-sm">Cel osiągnięty!</p>';
   }
 
   // Przy obecnym tempie

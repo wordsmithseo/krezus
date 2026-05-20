@@ -136,7 +136,7 @@ export async function addExpense(e) {
     form.expenseDate.value = getWarsawDateString();
     form.expenseType.value = 'normal';
     editingExpenseId = null;
-    document.getElementById('expenseFormTitle').textContent = '💸 Dodaj wydatek';
+    document.getElementById('expenseFormTitle').textContent = 'Dodaj wydatek';
     document.getElementById('descriptionSuggestions').innerHTML = '';
 
     if (setupExpenseTypeToggleFn) setupExpenseTypeToggleFn();

@@ -36,7 +36,7 @@ function createAddSavingsGoalModal() {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h2>➕ Dodaj cel oszczędzania</h2>
+                <h2>Dodaj cel oszczędzania</h2>
                 <button class="modal-close" onclick="closeModal('addSavingsGoalModal')">✕</button>
             </div>
 
@@ -116,7 +116,7 @@ function createAddSavingsGoalModal() {
                         Anuluj
                     </button>
                     <button type="submit" class="btn btn-primary">
-                        ➕ Dodaj cel
+                        Dodaj cel
                     </button>
                 </div>
             </form>
@@ -166,7 +166,7 @@ window.handleAddSavingsGoal = async (e) => {
             icon
         }, user.uid);
 
-        showSuccessMessage('Cel oszczędzania dodany! 🎉');
+        showSuccessMessage('Cel oszczędzania dodany!');
         closeModal('addSavingsGoalModal');
         renderSavingsGoals();
     } catch (error) {
@@ -208,7 +208,7 @@ function createEditSavingsGoalModal() {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h2>✏️ Edytuj cel oszczędzania</h2>
+                <h2>Edytuj cel oszczędzania</h2>
                 <button class="modal-close" onclick="closeModal('editSavingsGoalModal')">✕</button>
             </div>
 
@@ -334,7 +334,7 @@ window.handleEditSavingsGoal = async (e) => {
             icon
         }, user.uid);
 
-        showSuccessMessage('Cel zaktualizowany! ✅');
+        showSuccessMessage('Cel zaktualizowany!');
         closeModal('editSavingsGoalModal');
         renderSavingsGoals();
     } catch (error) {
@@ -397,7 +397,7 @@ window.acceptSuggestion = async (goalId, amount) => {
 
     try {
         await addContribution(goalId, amount, user.uid);
-        showSavingsSuccessMessage(`Odłożono ${Fmt.zl(amount)} zł! 🎉`);
+        showSavingsSuccessMessage(`Odłożono ${Fmt.zl(amount)} zł!`);
         renderSavingsGoals();
     } catch (error) {
         console.error('❌ Błąd akceptacji sugestii:', error);
@@ -443,7 +443,7 @@ window.showGoalHistory = (goalId) => {
 
     // Wypełnij danymi
     const titleEl = modal.querySelector('.modal-header h2');
-    titleEl.textContent = `📊 Historia wpłat: ${goal.name}`;
+    titleEl.textContent = `Historia wpłat: ${goal.name}`;
 
     const contentEl = modal.querySelector('#goalHistoryContent');
 
@@ -457,7 +457,7 @@ window.showGoalHistory = (goalId) => {
                 <div class="contribution-item">
                     <div class="contribution-info">
                         <div class="contribution-date">${contrib.date} ${contrib.time}</div>
-                        <div class="contribution-type">${contrib.type === 'suggestion-accepted' ? '💡 Sugestia zaakceptowana' : '➕ Ręczna wpłata'}</div>
+                        <div class="contribution-type">${contrib.type === 'suggestion-accepted' ? 'Sugestia zaakceptowana' : 'Ręczna wpłata'}</div>
                     </div>
                     <div class="contribution-right">
                         <div class="contribution-amount">+${Fmt.zl(contrib.amount)} zł</div>
@@ -503,7 +503,7 @@ function createGoalHistoryModal() {
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
-                <h2>📊 Historia wpłat</h2>
+                <h2>Historia wpłat</h2>
                 <button class="modal-close" onclick="closeModal('goalHistoryModal')">✕</button>
             </div>
 

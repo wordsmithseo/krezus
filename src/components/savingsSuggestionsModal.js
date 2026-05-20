@@ -107,7 +107,7 @@ function showSavingsSuggestionsModal(suggestions) {
     modal.innerHTML = `
         <div class="modal-content notifications-modal">
             <div class="modal-header">
-                <h2>💡 Mamy sugestie oszczędzania! (${suggestions.length})</h2>
+                <h2>Mamy sugestie oszczędzania! (${suggestions.length})</h2>
                 <button class="btn-close savings-btn-close" onclick="window.closeSavingsSuggestionsModal()">✕</button>
             </div>
             <div class="modal-body">
@@ -173,10 +173,10 @@ function renderSuggestionsList(suggestions) {
 
                     <div class="suggestion-card-actions">
                         <button class="btn btn-success" onclick="window.acceptSuggestionFromModal('${goal.id}', ${suggestion.amount})">
-                            ✅ Zaakceptuj (${Fmt.zl(suggestion.amount)} zł)
+                            Zaakceptuj (${Fmt.zl(suggestion.amount)} zł)
                         </button>
                         <button class="btn btn-secondary" onclick="window.rejectSuggestionFromModal('${goal.id}')">
-                            ❌ Odrzuć
+                            Odrzuć
                         </button>
                     </div>
                 </div>
