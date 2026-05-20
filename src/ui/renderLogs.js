@@ -12,6 +12,7 @@ const ACTION_COLORS = {
   INCOME_REALISE: 'var(--success)', CORRECTION_ADD: 'var(--success)',
   CATEGORY_ADD: 'var(--accent)', CATEGORY_EDIT: 'var(--accent)', CATEGORY_DELETE: 'var(--accent)',
   CATEGORY_MERGE: 'var(--accent)',
+  SAVINGS_UPDATE: 'var(--info)',
 };
 
 const ACTION_SHORT = {
@@ -22,6 +23,7 @@ const ACTION_SHORT = {
   USER_LOGIN: 'AUTH', USER_LOGOUT: 'AUTH', USER_REGISTER: 'AUTH',
   PROFILE_UPDATE: 'USER', BUDGET_USER_ADD: 'USER', BUDGET_USER_EDIT: 'USER', BUDGET_USER_DELETE: 'USER',
   LOGS_CLEARED: 'SYSTEM', SETTINGS_UPDATE: 'SYSTEM', AUTO_REALISE: 'SYSTEM',
+  SAVINGS_UPDATE: 'SAVINGS',
 };
 
 function stripEmoji(str) {
@@ -62,6 +64,14 @@ function formatDetails(action, details) {
       return d.fromName && d.toName ? `${d.fromName} → ${d.toName}` : (d.name || '');
     case 'SETTINGS_UPDATE':
       return d.field ? `${d.field}` : '';
+    case 'SAVINGS_UPDATE': {
+      if (d.fromAmount != null && d.toAmount != null) {
+        const diff = d.toAmount - d.fromAmount;
+        const sign = diff >= 0 ? '+' : '−';
+        return `${Fmt.zl(d.fromAmount)} → ${Fmt.zl(d.toAmount)} zł (${sign}${Fmt.zl(Math.abs(diff))})`;
+      }
+      return '';
+    }
     default:
       return '';
   }

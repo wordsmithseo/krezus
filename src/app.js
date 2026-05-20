@@ -33,7 +33,8 @@ import {
   clearAllListeners,
   clearCache,
   loadIncomes,
-  loadExpenses
+  loadExpenses,
+  getSavings
 
 } from './modules/dataManager.js';
 
@@ -491,6 +492,13 @@ function updateNavBadges() {
   // Badge kategorii: liczba
   const catBadge = document.getElementById('navBadgeCategories');
   if (catBadge) catBadge.textContent = categories.length;
+
+  // Badge oszczędności: odłożona kwota
+  const savingsBadge = document.getElementById('navBadgeSavings');
+  if (savingsBadge) {
+    const { current } = getSavings();
+    savingsBadge.textContent = current > 0 ? Fmt.zl(current) + ' zł' : '';
+  }
 }
 
 // renderSummary, renderSpendingDynamics, renderDailyEnvelope, renderAnalytics są importowane z src/ui/

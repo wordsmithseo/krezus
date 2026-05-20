@@ -197,8 +197,8 @@ function collectCompleteBudgetData() {
 
         summary: {
             availableFunds: availableFunds.available,
-            savingGoal: availableFunds.savingGoal,
-            toSpend: availableFunds.available - availableFunds.savingGoal,
+            savings: availableFunds.savingsAmount,
+            toSpend: availableFunds.available,
             totalExpenses: expenses.filter(e => e.type === 'normal').reduce((s, e) => s + (e.amount || 0), 0),
             totalIncomes: incomes.filter(i => i.type === 'normal').reduce((s, i) => s + (i.amount || 0), 0),
             expensesCount: expenses.filter(e => e.type === 'normal').length,
@@ -336,7 +336,7 @@ function formatDataForLLM(data) {
     text += '═══════════════════════════════════════════════════════════════\n\n';
 
     text += `Dostępne środki: ${data.summary.availableFunds.toFixed(2)} zł\n`;
-    text += `Cel oszczędności (rezerwa): ${data.summary.savingGoal.toFixed(2)} zł\n`;
+    text += `Oszczędności (deklarowane): ${data.summary.savings.toFixed(2)} zł\n`;
     text += `Do wydania: ${data.summary.toSpend.toFixed(2)} zł\n`;
     text += `Suma wszystkich wydatków: ${data.summary.totalExpenses.toFixed(2)} zł\n`;
     text += `Suma wszystkich przychodów: ${data.summary.totalIncomes.toFixed(2)} zł\n`;
