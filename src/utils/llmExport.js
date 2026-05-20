@@ -489,6 +489,37 @@ function formatDataForLLM(data) {
     return text;
 }
 
+function escapeCSV(val) {
+    const s = String(val ?? '');
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function formatDataAsCSV(data) {
+    const expRows = [
+        ['Data', 'Kwota', 'Kategoria', 'Opis', 'Typ'].join(','),
+        ...data.expenses.all.map(e => [
+            escapeCSV(e.date),
+            escapeCSV(e.amount),
+            escapeCSV(e.category),
+            escapeCSV(e.description),
+            escapeCSV(e.type),
+        ].join(','))
+    ].join('\n');
+
+    const incRows = [
+        ['Data', 'Kwota', 'Źródło', 'Opis', 'Typ'].join(','),
+        ...data.incomes.all.map(i => [
+            escapeCSV(i.date),
+            escapeCSV(i.amount),
+            escapeCSV(i.source),
+            escapeCSV(i.description),
+            escapeCSV(i.type),
+        ].join(','))
+    ].join('\n');
+
+    return `WYDATKI\n${expRows}\n\nPRZYCHODY\n${incRows}`;
+}
+
 /**
  * Eksportuje dane do pliku
  */
@@ -503,6 +534,10 @@ export function exportBudgetDataForLLM(format = 'json') {
             content = JSON.stringify(data, null, 2);
             filename = `krezus_budget_export_${data.metadata.currentDate}.json`;
             mimeType = 'application/json';
+        } else if (format === 'csv') {
+            content = formatDataAsCSV(data);
+            filename = `krezus_budget_export_${data.metadata.currentDate}.csv`;
+            mimeType = 'text/csv';
         } else {
             content = formatDataForLLM(data);
             filename = `krezus_budget_export_${data.metadata.currentDate}.txt`;
