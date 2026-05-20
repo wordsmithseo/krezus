@@ -101,7 +101,7 @@ export function renderSources() {
       <td>${sourceHtml}</td>
       <td>${inc.userId && getBudgetUserNameFn ? userChipHTML({ id: inc.userId, name: getBudgetUserNameFn(inc.userId) }) : '<span class="text-mute">—</span>'}</td>
       <td>${isCorrection
-        ? '<span class="tag accent dot">Korekta</span>'
+        ? '<span class="tag info dot">Korekta</span>'
         : inc.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
           : '<span class="tag success dot">Zrealizowany</span>'}</td>
