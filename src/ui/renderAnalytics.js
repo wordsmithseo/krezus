@@ -15,6 +15,7 @@ import { showErrorMessage, showSuccessMessage } from '../utils/errorHandler.js';
 import { barChartHTML, dailyChartHTML } from './charts.js';
 import { CAT_COLORS } from './renderCategories.js';
 import { Fmt } from '../utils/fmt.js';
+import { icon } from '../utils/icons.js';
 
 let categoriesChartInstance = null;
 let chartTooltip = null;
@@ -39,7 +40,7 @@ function comparisonCell(label, curr, prev, unit, lowerIsBetter) {
   const delta = prev ? ((curr - prev) / prev) * 100 : 0;
   const isUp = delta > 0;
   const isGood = lowerIsBetter ? !isUp : isUp;
-  const arrow = isUp ? '↑' : '↓';
+  const arrowIcon = icon(isUp ? 'TrendingUp' : 'TrendingDown', { width: 12, height: 12, style: 'vertical-align:middle;flex-shrink:0' });
   const deltaClass = `delta ${isUp ? 'up' : 'down'} ${isGood ? 'good' : 'bad'}`;
   const fmt = v => Fmt.zl(v);
   return `
@@ -47,7 +48,7 @@ function comparisonCell(label, curr, prev, unit, lowerIsBetter) {
       <div class="text-mute text-sm" style="margin-bottom:6px">${label}</div>
       <div style="display:flex;align-items:baseline;gap:8px">
         <div class="num" style="font-size:20px;font-weight:500">${fmt(curr)}${unit ? `<span class="text-mute" style="font-size:12px;margin-left:2px">${unit}</span>` : ''}</div>
-        <span class="${deltaClass}" style="font-size:11px">${arrow} ${Math.abs(delta).toFixed(1).replace('.', ',')}%</span>
+        <span class="${deltaClass}" style="font-size:11px;display:inline-flex;align-items:center;gap:2px">${arrowIcon} ${Math.abs(delta).toFixed(1).replace('.', ',')}%</span>
       </div>
       <div class="text-mute" style="font-size:11px;margin-top:4px">Poprzednio: <span class="num">${fmt(prev)}${unit ? ' ' + unit : ''}</span></div>
     </div>`;
@@ -349,9 +350,9 @@ export function renderAnalytics() {
     const pct = ((curr - prev) / prev) * 100;
     const isUp = pct > 0;
     const isGood = lowerIsBetter ? !isUp : isUp;
-    const arrow = isUp ? '↑' : '↓';
+    const arrowIcn = icon(isUp ? 'TrendingUp' : 'TrendingDown', { width: 12, height: 12, style: 'vertical-align:middle;flex-shrink:0' });
     const cls = `delta ${isUp ? 'up' : 'down'}${isGood ? ' good' : ' bad'}`;
-    return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1).replace('.', ',')}%</span> vs poprzedni okres`;
+    return `<span class="${cls}" style="display:inline-flex;align-items:center;gap:2px">${arrowIcn} ${Math.abs(pct).toFixed(1).replace('.', ',')}%</span> vs poprzedni okres`;
   };
   const expDeltaEl = document.getElementById('periodExpensesDelta');
   if (expDeltaEl) expDeltaEl.innerHTML = buildDelta(stats.totalExpenses, prevExp, true);
