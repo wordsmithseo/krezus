@@ -66,7 +66,7 @@ export function renderCategories() {
     const isMergeCandidate = mergingId && !isMergingThis;
     const isEmpty = cat.totalAmount === 0;
     const pct = totalAll > 0 ? (cat.totalAmount / totalAll * 100) : 0;
-    const catIcon = getCategoryIcon(cat.name);
+    const catIcon = cat.icon || getCategoryIcon(cat.name);
     const mergeOverlayStyle = isMergingThis
       ? 'outline:2px solid var(--accent);opacity:0.6;'
       : isMergeCandidate ? 'outline:1px dashed var(--accent);cursor:pointer;position:relative;' : '';
