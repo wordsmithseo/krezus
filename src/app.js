@@ -134,6 +134,7 @@ import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps } from './ui/renderIncomes.js';
 import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
+import { renderCategories, changeCategoryPage, CAT_COLORS } from './ui/renderCategories.js';
 import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
@@ -142,7 +143,7 @@ import './components/savingsGoalsModals.js';
 // Import handlerów
 import { addExpense, editExpense, deleteExpense, realiseExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
 import { addIncome, editIncome, deleteIncome, realiseIncome, addCorrection, setIncomeHandlerDeps } from './handlers/incomeHandlers.js';
-import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget, setCategoryHandlerDeps, getMergingCategoryId } from './handlers/categoryHandlers.js';
+import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget, setCategoryHandlerDeps } from './handlers/categoryHandlers.js';
 
 // Import modułu obecności użytkowników
 import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
@@ -150,7 +151,6 @@ import { initializePresence, cleanupPresence, recordActivity } from './modules/p
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
 
-let currentCategoryPage = 1;
 let currentLogPage = 1;
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
@@ -1059,141 +1059,6 @@ const applyCustomPeriod = () => {
   setCustomDateRange(from, to);
   renderAnalytics();
   showSuccessMessage('Zastosowano własny przedział dat');
-};
-
-const CAT_COLORS = [
-  'oklch(0.6 0.12 155)', 'oklch(0.62 0.14 230)', 'oklch(0.58 0.15 25)',
-  'oklch(0.66 0.13 60)', 'oklch(0.6 0.15 280)', 'oklch(0.62 0.12 185)',
-  'oklch(0.64 0.13 340)', 'oklch(0.60 0.14 80)',  'oklch(0.63 0.11 200)',
-];
-
-function renderCategories() {
-  const categories = getCategories();
-  const expenses = getExpenses();
-  const container = document.getElementById('categoriesList');
-
-  if (categories.length === 0) {
-    container.innerHTML = '<div class="empty-state"><p>Brak kategorii. Dodaj pierwszą!</p></div>';
-    return;
-  }
-
-  const monthStart = (() => { const d = new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); })();
-  const categoryStats = categories.map((cat, idx) => {
-    const items = expenses.filter(e => e.category === cat.name && e.type === 'normal' && e.date >= monthStart);
-    const totalAmount = items.reduce((sum, e) => sum + (e.amount || 0), 0);
-    return { ...cat, count: items.length, totalAmount, color: CAT_COLORS[idx % CAT_COLORS.length] };
-  }).sort((a, b) => b.totalAmount - a.totalAmount);
-
-  const totalAll = categoryStats.reduce((s, c) => s + c.totalAmount, 0);
-
-  const mergingId = getMergingCategoryId();
-  let headerHtml = '';
-  if (mergingId) {
-    const mergingCat = categoryStats.find(c => c.id === mergingId);
-    if (mergingCat) {
-      headerHtml = `
-        <div class="card" style="background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,var(--line));margin-bottom:4px">
-          <div class="row">
-            <div style="width:36px;height:36px;border-radius:10px;background:var(--surface-sunken);display:grid;place-items:center;font-size:18px">${getCategoryIcon(mergingCat.name)}</div>
-            <div style="flex:1">
-              <div style="font-weight:600">Scalanie: <span style="color:var(--accent)">${escapeHTML(mergingCat.name)}</span></div>
-              <div class="text-mute text-sm">Wybierz kategorię docelową poniżej.</div>
-            </div>
-            <button class="btn sm ghost" data-action="cancel-merge-category">${iconX} Anuluj</button>
-          </div>
-        </div>
-      `;
-    }
-  }
-
-  const iconEdit  = lucideIcon('Edit',       { size: 13, strokeWidth: 1.5 });
-  const iconTrash = lucideIcon('Trash',      { size: 13, strokeWidth: 1.5 });
-  const iconMerge = lucideIcon('RefreshCw',  { size: 13, strokeWidth: 1.5 });
-  const iconX     = lucideIcon('X',          { size: 13, strokeWidth: 2 });
-
-  const cardsHtml = categoryStats.map(cat => {
-    const isMergingThis = mergingId === cat.id;
-    const isMergeCandidate = mergingId && !isMergingThis;
-    const pct = totalAll > 0 ? (cat.totalAmount / totalAll * 100) : 0;
-    const catIcon = getCategoryIcon(cat.name);
-    const mergeOverlayStyle = isMergingThis
-      ? 'outline:2px solid var(--accent);opacity:0.6;'
-      : isMergeCandidate ? 'outline:1px dashed var(--accent);cursor:pointer;position:relative;' : '';
-
-    return `<div class="card" style="padding:18px;${mergeOverlayStyle}"
-      ${isMergeCandidate ? `data-action="select-merge-target" data-id="${cat.id}"` : ''}>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div class="limit-tile-icon" style="background:color-mix(in srgb,${cat.color} 14%,transparent);color:${cat.color};font-size:18px">${catIcon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(cat.name)}</div>
-          <div class="text-mute text-sm">${cat.count} transakcji · 30 dni</div>
-        </div>
-        ${!mergingId ? `
-          <div style="display:flex;gap:2px">
-            <button class="btn ghost icon-only sm" data-action="start-merge-category" data-id="${cat.id}" title="Scal">${iconMerge}</button>
-            <button class="btn ghost icon-only sm" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}" title="Edytuj">${iconEdit}</button>
-            <button class="btn ghost icon-only sm" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}" title="Usuń">${iconTrash}</button>
-          </div>
-        ` : ''}
-      </div>
-      <div class="num" style="font-size:20px;font-weight:500">${cat.totalAmount.toFixed(2)} <span class="text-mute text-sm">zł</span></div>
-      <div class="progress" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%;height:100%;background:${cat.color};border-radius:inherit;transition:width 400ms ease"></div></div>
-      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1)}% wszystkich wydatków</div>
-      ${isMergeCandidate ? `<div style="position:absolute;inset:0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:inherit;display:grid;place-items:center;pointer-events:none"><span class="tag accent">Scal tutaj →</span></div>` : ''}
-    </div>`;
-  }).join('');
-
-  container.innerHTML = headerHtml + `<div class="categories-grid">${cardsHtml}</div>`;
-
-  const paginationContainer = container.nextElementSibling;
-  if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
-    paginationContainer.innerHTML = '';
-  }
-}
-
-function renderCategoriesPagination(totalPages) {
-  const categoriesList = document.getElementById('categoriesList');
-  let paginationContainer = categoriesList.nextElementSibling;
-
-  if (!paginationContainer || !paginationContainer.classList.contains('pagination-container')) {
-    paginationContainer = document.createElement('div');
-    paginationContainer.className = 'pagination-container';
-    categoriesList.parentNode.insertBefore(paginationContainer, categoriesList.nextSibling);
-  }
-
-  if (totalPages <= 1) {
-    paginationContainer.innerHTML = '';
-    return;
-  }
-
-  let html = '';
-  html += `<button class="pagination-btn" ${currentCategoryPage === 1 ? 'disabled' : ''} data-action="change-category-page" data-page="${currentCategoryPage - 1}">◀</button>`;
-
-  const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
-  let startPage = Math.max(1, currentCategoryPage - Math.floor(maxButtons / 2));
-  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-
-  if (endPage - startPage + 1 < maxButtons) {
-    startPage = Math.max(1, endPage - maxButtons + 1);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    html += `<button class="pagination-btn ${i === currentCategoryPage ? 'active' : ''}" data-action="change-category-page" data-page="${i}">${i}</button>`;
-  }
-
-  html += `<button class="pagination-btn" ${currentCategoryPage === totalPages ? 'disabled' : ''} data-action="change-category-page" data-page="${currentCategoryPage + 1}">▶</button>`;
-
-  paginationContainer.innerHTML = html;
-}
-
-const changeCategoryPage = (page) => {
-  const total = getCategories().length;
-  const totalPages = Math.ceil(total / PAGINATION.CATEGORIES_PER_PAGE);
-
-  if (page < 1 || page > totalPages) return;
-
-  currentCategoryPage = page;
-  renderCategories();
 };
 
 function setupExpenseTypeToggle() {
