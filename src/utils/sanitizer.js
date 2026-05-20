@@ -9,9 +9,19 @@ export function sanitizeHTML(html) {
   if (!html) return '';
 
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'small', 'br', 'span', 'div', 'p', 'ul', 'li', 'button'],
-    ALLOWED_ATTR: ['class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'data-action', 'data-id', 'data-name', 'data-category-id', 'data-expense-id', 'data-income-id', 'data-page', 'data-end-date', 'data-end-time'],
-    ALLOW_DATA_ATTR: true
+    ALLOWED_TAGS: [
+      'b', 'i', 'em', 'strong', 'small', 'br', 'span', 'div', 'p', 'ul', 'ol', 'li', 'button', 'hr', 'label',
+      'svg', 'path', 'line', 'polyline', 'polygon', 'circle', 'rect', 'g', 'defs', 'use',
+    ],
+    ALLOWED_ATTR: [
+      'class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'data-action',
+      'data-id', 'data-name', 'data-category-id', 'data-expense-id', 'data-income-id',
+      'data-page', 'data-end-date', 'data-end-time', 'data-cat-id', 'data-tip',
+      'xmlns', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+      'width', 'height', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'd', 'points',
+      'transform', 'aria-hidden', 'aria-label', 'aria-pressed', 'role', 'tabindex',
+    ],
+    ALLOW_DATA_ATTR: true,
   });
 }
 
