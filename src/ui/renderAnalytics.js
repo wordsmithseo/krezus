@@ -322,8 +322,40 @@ export function renderAnalytics() {
 
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
   document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
-  document.getElementById('periodExpensesCount').textContent = stats.expensesCount;
-  document.getElementById('periodIncomesCount').textContent = stats.incomesCount;
+
+  // Bilans
+  const balance = stats.totalIncomes - stats.totalExpenses;
+  const balEl = document.getElementById('periodBalance');
+  if (balEl) {
+    balEl.textContent = balance.toFixed(2);
+    balEl.style.color = balance > 0 ? 'var(--success)' : balance < 0 ? 'var(--danger)' : '';
+  }
+  const balSubEl = document.getElementById('periodBalanceSub');
+  if (balSubEl) balSubEl.textContent = balance > 0 ? 'Saldo dodatnie' : balance < 0 ? 'Saldo ujemne' : 'Saldo zerowe';
+
+  // Liczba transakcji
+  const transTotal = stats.expensesCount + stats.incomesCount;
+  const transEl = document.getElementById('periodTransCount');
+  if (transEl) transEl.textContent = transTotal;
+  const transSubEl = document.getElementById('periodTransSub');
+  if (transSubEl) transSubEl.textContent = `${stats.expensesCount} wydatków · ${stats.incomesCount} przychodów`;
+
+  // Delta w stosunku do poprzedniego okresu
+  const prevExp = comparison.previousPeriod.totalExpenses;
+  const prevInc = comparison.previousPeriod.totalIncomes;
+  const buildDelta = (curr, prev, lowerIsBetter) => {
+    if (!prev) return '';
+    const pct = ((curr - prev) / prev) * 100;
+    const isUp = pct > 0;
+    const isGood = lowerIsBetter ? !isUp : isUp;
+    const arrow = isUp ? '↑' : '↓';
+    const cls = `delta ${isUp ? 'up' : 'down'}${isGood ? ' good' : ' bad'}`;
+    return `<span class="${cls}">${arrow} ${Math.abs(pct).toFixed(1)}%</span> vs poprzedni okres`;
+  };
+  const expDeltaEl = document.getElementById('periodExpensesDelta');
+  if (expDeltaEl) expDeltaEl.innerHTML = buildDelta(stats.totalExpenses, prevExp, true);
+  const incDeltaEl = document.getElementById('periodIncomesDelta');
+  if (incDeltaEl) incDeltaEl.innerHTML = buildDelta(stats.totalIncomes, prevInc, false);
 
   const compEl = document.getElementById('analyticsComparison');
   if (compEl) {

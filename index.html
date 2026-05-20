@@ -704,22 +704,26 @@
 
                             <!-- Stats -->
                             <div class="card">
-                                <div class="stat-grid" style="margin-bottom:0">
+                                <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
                                     <div class="stat">
                                         <div class="label">Wydatki w okresie</div>
                                         <div class="value" style="color:var(--danger)"><span id="periodExpenses">0,00</span><span class="unit">zł</span></div>
+                                        <div class="sub" id="periodExpensesDelta"></div>
                                     </div>
                                     <div class="stat">
                                         <div class="label">Przychody w okresie</div>
                                         <div class="value" style="color:var(--success)"><span id="periodIncomes">0,00</span><span class="unit">zł</span></div>
+                                        <div class="sub" id="periodIncomesDelta"></div>
                                     </div>
                                     <div class="stat">
-                                        <div class="label">Liczba wydatków</div>
-                                        <div class="value"><span id="periodExpensesCount">0</span></div>
+                                        <div class="label">Bilans</div>
+                                        <div class="value"><span id="periodBalance">0,00</span><span class="unit">zł</span></div>
+                                        <div class="sub" id="periodBalanceSub">Saldo neutralne</div>
                                     </div>
                                     <div class="stat">
-                                        <div class="label">Liczba przychodów</div>
-                                        <div class="value"><span id="periodIncomesCount">0</span></div>
+                                        <div class="label">Liczba transakcji</div>
+                                        <div class="value"><span id="periodTransCount">0</span></div>
+                                        <div class="sub" id="periodTransSub"></div>
                                     </div>
                                 </div>
                             </div>
