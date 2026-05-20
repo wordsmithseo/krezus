@@ -2,6 +2,8 @@
 import { getLogs, calculateLogsSize, clearAllLogs, formatLogEntry } from '../modules/logger.js';
 import { showPasswordModal } from '../components/modals.js';
 import { showSuccessMessage, showErrorMessage } from '../utils/errorHandler.js';
+import { Fmt } from '../utils/fmt.js';
+import { escapeHTML } from '../utils/sanitizer.js';
 
 const ACTION_COLORS = {
   EXPENSE_ADD: 'var(--danger)', EXPENSE_EDIT: 'var(--danger)', EXPENSE_DELETE: 'var(--danger)',
@@ -26,6 +28,45 @@ function stripEmoji(str) {
   return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/gu, '').trim();
 }
 
+function formatDetails(action, details) {
+  if (!details) return '';
+  const d = details;
+  const zlStr = n => n != null ? `${Fmt.zl(n)} zł` : '';
+  switch (action) {
+    case 'EXPENSE_ADD':
+    case 'EXPENSE_EDIT': {
+      const parts = [d.description, d.category ? `(${d.category})` : '', zlStr(d.amount)].filter(Boolean);
+      return parts.join(' · ');
+    }
+    case 'EXPENSE_DELETE':
+    case 'EXPENSE_REALISE': {
+      const parts = [d.description, zlStr(d.amount)].filter(Boolean);
+      return parts.join(' · ');
+    }
+    case 'INCOME_ADD':
+    case 'INCOME_EDIT': {
+      const parts = [d.source, zlStr(d.amount)].filter(Boolean);
+      return parts.join(' · ');
+    }
+    case 'INCOME_DELETE':
+    case 'INCOME_REALISE':
+    case 'CORRECTION_ADD': {
+      const parts = [d.source || d.correctionReason, zlStr(d.amount)].filter(Boolean);
+      return parts.join(' · ');
+    }
+    case 'CATEGORY_ADD':
+    case 'CATEGORY_EDIT':
+    case 'CATEGORY_DELETE':
+      return d.name || '';
+    case 'CATEGORY_MERGE':
+      return d.fromName && d.toName ? `${d.fromName} → ${d.toName}` : (d.name || '');
+    case 'SETTINGS_UPDATE':
+      return d.field ? `${d.field}` : '';
+    default:
+      return '';
+  }
+}
+
 export async function renderLogs() {
   try {
     const logs = await getLogs();
@@ -48,8 +89,10 @@ export async function renderLogs() {
       const shortAction = ACTION_SHORT[action] || action;
       const color = ACTION_COLORS[action] || 'var(--ink-3)';
       const label = stripEmoji(formatted.label);
-      const user = formatted.userName && formatted.userName !== 'System' ? ` — ${formatted.userName}` : '';
-      return `<div style="white-space:nowrap"><span style="color:var(--ink-3)">${timeStr}</span> · <span style="color:${color};font-weight:600">${shortAction}</span> · ${label}${user}</div>`;
+      const details = formatDetails(action, logEntry.details);
+      const fullMsg = details ? `${label}: ${escapeHTML(details)}` : label;
+      const user = formatted.userName && formatted.userName !== 'System' ? ` <span style="color:var(--ink-3)">— ${escapeHTML(formatted.userName)}</span>` : '';
+      return `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--ink-3)">${timeStr}</span> · <span style="color:${color};font-weight:600">${shortAction}</span> · ${fullMsg}${user}</div>`;
     }).join('');
 
     logsList.innerHTML = `<div style="font-family:var(--font-mono);font-size:11px;line-height:1.7;max-height:200px;overflow-y:auto;background:var(--surface-sunken);border-radius:var(--radius-sm);padding:10px 12px">${lines}</div>`;
