@@ -11,6 +11,22 @@ let otherSessionsListener = null;
 let pulseTimeout = null;
 let pulseLongerTimeout = null;
 
+// Budget users context for the presence chip
+let _budgetUsers = [];
+let _currentUserId = null;
+
+const USER_COLORS = [
+  'oklch(0.66 0.13 60)',
+  'oklch(0.6 0.15 320)',
+  'oklch(0.6 0.12 155)',
+  'oklch(0.62 0.14 230)',
+];
+
+export function setPresenceBudgetUsers(users, currentUserId) {
+  _budgetUsers = users || [];
+  _currentUserId = currentUserId;
+}
+
 /**
  * Inicjalizuje śledzenie obecności użytkownika
  */
@@ -186,12 +202,27 @@ function showPresenceIndicator(count = 0) {
 
   indicator.style.display = 'inline-flex';
 
-  // Also update topbar presence chip
+  // Update topbar presence chip with other budget user name + avatar
   const chip = document.getElementById('presenceChip');
-  const namesEl = document.getElementById('presenceNames');
-  if (chip && namesEl) {
+  if (chip) {
+    const otherUsers = _budgetUsers.filter(u => u.id !== _currentUserId);
+    if (otherUsers.length > 0) {
+      const user = otherUsers[0];
+      const idx = _budgetUsers.findIndex(u => u.id === user.id);
+      const color = USER_COLORS[idx % USER_COLORS.length];
+      const initials = (user.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      chip.innerHTML = `
+        <span class="presence-dot"></span>
+        <span>${user.name} online</span>
+        <div class="avatar sm" style="background:${color};color:#fff">${initials}</div>
+      `;
+    } else {
+      chip.innerHTML = `
+        <span class="presence-dot"></span>
+        <span>${count === 1 ? '1 sesja online' : `${count} sesje online`}</span>
+      `;
+    }
     chip.style.display = 'flex';
-    namesEl.textContent = count === 1 ? '1 sesja online' : `${count} sesje online`;
   }
 }
 

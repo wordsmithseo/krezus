@@ -134,7 +134,7 @@ import { addIncome, editIncome, deleteIncome, realiseIncome, addCorrection, setI
 import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget, setCategoryHandlerDeps } from './handlers/categoryHandlers.js';
 
 // Import modułu obecności użytkowników
-import { initializePresence, cleanupPresence, recordActivity } from './modules/presence.js';
+import { initializePresence, cleanupPresence, recordActivity, setPresenceBudgetUsers } from './modules/presence.js';
 
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
@@ -382,6 +382,7 @@ async function loadBudgetUsers(uid) {
     budgetUsersCache = users;
     updateBudgetUsersSelects();
     setBudgetUsersCache(users);
+    setPresenceBudgetUsers(users, uid);
   });
 }
 
