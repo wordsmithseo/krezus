@@ -39,6 +39,7 @@ function buildLastNDaysData(n = 30) {
 }
 
 let heroSparklineDays = 7;
+let _segInitialized = false;
 
 function renderSparkline(days = heroSparklineDays) {
   const wrap = document.getElementById('spendingSparklineWrap');
@@ -74,8 +75,10 @@ function renderSparkline(days = heroSparklineDays) {
 }
 
 function initHeroSparklineSeg() {
+  if (_segInitialized) return;
   const seg = document.getElementById('heroSparklineSeg');
   if (!seg) return;
+  _segInitialized = true;
   seg.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-days]');
     if (!btn) return;
@@ -326,8 +329,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     const realColor = realLimit < 50 ? 'var(--danger)' : 'var(--ink-1)';
 
+    const tileStyle = isFirst
+      ? 'padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 25%,var(--line))'
+      : 'padding:16px;display:flex;flex-direction:column;gap:12px';
+
     const html = `
-      <div class="card limit-tile${isFirst ? ' limit-tile--next' : ''}" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+      <div class="card limit-tile${isFirst ? ' limit-tile--next' : ''}" style="${tileStyle}">
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <div class="limit-tile-icon">${limitIcon}</div>
           <div style="flex:1;min-width:0">
