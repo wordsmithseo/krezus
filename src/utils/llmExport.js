@@ -6,7 +6,6 @@ import {
     getExpenses,
     getIncomes,
     getEndDates,
-    getSavingGoal,
     getEnvelopePeriod,
     getDynamicsPeriod,
     getDailyEnvelope
@@ -40,7 +39,6 @@ function collectCompleteBudgetData() {
     const expenses = getExpenses();
     const incomes = getIncomes();
     const endDates = getEndDates();
-    const savingGoal = getSavingGoal();
     const envelope = getDailyEnvelope();
     const envelopePeriodIndex = getEnvelopePeriod();
     const dynamicsPeriodIndex = getDynamicsPeriod();

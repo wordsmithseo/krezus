@@ -19,7 +19,6 @@ import {
   getExpenses,
   getIncomes,
   getEndDates,
-  getSavingGoal,
   getEnvelopePeriod,
   getDynamicsPeriod,
   getDailyEnvelope,
@@ -27,7 +26,6 @@ import {
   saveExpenses,
   saveIncomes,
   saveEndDates,
-  saveSavingGoal,
   saveEnvelopePeriod,
   saveDynamicsPeriod,
   autoRealiseDueTransactions,
@@ -68,13 +66,6 @@ import {
 import {
   setBudgetUsersCache
 } from './modules/analytics.js';
-
-import {
-  loadSavingsGoals,
-  loadSavingsContributions,
-  subscribeToSavingsGoalsUpdates,
-  clearSavingsGoalsCache
-} from './modules/savingsGoalManager.js';
 
 import {
   showProfileModal,
@@ -120,15 +111,12 @@ import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch } from './ui/renderIncomes.js';
-import { renderSavingsGoals, selectSavingsGoal } from './ui/renderSavingsGoals.js';
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
 import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
-import './components/savingsGoalsModals.js';
-
 // Import handlerów
 import { addExpense, editExpense, deleteExpense, realiseExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
 import { addIncome, editIncome, deleteIncome, realiseIncome, addCorrection, setIncomeHandlerDeps } from './handlers/incomeHandlers.js';
@@ -324,10 +312,6 @@ async function loadAllData() {
     await clearCache();
     await fetchAllData(userId);
 
-    // Ładowanie danych oszczędzania
-    await loadSavingsGoals(userId);
-    await loadSavingsContributions(userId);
-
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
     await updateDailyEnvelope();
@@ -378,18 +362,6 @@ async function loadAllData() {
       onDailyEnvelopeChange: () => {
         renderSummary();
         renderDailyEnvelope();
-      }
-    });
-
-    // Subskrybuj zmiany w celach oszczędzania (osobny moduł)
-    subscribeToSavingsGoalsUpdates(userId, {
-      onGoalsChange: () => {
-        console.log('🔄 Zmiana w celach oszczędzania - re-render');
-        renderSavingsGoals();
-      },
-      onContributionsChange: () => {
-        console.log('🔄 Zmiana w wpłatach - re-render');
-        renderSavingsGoals();
       }
     });
 
@@ -469,7 +441,6 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
-  renderSavingsGoals();
   updateSectionStats();
   await renderLogs();
   loadSettings();
@@ -766,82 +737,10 @@ const selectSource = (source) => {
 
 // addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget -> src/handlers/categoryHandlers.js
 
-function renderSavingsSection() {
-  const savingsAmount = getSavingGoal();
-  const { available, totalAvailable } = calculateAvailableFunds();
-  const input = document.getElementById('savingsAmountInput');
-  const statusDiv = document.getElementById('savingsStatusInfo');
-
-  if (input) {
-    input.value = savingsAmount > 0 ? savingsAmount : '';
-  }
-
-  if (statusDiv) {
-    if (savingsAmount > 0) {
-      const percentage = totalAvailable > 0 ? ((savingsAmount / totalAvailable) * 100).toFixed(1).replace('.', ',') : '0,0';
-      statusDiv.innerHTML = `
-        <div class="stat-card beige" style="margin-top: 10px;">
-          <div class="stat-label">Odłożone oszczędności</div>
-          <div class="stat-value">${Fmt.zl(savingsAmount)} <span class="stat-unit">zł</span></div>
-          <div style="margin-top: 8px; font-size: 0.85rem; opacity: 0.8;">
-            Stanowi ${percentage}% całkowitych środków (${Fmt.zl(totalAvailable)} zł).<br>
-            Dostępne po odliczeniu: ${Fmt.zl(available)} zł.
-          </div>
-        </div>
-      `;
-    } else {
-      statusDiv.innerHTML = '<p style="opacity: 0.6;">Nie zdefiniowano kwoty oszczednosci.</p>';
-    }
-  }
+export function renderSavingsSection() {
+  const el = document.getElementById('savingsGoalsContent');
+  if (el) el.innerHTML = '';
 }
-
-const saveSavingsAmount = async (e) => {
-  e.preventDefault();
-
-  const form = e.target;
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  if (submitBtn && submitBtn.disabled) return;
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Zapisywanie...';
-  }
-
-  const amount = parseFloat(form.savingsAmount.value) || 0;
-
-  if (amount < 0) {
-    showErrorMessage('Kwota oszczednosci nie moze byc ujemna');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz kwote oszczednosci'; }
-    return;
-  }
-
-  try {
-    await saveSavingGoal(amount);
-    clearLimitsCache();
-    await recalculateEnvelope();
-
-    const user = getCurrentUser();
-    const displayName = await getDisplayName(user.uid);
-
-    await log('SAVINGS_AMOUNT_UPDATE', {
-      amount,
-      budgetUser: displayName
-    });
-
-    renderSavingsGoals();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage(`Kwota oszczędności zapisana: ${Fmt.zl(amount)} zł`);
-  } catch (error) {
-    console.error('Blad zapisywania kwoty oszczednosci:', error);
-    showErrorMessage('Nie udalo sie zapisac kwoty oszczednosci');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Zapisz kwote oszczednosci';
-    }
-  }
-};
 
 // window.addExpense, editExpense, deleteExpense -> src/handlers/expenseHandlers.js
 
@@ -1064,10 +963,6 @@ const showSection = (sectionId) => {
       navMenu.classList.remove('active');
       if (hamburger) hamburger.classList.remove('active');
     }
-  }
-
-  if (sectionId === 'savingsGoalsSection') {
-    renderSavingsGoals();
   }
 
   if (sectionId === 'settingsSection') {
@@ -1473,12 +1368,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filtry przychodów
     'filter-incomes': (el) => setIncomeFilter(el.dataset.filter),
 
-    // Cele oszczędzania
-    'open-add-savings-goal-modal': () => window.showAddSavingsGoalModal?.(),
-    'select-savings-goal': (el) => selectSavingsGoal(el.dataset.goalId),
-    'edit-savings-goal': (el) => window.editSavingsGoal?.(el.dataset.id),
-    'delete-savings-goal': (el) => window.deleteSavingsGoal?.(el.dataset.id),
-    'open-deposit-modal': (el) => window.showDepositModal?.(el.dataset.goalId),
   });
 
   // Zamknij dropdown kategorii przy kliknięciu poza nim
@@ -1510,7 +1399,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('expenseForm')?.addEventListener('submit', addExpense);
   document.getElementById('incomeForm')?.addEventListener('submit', addIncome);
   document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);
-  document.getElementById('savingsAmountForm')?.addEventListener('submit', saveSavingsAmount);
   document.getElementById('settingsForm')?.addEventListener('submit', saveSettings);
 });
 
