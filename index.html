@@ -298,19 +298,14 @@
                                         </div>
                                     </div>
                                     <div style="flex:1;min-width:130px">
-                                        <div style="font-size:13px;font-weight:500;margin-bottom:10px">Koperta dnia</div>
+                                        <div id="envelopeMiniDate" style="font-size:13px;font-weight:500;margin-bottom:8px">Dziś</div>
                                         <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
-                                            <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Budżet</span><span class="num"><span id="envelopeAmount">0,00</span> zł</span></div>
                                             <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Wydano</span><span class="num"><span id="envelopeSpent">0,00</span> zł</span></div>
                                             <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Mediana 30d</span><span class="num"><span id="envelopeMedian">0,00</span> zł</span></div>
+                                            <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Pozostały dzień</span><span class="num" id="envelopeTimeLeft">—</span></div>
                                         </div>
-                                        <div style="margin-top:10px" class="progress">
-                                            <div id="spendingGauge" style="height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease;width:0%"></div>
-                                        </div>
-                                        <div id="envelopePeriodInfo" style="margin-top:6px;font-size:11px;color:var(--ink-3)"></div>
-                                        <div id="envelopeCalculationInfo"></div>
                                         <div id="envelopeOverLimit" style="display:none"></div>
-                                        <button class="btn btn-ghost btn-sm" data-action="show-section" data-section="envelopeSection" style="margin-top:10px;width:100%;font-size:12px">Szczegóły koperty →</button>
+                                        <button class="btn sm" data-action="show-section" data-section="envelopeSection" style="margin-top:10px;width:100%;font-size:12px">Szczegóły koperty →</button>
                                     </div>
                                 </div>
                             </div>
