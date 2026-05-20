@@ -114,7 +114,8 @@ export function formatLogEntry(logEntry) {
     'AUTO_REALISE': '🤖 Automatyczna realizacja transakcji',
     'PURPOSE_BUDGET_ADD': '🎯 Dodanie budżetu celowego',
     'PURPOSE_BUDGET_EDIT': '✏️ Edycja budżetu celowego',
-    'PURPOSE_BUDGET_DELETE': '🗑️ Usunięcie budżetu celowego'
+    'PURPOSE_BUDGET_DELETE': '🗑️ Usunięcie budżetu celowego',
+    'SAVINGS_UPDATE': '💰 Zmiana kwoty oszczędności'
   };
   
   let userName = null;

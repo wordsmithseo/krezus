@@ -115,6 +115,7 @@ import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
 import { renderSavingsSection, setSavingsDeps } from './ui/renderSavings.js';
+import { showSavingsModal } from './components/savingsModal.js';
 import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
@@ -1367,6 +1368,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtry przychodów
     'filter-incomes': (el) => setIncomeFilter(el.dataset.filter),
+
+    // Oszczędności
+    'open-savings-modal': () => showSavingsModal(budgetUsersCache),
 
   });
 
