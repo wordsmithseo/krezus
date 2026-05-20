@@ -310,7 +310,8 @@ export function showEditCategoryModal(categoryId, currentName) {
 
   document.getElementById('editCategoryId').value = categoryId;
   document.getElementById('editCategoryName').value = currentName;
-  document.getElementById('editCategoryCurrentName').textContent = currentName;
+  const titleEl = document.getElementById('editCategoryTitle');
+  if (titleEl) titleEl.textContent = `Edytuj: ${currentName}`;
 
   // Załaduj aktualną ikonę kategorii
   const categories = getCategories();
@@ -329,31 +330,28 @@ function createEditCategoryModal() {
   modal.innerHTML = `
     <div class="modal-content">
       <div class="modal-header">
-        <h2>✏️ Edytuj kategorię</h2>
-        <button class="modal-close" onclick="closeModal('editCategoryModal')">✕</button>
+        <h3 id="editCategoryTitle">Edytuj kategorię</h3>
+        <button class="btn ghost icon-only sm modal-close" onclick="closeModal('editCategoryModal')" aria-label="Zamknij">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-
-      <p style="margin-bottom: 20px; color: var(--ink-3);">
-        Edytujesz kategorię: <strong id="editCategoryCurrentName"></strong>
-      </p>
 
       <form id="editCategoryForm" onsubmit="handleEditCategory(event)">
         <input type="hidden" id="editCategoryId">
-
-        <div class="form-row">
-          <div class="form-group" style="flex: 2;">
-            <label>Nowa nazwa kategorii</label>
-            <input type="text" id="editCategoryName" required minlength="2" maxlength="50">
+        <div style="display:flex;flex-direction:column;padding:20px;gap:16px">
+          <div class="field">
+            <label>Nazwa</label>
+            <input class="input" type="text" id="editCategoryName" required minlength="2" maxlength="50" placeholder="np. Hobby"/>
           </div>
-          <div class="form-group" style="flex: 1;">
-            <label>Ikona</label>
-            <input type="text" id="editCategoryIcon" maxlength="2" style="font-size: 1.5rem; text-align: center;" placeholder="📌">
+          <div class="field">
+            <label>Ikona (emoji)</label>
+            <input class="input" type="text" id="editCategoryIcon" maxlength="2" placeholder="🎨"/>
+            <div class="hint">Możesz pominąć — wybierzemy automatycznie na podstawie nazwy</div>
           </div>
         </div>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal('editCategoryModal')">Anuluj</button>
-          <button type="submit" class="btn btn-primary">Zapisz</button>
+        <div class="modal-footer">
+          <button type="button" class="btn" onclick="closeModal('editCategoryModal')">Anuluj</button>
+          <button type="submit" class="btn accent">Zapisz</button>
         </div>
       </form>
     </div>
