@@ -5,6 +5,7 @@ import { formatDateLabel } from '../utils/dateHelpers.js';
 import { getCategoryIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
+import { userChipHTML } from './chips.js';
 
 let currentExpensePage = 1;
 let getBudgetUserNameFn = null;
@@ -58,7 +59,7 @@ export function renderExpenses() {
         </td>
         <td>${catHtml}</td>
         <td>${escapeHTML(exp.description || '—')}</td>
-        <td class="text-mute">${exp.userId && getBudgetUserNameFn ? escapeHTML(getBudgetUserNameFn(exp.userId)) : '—'}</td>
+        <td>${exp.userId && getBudgetUserNameFn ? userChipHTML({ id: exp.userId, name: getBudgetUserNameFn(exp.userId) }) : '<span class="text-mute">—</span>'}</td>
         <td>${exp.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
           : '<span class="tag success dot">Zrealizowany</span>'}</td>

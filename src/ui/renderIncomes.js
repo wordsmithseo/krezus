@@ -5,6 +5,7 @@ import { formatDateLabel } from '../utils/dateHelpers.js';
 import { getSourceIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
+import { userChipHTML } from './chips.js';
 
 let currentIncomePage = 1;
 let getBudgetUserNameFn = null;
@@ -59,7 +60,7 @@ export function renderSources() {
         <div class="text-mute text-sm">${inc.time || ''}</div>
       </td>
       <td>${sourceHtml}</td>
-      <td class="text-mute">${inc.userId && getBudgetUserNameFn ? escapeHTML(getBudgetUserNameFn(inc.userId)) : '—'}</td>
+      <td>${inc.userId && getBudgetUserNameFn ? userChipHTML({ id: inc.userId, name: getBudgetUserNameFn(inc.userId) }) : '<span class="text-mute">—</span>'}</td>
       <td>${isCorrection
         ? '<span class="tag accent dot">Korekta</span>'
         : inc.type === 'planned'
