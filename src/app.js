@@ -1050,6 +1050,20 @@ const showSection = (sectionId) => {
 
   if (sectionId === 'settingsSection') {
     resetAndRenderLogs();
+    const listEl = document.getElementById('sharedBudgetUsersList');
+    if (listEl) {
+      listEl.innerHTML = budgetUsersCache.map(user => {
+        const initial = (user.name || '?')[0].toUpperCase();
+        const role = user.isOwner ? 'Właściciel' : 'Członek';
+        return `<div class="row" style="gap:12px">
+          <div class="avatar" style="background:var(--accent-soft);color:var(--accent);font-weight:600;flex-shrink:0">${escapeHTML(initial)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${escapeHTML(user.name || 'Nieznany')}</div>
+            <div class="text-mute text-sm">${role}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
   }
 
   if (sectionId === 'analyticsSection') {
