@@ -50,6 +50,7 @@ function getFilteredExpenses() {
 }
 
 export function renderExpenses() {
+  const allExpenses = getExpenses();
   const filtered = getFilteredExpenses();
   const total = filtered.length;
 
@@ -57,6 +58,8 @@ export function renderExpenses() {
   const paginatedExpenses = filtered.slice(startIdx, startIdx + PAGINATION.EXPENSES_PER_PAGE);
 
   const tbody = document.getElementById('expensesTableBody');
+  const tfoot = document.getElementById('expensesTfoot');
+  const countEl = document.getElementById('expensesCount');
 
   // Sync segmented control active state
   document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
@@ -64,10 +67,12 @@ export function renderExpenses() {
   });
 
   if (total === 0) {
-    const msg = getExpenses().length === 0
+    const msg = allExpenses.length === 0
       ? 'Brak wydatków do wyświetlenia'
       : 'Brak wyników dla wybranych filtrów';
     tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${msg}</td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
+    if (countEl) countEl.textContent = '';
     renderExpensesPagination(0);
     updatePaginationVisibility(0);
     return;
@@ -108,6 +113,25 @@ export function renderExpenses() {
   }).join('');
 
   tbody.innerHTML = html;
+
+  // tfoot — suma widoczna (wszystkie przefiltrowane, nie tylko strona)
+  if (tfoot) {
+    const sum = filtered.reduce((acc, e) => acc + e.amount, 0);
+    tfoot.innerHTML = `<tr>
+      <td colspan="5" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
+      <td class="amount" style="font-weight:600;color:var(--danger)">−${sum.toFixed(2)}</td>
+      <td></td>
+    </tr>`;
+  }
+
+  // Licznik "Wyświetlam X z Y"
+  if (countEl) {
+    const shown = paginatedExpenses.length;
+    countEl.textContent = total === allExpenses.length
+      ? `Wyświetlam ${shown} z ${total}`
+      : `Wyświetlam ${shown} z ${total} (filtrowano z ${allExpenses.length})`;
+  }
+
   renderExpensesPagination(total);
   updatePaginationVisibility(total);
 }

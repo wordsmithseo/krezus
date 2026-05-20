@@ -51,6 +51,7 @@ function getFilteredIncomes() {
 }
 
 export function renderSources() {
+  const allIncomes = getIncomes();
   const filtered = getFilteredIncomes();
   const total = filtered.length;
 
@@ -58,6 +59,8 @@ export function renderSources() {
   const paginatedIncomes = filtered.slice(startIdx, startIdx + PAGINATION.INCOMES_PER_PAGE);
 
   const tbody = document.getElementById('sourcesTableBody');
+  const tfoot = document.getElementById('sourcesTfoot');
+  const countEl = document.getElementById('incomesCount');
 
   // Sync segmented control active state
   document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {
@@ -65,10 +68,12 @@ export function renderSources() {
   });
 
   if (total === 0) {
-    const msg = getIncomes().length === 0
+    const msg = allIncomes.length === 0
       ? 'Brak przychodów do wyświetlenia'
       : 'Brak wyników dla wybranych filtrów';
     tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${msg}</td></tr>`;
+    if (tfoot) tfoot.innerHTML = '';
+    if (countEl) countEl.textContent = '';
     renderIncomesPagination(0);
     updatePaginationVisibility(0);
     return;
@@ -113,6 +118,26 @@ export function renderSources() {
   `}).join('');
 
   tbody.innerHTML = html;
+
+  // tfoot — suma widoczna (wszystkie przefiltrowane)
+  if (tfoot) {
+    const sum = filtered.reduce((acc, i) => acc + i.amount, 0);
+    const sign = sum >= 0 ? '+' : '';
+    tfoot.innerHTML = `<tr>
+      <td colspan="4" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
+      <td class="amount" style="font-weight:600;color:var(--success)">${sign}${sum.toFixed(2)}</td>
+      <td></td>
+    </tr>`;
+  }
+
+  // Licznik "Wyświetlam X z Y"
+  if (countEl) {
+    const shown = paginatedIncomes.length;
+    countEl.textContent = total === allIncomes.length
+      ? `Wyświetlam ${shown} z ${total}`
+      : `Wyświetlam ${shown} z ${total} (filtrowano z ${allIncomes.length})`;
+  }
+
   renderIncomesPagination(total);
   updatePaginationVisibility(total);
 }

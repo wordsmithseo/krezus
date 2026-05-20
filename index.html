@@ -525,11 +525,13 @@
                                         <tbody id="expensesTableBody">
                                             <tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
                                         </tbody>
+                                        <tfoot id="expensesTfoot"></tfoot>
                                     </table>
                                 </div>
-                                <!-- Pagination -->
-                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center">
-                                    <div id="expensesPagination" class="pagination"></div>
+                                <!-- Bottom bar -->
+                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px">
+                                    <span id="expensesCount" class="text-mute text-sm"></span>
+                                    <div id="expensesPagination" class="pagination" style="margin-left:auto"></div>
                                 </div>
                             </div>
                         </div>
@@ -598,11 +600,13 @@
                                         <tbody id="sourcesTableBody">
                                             <tr><td colspan="6" class="empty-state">Brak przychodów</td></tr>
                                         </tbody>
+                                        <tfoot id="sourcesTfoot"></tfoot>
                                     </table>
                                 </div>
-                                <!-- Pagination -->
-                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center">
-                                    <div id="incomesPagination" class="pagination"></div>
+                                <!-- Bottom bar -->
+                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px">
+                                    <span id="incomesCount" class="text-mute text-sm"></span>
+                                    <div id="incomesPagination" class="pagination" style="margin-left:auto"></div>
                                 </div>
                             </div>
                         </div>
