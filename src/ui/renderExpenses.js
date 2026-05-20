@@ -4,6 +4,7 @@ import { PAGINATION } from '../utils/constants.js';
 import { formatDateLabel } from '../utils/dateHelpers.js';
 import { getCategoryIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
+import { icon } from '../utils/icons.js';
 
 let currentExpensePage = 1;
 let getBudgetUserNameFn = null;
@@ -34,32 +35,40 @@ export function renderExpenses() {
   const tbody = document.getElementById('expensesTableBody');
 
   if (totalExpenses === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>';
     updatePaginationVisibility('expensesTableBody', totalExpenses);
     return;
   }
 
+  const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
+  const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
+  const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
+
   const html = paginatedExpenses.map(exp => {
-    const mergedInfo = exp.mergedFrom ? `<br><small style="color: #666; font-style: italic;">🔀 przeniesione z "${exp.mergedFrom}"</small>` : '';
-    const categoryIcon = exp.category ? getCategoryIcon(exp.category) : '📌';
+    const categoryIcon = exp.category ? getCategoryIcon(exp.category) : '';
+    const catHtml = exp.category
+      ? `<span class="cat-badge sm"><span class="cat-emoji">${categoryIcon}</span>${escapeHTML(exp.category)}</span>`
+      : '<span class="text-mute text-sm">—</span>';
 
     return `
       <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
-        <td>${formatDateLabel(exp.date)}</td>
-        <td>${exp.time || '-'}</td>
-        <td>${exp.amount.toFixed(2)} zł</td>
-        <td>${exp.userId && getBudgetUserNameFn ? getBudgetUserNameFn(exp.userId) : '-'}</td>
-        <td>${categoryIcon} ${exp.category || 'Brak'}${mergedInfo}</td>
-        <td>${exp.description || '-'}</td>
         <td>
-          <span class="status-badge ${exp.type === 'normal' ? 'status-normal' : 'status-planned'}">
-            ${exp.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
-          </span>
+          <div style="font-weight:500">${formatDateLabel(exp.date)}</div>
+          <div class="text-mute text-sm">${exp.time || ''}</div>
         </td>
+        <td>${catHtml}</td>
+        <td>${escapeHTML(exp.description || '—')}</td>
+        <td class="text-mute">${exp.userId && getBudgetUserNameFn ? escapeHTML(getBudgetUserNameFn(exp.userId)) : '—'}</td>
+        <td>${exp.type === 'planned'
+          ? '<span class="tag info dot">Planowany</span>'
+          : '<span class="tag success dot">Zrealizowany</span>'}</td>
+        <td class="amount" style="color:var(--danger);font-weight:500">−${exp.amount.toFixed(2)}</td>
         <td class="actions">
-          ${exp.type === 'planned' ? `<button class="btn-icon" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj teraz">✅</button>` : ''}
-          <button class="btn-icon" data-action="edit-expense" data-id="${exp.id}" title="Edytuj">✏️</button>
-          <button class="btn-icon" data-action="delete-expense" data-id="${exp.id}" title="Usuń">🗑️</button>
+          ${exp.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
+          <div class="row-actions">
+            <button class="btn ghost icon-only sm" data-action="edit-expense" data-id="${exp.id}" title="Edytuj">${iconEdit}</button>
+            <button class="btn ghost icon-only sm" data-action="delete-expense" data-id="${exp.id}" title="Usuń">${iconTrash}</button>
+          </div>
         </td>
       </tr>
     `;
@@ -79,8 +88,11 @@ function renderExpensesPagination(total) {
     return;
   }
 
+  const chevLeft  = icon('ChevronLeft',  { size: 14, strokeWidth: 1.5 });
+  const chevRight = icon('ChevronRight', { size: 14, strokeWidth: 1.5 });
+
   let html = '';
-  html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage - 1}">◀</button>`;
+  html += `<button class="pagination-btn" ${currentExpensePage === 1 ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage - 1}">${chevLeft}</button>`;
 
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentExpensePage - Math.floor(maxButtons / 2));
@@ -94,7 +106,7 @@ function renderExpensesPagination(total) {
     html += `<button class="pagination-btn ${i === currentExpensePage ? 'active' : ''}" data-action="change-expense-page" data-page="${i}">${i}</button>`;
   }
 
-  html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage + 1}">▶</button>`;
+  html += `<button class="pagination-btn" ${currentExpensePage === totalPages ? 'disabled' : ''} data-action="change-expense-page" data-page="${currentExpensePage + 1}">${chevRight}</button>`;
   container.innerHTML = html;
 }
 

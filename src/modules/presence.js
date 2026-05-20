@@ -185,6 +185,14 @@ function showPresenceIndicator(count = 0) {
   }
 
   indicator.style.display = 'inline-flex';
+
+  // Also update topbar presence chip
+  const chip = document.getElementById('presenceChip');
+  const namesEl = document.getElementById('presenceNames');
+  if (chip && namesEl) {
+    chip.style.display = 'flex';
+    namesEl.textContent = count === 1 ? '1 sesja online' : `${count} sesje online`;
+  }
 }
 
 /**
@@ -194,6 +202,12 @@ function hidePresenceIndicator() {
   const indicator = document.getElementById('presenceIndicator');
   if (indicator) {
     indicator.style.display = 'none';
+  }
+
+  // Also hide topbar presence chip
+  const chip = document.getElementById('presenceChip');
+  if (chip) {
+    chip.style.display = 'none';
   }
 }
 

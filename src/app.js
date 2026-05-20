@@ -1,15 +1,16 @@
 // src/app.js
-import { 
-  loginUser, 
-  registerUser, 
-  logoutUser, 
+import {
+  loginUser,
+  registerUser,
+  logoutUser,
   onAuthChange,
   getDisplayName,
   updateDisplayName,
   getCurrentUser,
   getBudgetUsers,
   subscribeToBudgetUsers,
-  deleteBudgetUser
+  deleteBudgetUser,
+  sendPasswordReset
 } from './modules/auth.js';
 
 import {
@@ -132,6 +133,11 @@ import { renderSummary } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps } from './ui/renderIncomes.js';
+import { renderSavingsGoals } from './ui/renderSavingsGoals.js';
+import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
+import { icon as lucideIcon } from './utils/icons.js';
+import { barChartHTML, dailyChartHTML } from './ui/charts.js';
+import './components/savingsGoalsModals.js';
 
 // Import handlerów
 import { addExpense, editExpense, deleteExpense, realiseExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
@@ -209,16 +215,61 @@ function hideLoader() {
   }
 }
 
+function openModal(id) {
+  document.getElementById(id)?.classList.add('active');
+}
+
 function updateDisplayNameInUI(displayName) {
   const usernameSpan = document.getElementById('username');
   if (usernameSpan) usernameSpan.textContent = displayName;
 
   const profileBtn = document.getElementById('profileBtn');
-  if (profileBtn) profileBtn.textContent = `👤 ${displayName}`;
+  if (profileBtn) profileBtn.textContent = `Profil`;
 
   document.querySelectorAll('[data-username]').forEach(el => {
     el.textContent = displayName;
   });
+
+  // Update sidebar user info
+  const sidebarName = document.getElementById('sidebarUserName');
+  if (sidebarName) sidebarName.textContent = displayName;
+
+  const sidebarAvatar = document.getElementById('sidebarAvatar');
+  if (sidebarAvatar) {
+    const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+    sidebarAvatar.textContent = initials;
+  }
+
+  // Update settings profile name input
+  const profileDisplayNameInput = document.getElementById('profileDisplayName');
+  if (profileDisplayNameInput) profileDisplayNameInput.value = displayName;
+}
+
+function updateSectionStats() {
+  const expenses = getExpenses();
+  const incomes = getIncomes();
+  const now = getWarsawDateString().slice(0, 7); // YYYY-MM
+
+  const expensesMonthTotal = expenses
+    .filter(e => e.type === 'normal' && e.date && e.date.startsWith(now))
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const expensesPlannedTotal = expenses
+    .filter(e => e.type === 'planned')
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const incomesMonthTotal = incomes
+    .filter(i => i.type === 'normal' && i.date && i.date.startsWith(now))
+    .reduce((s, i) => s + (i.amount || 0), 0);
+  const incomesPlannedTotal = incomes
+    .filter(i => i.type === 'planned')
+    .reduce((s, i) => s + (i.amount || 0), 0);
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('expensesMonthTotal', expensesMonthTotal.toFixed(2));
+  set('expensesPlannedTotal', expensesPlannedTotal.toFixed(2));
+  set('expensesCount', expenses.length);
+  set('incomesMonthTotal', incomesMonthTotal.toFixed(2));
+  set('incomesPlannedTotal', incomesPlannedTotal.toFixed(2));
+  set('incomesCount', incomes.length);
 }
 
 
@@ -281,6 +332,7 @@ async function loadAllData() {
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
+        updateSectionStats();
       },
       onIncomesChange: async () => {
         clearLimitsCache();
@@ -290,6 +342,7 @@ async function loadAllData() {
         renderSummary();
         renderDailyEnvelope();
         renderAnalytics();
+        updateSectionStats();
       },
       onEndDatesChange: async () => {
         clearLimitsCache();
@@ -315,11 +368,11 @@ async function loadAllData() {
     subscribeToSavingsGoalsUpdates(userId, {
       onGoalsChange: () => {
         console.log('🔄 Zmiana w celach oszczędzania - re-render');
-        renderSavingsSection();
+        renderSavingsGoals();
       },
       onContributionsChange: () => {
         console.log('🔄 Zmiana w wpłatach - re-render');
-        renderSavingsSection();
+        renderSavingsGoals();
       }
     });
 
@@ -383,71 +436,139 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
-  renderSavingsSection();
+  renderSavingsGoals();
+  updateSectionStats();
   await renderLogs();
   loadSettings();
   setupCategorySuggestions();
   setupSourceSuggestions();
   setupExpenseTypeToggle();
   setupIncomeTypeToggle();
+  updateNavBadges();
+}
+
+function updateNavBadges() {
+  const expenses = getExpenses();
+  const incomes = getIncomes();
+  const categories = getCategories();
+
+  // Badge koperty: pozostało zł (z renderDailyEnvelope danych)
+  try {
+    const { remaining } = calculateSpendingGauge();
+    const envelopeBadge = document.getElementById('navBadgeEnvelope');
+    if (envelopeBadge) {
+      envelopeBadge.textContent = remaining.toFixed(0) + ' zł';
+    }
+  } catch (e) { /* ignore */ }
+
+  // Badge wydatków: liczba zrealizowanych
+  const expBadge = document.getElementById('navBadgeExpenses');
+  if (expBadge) expBadge.textContent = expenses.filter(e => e.type === 'normal').length;
+
+  // Badge przychodów: liczba zrealizowanych
+  const incBadge = document.getElementById('navBadgeIncomes');
+  if (incBadge) incBadge.textContent = incomes.filter(i => i.type === 'normal').length;
+
+  // Badge kategorii: liczba
+  const catBadge = document.getElementById('navBadgeCategories');
+  if (catBadge) catBadge.textContent = categories.length;
 }
 
 // renderSummary, renderSpendingDynamics i renderDailyEnvelope są teraz importowane z src/ui/
 
+function comparisonCell(label, curr, prev, unit, lowerIsBetter) {
+  const delta = prev ? ((curr - prev) / prev) * 100 : 0;
+  const isUp = delta > 0;
+  const isGood = lowerIsBetter ? !isUp : isUp;
+  const arrow = isUp ? '↑' : '↓';
+  const deltaClass = `delta ${isUp ? 'up' : 'down'} ${isGood ? 'good' : 'bad'}`;
+  const fmt = v => v.toFixed(2);
+  return `
+    <div style="padding:14px;background:var(--surface-2);border-radius:10px">
+      <div class="text-mute text-sm" style="margin-bottom:6px">${label}</div>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <div class="num" style="font-size:20px;font-weight:500">${fmt(curr)}${unit ? `<span class="text-mute" style="font-size:12px;margin-left:2px">${unit}</span>` : ''}</div>
+        <span class="${deltaClass}" style="font-size:11px">${arrow} ${Math.abs(delta).toFixed(1)}%</span>
+      </div>
+      <div class="text-mute" style="font-size:11px;margin-top:4px">Poprzednio: <span class="num">${fmt(prev)}${unit ? ' ' + unit : ''}</span></div>
+    </div>`;
+}
+
 function renderAnalytics() {
   const stats = calculatePeriodStats();
   const comparison = compareToPreviousPeriod();
-  const topCategories = getMostExpensiveCategories(3);
   const breakdown = getCategoriesBreakdown();
   const userExpenses = getUserExpensesBreakdown();
 
+  // Stat tiles
   document.getElementById('periodExpenses').textContent = stats.totalExpenses.toFixed(2);
   document.getElementById('periodIncomes').textContent = stats.totalIncomes.toFixed(2);
   document.getElementById('periodExpensesCount').textContent = stats.expensesCount;
   document.getElementById('periodIncomesCount').textContent = stats.incomesCount;
 
-  const expChange = document.getElementById('expenseChange');
-  expChange.textContent = `${comparison.expenseChange > 0 ? '+' : ''}${comparison.expenseChange.toFixed(1)}%`;
+  // Comparison cells
+  const compEl = document.getElementById('analyticsComparison');
+  if (compEl) {
+    compEl.innerHTML = [
+      comparisonCell('Suma wydatków', stats.totalExpenses, comparison.previousPeriod.totalExpenses, 'zł', true),
+      comparisonCell('Suma przychodów', stats.totalIncomes, comparison.previousPeriod.totalIncomes, 'zł', false),
+      comparisonCell('Liczba wydatków', stats.expensesCount, comparison.previousPeriod.expensesCount, '', true),
+      comparisonCell('Liczba przychodów', stats.incomesCount, comparison.previousPeriod.incomesCount, '', false),
+    ].join('');
+  }
 
-  const incChange = document.getElementById('incomeChange');
-  incChange.textContent = `${comparison.incomeChange > 0 ? '+' : ''}${comparison.incomeChange.toFixed(1)}%`;
-
-  const expCountChange = document.getElementById('expenseCountChange');
-  expCountChange.textContent = `${comparison.expenseCountChange > 0 ? '+' : ''}${comparison.expenseCountChange.toFixed(1)}%`;
-
-  const incCountChange = document.getElementById('incomeCountChange');
-  incCountChange.textContent = `${comparison.incomeCountChange > 0 ? '+' : ''}${comparison.incomeCountChange.toFixed(1)}%`;
-
+  // User breakdown
   const userExpDiv = document.getElementById('userExpensesBreakdown');
   if (userExpenses.length > 0) {
     userExpDiv.innerHTML = userExpenses.map(user => `
-      <div class="category-breakdown-item">
-        <div class="category-breakdown-header">
-          <strong>${user.userName}</strong>
-          <span>${user.amount.toFixed(2)} zł (${user.percentage.toFixed(1)}%)</span>
+      <div style="margin-bottom:12px">
+        <div class="row" style="margin-bottom:6px">
+          <div class="avatar sm" style="background:var(--accent)">${escapeHTML((user.userName || '?')[0])}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:500">${escapeHTML(user.userName)}</div>
+            <div class="text-mute text-sm">${user.count || ''} transakcji</div>
+          </div>
+          <div class="num" style="font-weight:500;flex-shrink:0">${user.amount.toFixed(2)} zł</div>
         </div>
-        <div class="category-breakdown-bar">
-          <div class="category-breakdown-fill" style="width: ${user.percentage}%"></div>
-        </div>
+        <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease"></div></div>
+        <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1)}%</div>
       </div>
     `).join('');
   } else {
-    userExpDiv.innerHTML = '<p class="empty-state">Brak wydatków w wybranym okresie</p>';
+    userExpDiv.innerHTML = '<div class="empty-state" style="padding:24px"><h3>Brak wydatków</h3><p class="hint">Brak danych w wybranym okresie</p></div>';
   }
 
+  // BarChart (category breakdown) — using design system component
   const topCatDiv = document.getElementById('mostExpensiveCategory');
-  if (topCategories.length > 0) {
-    topCatDiv.innerHTML = topCategories.map((cat, index) => `
-      <div class="top-category-item">
-        <div>
-          <strong>${index + 1}. ${cat.category}</strong>
-          <small>${cat.percentage.toFixed(1)}% wszystkich wydatków</small>
-        </div>
-        <span class="amount">${cat.amount.toFixed(2)} zł</span>
-      </div>
-    `).join('');
+  if (breakdown.length > 0) {
+    const items = breakdown.slice(0, 8).map((cat, i) => ({
+      label: cat.category,
+      value: cat.amount,
+      icon: getCategoryIcon(cat.category),
+      color: CAT_COLORS[i % CAT_COLORS.length],
+    }));
+    const total = breakdown.reduce((s, c) => s + c.amount, 0);
+    topCatDiv.innerHTML = barChartHTML(items, total);
   } else {
-    topCatDiv.innerHTML = '<p class="empty-state">Brak danych</p>';
+    topCatDiv.innerHTML = '<div class="empty-state" style="padding:24px"><h3>Brak danych</h3></div>';
+  }
+
+  // Daily trend chart
+  const dailyChartEl = document.getElementById('analyticsDailyChart');
+  if (dailyChartEl) {
+    const expenses = getExpenses();
+    const days = [];
+    const now = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = getWarsawDateString(d);
+      const value = expenses
+        .filter(e => e.type === 'normal' && e.date === dateStr)
+        .reduce((sum, e) => sum + (e.amount || 0), 0);
+      days.push({ date: dateStr, value });
+    }
+    dailyChartEl.innerHTML = dailyChartHTML(days, { height: 200 });
   }
 
   const chartCanvas = document.getElementById('categoriesChart');
@@ -456,10 +577,6 @@ function renderAnalytics() {
   } else if (chartCanvas) {
     const ctx = chartCanvas.getContext('2d');
     ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
-    ctx.font = '14px Arial';
-    ctx.fillStyle = '#6b7280';
-    ctx.textAlign = 'center';
-    ctx.fillText('Brak wydatków w wybranym okresie', chartCanvas.width / 2, chartCanvas.height / 2);
   }
 }
 
@@ -912,14 +1029,13 @@ window.addEventListener('resize', () => {
   }
 });
 
-const selectPeriod = (days) => {
-  document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+const selectPeriod = (days, targetEl) => {
+  document.querySelectorAll('#analyticsPeriodSeg button').forEach(btn => btn.setAttribute('aria-pressed', 'false'));
+  if (targetEl) targetEl.setAttribute('aria-pressed', 'true');
 
   if (days === 'custom') {
-    document.querySelector('.period-btn:last-child').classList.add('active');
     document.getElementById('customPeriodInputs').style.display = 'block';
   } else {
-    event.target.classList.add('active');
     document.getElementById('customPeriodInputs').style.display = 'none';
     setAnalyticsPeriod(days);
     renderAnalytics();
@@ -945,90 +1061,93 @@ const applyCustomPeriod = () => {
   showSuccessMessage('Zastosowano własny przedział dat');
 };
 
+const CAT_COLORS = [
+  'oklch(0.6 0.12 155)', 'oklch(0.62 0.14 230)', 'oklch(0.58 0.15 25)',
+  'oklch(0.66 0.13 60)', 'oklch(0.6 0.15 280)', 'oklch(0.62 0.12 185)',
+  'oklch(0.64 0.13 340)', 'oklch(0.60 0.14 80)',  'oklch(0.63 0.11 200)',
+];
+
 function renderCategories() {
   const categories = getCategories();
   const expenses = getExpenses();
   const container = document.getElementById('categoriesList');
 
   if (categories.length === 0) {
-    container.innerHTML = '<p class="empty-state">Brak kategorii. Dodaj pierwszą kategorię!</p>';
+    container.innerHTML = '<div class="empty-state"><p>Brak kategorii. Dodaj pierwszą!</p></div>';
     return;
   }
 
-  const categoryStats = categories.map(cat => {
-    const count = expenses.filter(e => e.category === cat.name).length;
-    const totalAmount = expenses
-      .filter(e => e.category === cat.name && e.type === 'normal')
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    return { ...cat, count, totalAmount };
-  });
+  const monthStart = (() => { const d = new Date(); d.setDate(d.getDate()-30); return d.toISOString().slice(0,10); })();
+  const categoryStats = categories.map((cat, idx) => {
+    const items = expenses.filter(e => e.category === cat.name && e.type === 'normal' && e.date >= monthStart);
+    const totalAmount = items.reduce((sum, e) => sum + (e.amount || 0), 0);
+    return { ...cat, count: items.length, totalAmount, color: CAT_COLORS[idx % CAT_COLORS.length] };
+  }).sort((a, b) => b.totalAmount - a.totalAmount);
 
-  // Paginacja
-  const itemsPerPage = PAGINATION.CATEGORIES_PER_PAGE;
-  const totalPages = Math.ceil(categoryStats.length / itemsPerPage);
-  const startIndex = (currentCategoryPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCategories = categoryStats.slice(startIndex, endIndex);
+  const totalAll = categoryStats.reduce((s, c) => s + c.totalAmount, 0);
 
-  // Jeśli jesteśmy w trybie scalania, pokaż komunikat i checkboxy
+  const mergingId = getMergingCategoryId();
   let headerHtml = '';
-  if (getMergingCategoryId()) {
-    const mergingCat = categoryStats.find(c => c.id === getMergingCategoryId());
+  if (mergingId) {
+    const mergingCat = categoryStats.find(c => c.id === mergingId);
     if (mergingCat) {
       headerHtml = `
-        <div style="background: #e8cf8d; border: 1px solid #e89d3f; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
-          <strong>🔀 Tryb scalania kategorii</strong>
-          <p style="margin: 8px 0;">Wybierz kategorię docelową, do której chcesz scalić kategorię <strong>${mergingCat.name}</strong>.</p>
-          <button class="btn btn-secondary" data-action="cancel-merge-category" style="margin-top: 8px;">Anuluj scalanie</button>
+        <div class="card" style="background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,var(--line));margin-bottom:4px">
+          <div class="row">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--surface-sunken);display:grid;place-items:center;font-size:18px">${getCategoryIcon(mergingCat.name)}</div>
+            <div style="flex:1">
+              <div style="font-weight:600">Scalanie: <span style="color:var(--accent)">${escapeHTML(mergingCat.name)}</span></div>
+              <div class="text-mute text-sm">Wybierz kategorię docelową poniżej.</div>
+            </div>
+            <button class="btn sm ghost" data-action="cancel-merge-category">${iconX} Anuluj</button>
+          </div>
         </div>
       `;
     }
   }
 
-  const html = paginatedCategories.map(cat => {
-    const isMergingThis = getMergingCategoryId() === cat.id;
-    const showCheckbox = getMergingCategoryId() && !isMergingThis;
-    // ZAWSZE używaj inteligentnego dopasowania dla najlepszych wyników
-    const categoryIcon = getCategoryIcon(cat.name);
+  const iconEdit  = lucideIcon('Edit',       { size: 13, strokeWidth: 1.5 });
+  const iconTrash = lucideIcon('Trash',      { size: 13, strokeWidth: 1.5 });
+  const iconMerge = lucideIcon('RefreshCw',  { size: 13, strokeWidth: 1.5 });
+  const iconX     = lucideIcon('X',          { size: 13, strokeWidth: 2 });
 
-    return `
-      <div class="category-item" style="${isMergingThis ? 'background: #e8cf8d;' : ''}">
-        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-          ${showCheckbox ? `
-            <input
-              type="checkbox"
-              id="merge-target-${cat.id}"
-              data-action="select-merge-target"
-              data-id="${cat.id}"
-              style="width: 20px; height: 20px; cursor: pointer;"
-            />
-          ` : ''}
-          <div>
-            <span class="category-name">${categoryIcon} ${cat.name}</span>
-            <span class="category-count">(${cat.count} wydatków, ${cat.totalAmount.toFixed(2)} zł)</span>
+  const cardsHtml = categoryStats.map(cat => {
+    const isMergingThis = mergingId === cat.id;
+    const isMergeCandidate = mergingId && !isMergingThis;
+    const pct = totalAll > 0 ? (cat.totalAmount / totalAll * 100) : 0;
+    const catIcon = getCategoryIcon(cat.name);
+    const mergeOverlayStyle = isMergingThis
+      ? 'outline:2px solid var(--accent);opacity:0.6;'
+      : isMergeCandidate ? 'outline:1px dashed var(--accent);cursor:pointer;position:relative;' : '';
+
+    return `<div class="card" style="padding:18px;${mergeOverlayStyle}"
+      ${isMergeCandidate ? `data-action="select-merge-target" data-id="${cat.id}"` : ''}>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="limit-tile-icon" style="background:color-mix(in srgb,${cat.color} 14%,transparent);color:${cat.color};font-size:18px">${catIcon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(cat.name)}</div>
+          <div class="text-mute text-sm">${cat.count} transakcji · 30 dni</div>
+        </div>
+        ${!mergingId ? `
+          <div style="display:flex;gap:2px">
+            <button class="btn ghost icon-only sm" data-action="start-merge-category" data-id="${cat.id}" title="Scal">${iconMerge}</button>
+            <button class="btn ghost icon-only sm" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}" title="Edytuj">${iconEdit}</button>
+            <button class="btn ghost icon-only sm" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}" title="Usuń">${iconTrash}</button>
           </div>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          ${!getMergingCategoryId() ? `
-            <button class="btn-icon" data-action="start-merge-category" data-id="${cat.id}" title="Scal kategorię">🔀</button>
-            <button class="btn-icon" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">✏️</button>
-            <button class="btn-icon" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">🗑️</button>
-          ` : ''}
-        </div>
+        ` : ''}
       </div>
-    `;
+      <div class="num" style="font-size:20px;font-weight:500">${cat.totalAmount.toFixed(2)} <span class="text-mute text-sm">zł</span></div>
+      <div class="progress" style="margin-top:8px"><div style="width:${pct.toFixed(1)}%;height:100%;background:${cat.color};border-radius:inherit;transition:width 400ms ease"></div></div>
+      <div class="text-mute text-sm" style="margin-top:6px">${pct.toFixed(1)}% wszystkich wydatków</div>
+      ${isMergeCandidate ? `<div style="position:absolute;inset:0;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:inherit;display:grid;place-items:center;pointer-events:none"><span class="tag accent">Scal tutaj →</span></div>` : ''}
+    </div>`;
   }).join('');
 
-  container.innerHTML = headerHtml + html;
+  container.innerHTML = headerHtml + `<div class="categories-grid">${cardsHtml}</div>`;
 
-  // Renderuj paginację jeśli jest więcej niż jedna strona
-  if (totalPages > 1) {
-    renderCategoriesPagination(totalPages);
-  } else {
-    const paginationContainer = container.nextElementSibling;
-    if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
-      paginationContainer.innerHTML = '';
-    }
+  const paginationContainer = container.nextElementSibling;
+  if (paginationContainer && paginationContainer.classList.contains('pagination-container')) {
+    paginationContainer.innerHTML = '';
   }
 }
 
@@ -1396,7 +1515,7 @@ const saveSavingsAmount = async (e) => {
       budgetUser: displayName
     });
 
-    renderSavingsSection();
+    renderSavingsGoals();
     renderSummary();
     renderDailyEnvelope();
     showSuccessMessage(`Kwota oszczednosci zapisana: ${amount.toFixed(2)} zl`);
@@ -1490,58 +1609,40 @@ function renderSimulationResult(result) {
   const container = document.getElementById('simulationResult');
   if (!container) return;
 
-  const riskColors = {
-    safe: '#10b981',
-    caution: '#f59e0b',
-    warning: '#f97316',
-    danger: '#ef4444'
+  const RISK = {
+    safe:    { color: 'var(--success)', soft: 'var(--success-soft)', icon: lucideIcon('Check', { size: 20, strokeWidth: 2 }) },
+    caution: { color: 'var(--accent)',  soft: 'var(--accent-soft)',  icon: lucideIcon('Info',  { size: 20, strokeWidth: 1.5 }) },
+    warning: { color: 'oklch(0.62 0.17 60)', soft: 'oklch(0.95 0.06 60)', icon: lucideIcon('Info', { size: 20, strokeWidth: 1.5 }) },
+    danger:  { color: 'var(--danger)',  soft: 'var(--danger-soft)',  icon: lucideIcon('X',     { size: 20, strokeWidth: 2 }) },
   };
+  const risk = RISK[result.riskLevel] || RISK.caution;
+  const d = result.data;
 
-  const riskIcons = {
-    safe: '✅',
-    caution: '⚠️',
-    warning: '🔶',
-    danger: '🚨'
-  };
+  const fmt = v => (v ?? 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const riskBgs = {
-    safe: 'rgba(16, 185, 129, 0.1)',
-    caution: 'rgba(245, 158, 11, 0.1)',
-    warning: 'rgba(249, 115, 22, 0.1)',
-    danger: 'rgba(239, 68, 68, 0.1)'
-  };
-
-  const color = riskColors[result.riskLevel] || '#6b7280';
-  const icon = riskIcons[result.riskLevel] || '';
-  const bg = riskBgs[result.riskLevel] || 'transparent';
-
-  const findingsHTML = result.findings.map(f => `<li style="margin-bottom: 6px;">${f}</li>`).join('');
-
-  const dataHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; font-size: 0.85rem;">
-      <div><strong>Realne środki (dziś):</strong> ${result.data.currentRealFunds.toFixed(2)} zł</div>
-      <div><strong>Prognoza na ${result.data.simulationDate}:</strong> ${result.data.projectedAvailable.toFixed(2)} zł</div>
-      <div><strong>Po wydatku:</strong> ${result.data.availableAfterSimulation.toFixed(2)} zł</div>
-      ${result.data.daysToSimulation > 0 ? `<div><strong>Szac. wydatki po drodze (${result.data.daysToSimulation} dni):</strong> ${result.data.estimatedSpendingUntilSim.toFixed(2)} zł</div>` : ''}
-      <div><strong>Mediana dzienna:</strong> ${result.data.medianDailySpending.toFixed(2)} zł</div>
-      <div><strong>Średnia dzienna:</strong> ${result.data.avgDailySpending.toFixed(2)} zł</div>
-      ${result.data.dailyBudgetAfter > 0 ? `<div><strong>Budżet dzienny po wydatku:</strong> ${result.data.dailyBudgetAfter.toFixed(2)} zł</div>` : ''}
-      ${result.data.daysToNextIncome > 0 ? `<div><strong>Dni do wpływu (po symulacji):</strong> ${result.data.daysToNextIncome}</div>` : ''}
-    </div>
-  `;
+  const findingsHTML = result.findings
+    .map(f => `<li>${escapeHTML(f)}</li>`).join('');
 
   const html = `
-    <div style="background: ${bg}; border: 2px solid ${color}; border-radius: 12px; padding: 20px; margin-top: 15px;">
-      <h4 style="color: ${color}; margin: 0 0 10px 0; font-size: 1.2rem;">${icon} ${result.title}</h4>
-      <p style="margin: 0 0 12px 0; font-size: 0.95rem;">${result.summary}</p>
-      <div style="margin-top: 12px;">
-        <strong>Szczegółowa analiza:</strong>
-        <ul style="margin: 8px 0; padding-left: 20px; line-height: 1.6;">
-          ${findingsHTML}
-        </ul>
+    <div style="background:${risk.soft};border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <div style="width:48px;height:48px;border-radius:12px;background:${risk.color};color:#fff;display:grid;place-items:center;flex-shrink:0">${risk.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${risk.color};margin-bottom:2px">Wynik analizy</div>
+        <div style="font-size:22px;font-weight:600;letter-spacing:-0.01em;color:${risk.color}">${escapeHTML(result.title)}</div>
       </div>
-      ${dataHTML}
+      <div class="num" style="font-size:28px;font-weight:500;color:${risk.color};white-space:nowrap;flex-shrink:0">${fmt(d.simulationAmount ?? 0)}<span style="font-size:14px;opacity:0.6;margin-left:4px">zł</span></div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
+      <div class="metric"><div class="metric-label">Środki po wydatku</div><div class="metric-value">${fmt(d.availableAfterSimulation)} <span class="text-mute text-sm">zł</span></div></div>
+      <div class="metric"><div class="metric-label">Nowy limit dzienny</div><div class="metric-value">${fmt(d.dailyBudgetAfter)} <span class="text-mute text-sm">zł/d</span></div></div>
+      <div class="metric"><div class="metric-label">Mediana dzienna</div><div class="metric-value">${fmt(d.medianDailySpending)} <span class="text-mute text-sm">zł/d</span></div></div>
+      <div class="metric"><div class="metric-label">Dni do symulacji</div><div class="metric-value">${d.daysToSimulation ?? 0}</div></div>
+    </div>
+    <hr class="divider">
+    <h3 style="margin:0 0 10px">Analiza krok po kroku</h3>
+    <ol style="padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.7;margin:0">
+      ${findingsHTML}
+    </ol>
   `;
 
   container.innerHTML = sanitizeHTML(html);
@@ -1732,6 +1833,18 @@ const clearLogs = async () => {
   }
 };
 
+const SECTION_META = {
+  summarySection: { heading: 'Podsumowanie', crumb: 'Budżet' },
+  envelopeSection: { heading: 'Koperta dnia', crumb: 'Budżet' },
+  expensesSection: { heading: 'Wydatki', crumb: 'Budżet' },
+  sourcesSection: { heading: 'Przychody', crumb: 'Budżet' },
+  categoriesSection: { heading: 'Kategorie', crumb: 'Narzędzia' },
+  simulationSection: { heading: 'Symulacja wydatku', crumb: 'Narzędzia' },
+  analyticsSection: { heading: 'Analityka', crumb: 'Narzędzia' },
+  savingsGoalsSection: { heading: 'Oszczędności', crumb: 'Narzędzia' },
+  settingsSection: { heading: 'Ustawienia', crumb: 'System' },
+};
+
 const showSection = (sectionId) => {
   document.querySelectorAll('.section').forEach(section => {
     section.classList.remove('active');
@@ -1751,12 +1864,22 @@ const showSection = (sectionId) => {
     activeBtn.classList.add('active');
   }
 
+  setActiveNavItem(sectionId);
+  setMobileDrawer(false);
+
+  // Update topbar
+  const meta = SECTION_META[sectionId] || {};
+  const headingEl = document.getElementById('topbarHeading');
+  const crumbEl = document.getElementById('topbarCrumb');
+  if (headingEl) headingEl.textContent = meta.heading || '';
+  if (crumbEl) crumbEl.textContent = meta.crumb || '';
+
   if (window.innerWidth <= 768) {
     const navMenu = document.getElementById('navMenu');
     const hamburger = document.querySelector('.nav-hamburger');
     if (navMenu && navMenu.classList.contains('active')) {
       navMenu.classList.remove('active');
-      hamburger.classList.remove('active');
+      if (hamburger) hamburger.classList.remove('active');
     }
   }
 
@@ -1913,9 +2036,21 @@ onAuthChange(async (user) => {
     const displayName = await getDisplayName(user.uid);
     updateDisplayNameInUI(displayName);
 
+    // Fill sidebar email
+    const sidebarEmail = document.getElementById('sidebarUserEmail');
+    if (sidebarEmail) sidebarEmail.textContent = user.email || '';
+
     if (appVersionSpan) {
       appVersionSpan.textContent = `v${APP_VERSION}`;
     }
+
+    // Sidebar version
+    const appVersion2Span = document.getElementById('appVersion2');
+    if (appVersion2Span) appVersion2Span.textContent = `v${APP_VERSION}`;
+
+    // Settings profile email
+    const profileEmailInput = document.getElementById('profileEmail');
+    if (profileEmailInput) profileEmailInput.value = user.email || '';
 
     console.log('🧹 Czyszczenie Firebase cache');
     Object.keys(localStorage).forEach(key => {
@@ -1965,6 +2100,9 @@ onAuthChange(async (user) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  initNavIcons();
+  initMobileDrawer();
+
   const today = getWarsawDateString();
   const expenseDateInput = document.getElementById('expenseDate');
   const incomeDateInput = document.getElementById('incomeDate');
@@ -1984,28 +2122,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Funkcja do przełączania zakładek autoryzacji
   const showAuthTab = (tabName) => {
-    const loginTab = document.getElementById('loginTab');
-    const registerTab = document.getElementById('registerTab');
-    const tabButtons = document.querySelectorAll('.auth-tabs .tab-btn');
+    const allTabs = ['loginTab', 'registerTab', 'forgotTab', 'forgotSentTab'];
+    allTabs.forEach(id => document.getElementById(id)?.classList.remove('active'));
 
-    // Ukryj wszystkie zakładki
-    loginTab.classList.remove('active');
-    registerTab.classList.remove('active');
+    const target = document.getElementById(tabName === 'login' ? 'loginTab'
+      : tabName === 'register' ? 'registerTab'
+      : tabName === 'forgot' ? 'forgotTab'
+      : tabName === 'forgot-sent' ? 'forgotSentTab'
+      : 'loginTab');
+    target?.classList.add('active');
 
-    // Pokaż wybraną zakładkę
-    if (tabName === 'login') {
-      loginTab.classList.add('active');
-    } else if (tabName === 'register') {
-      registerTab.classList.add('active');
-    }
-
-    // Aktualizuj przyciski
-    tabButtons.forEach(btn => {
-      btn.classList.remove('active');
-      const btnTab = btn.dataset.tab;
-      if (btnTab === tabName) {
-        btn.classList.add('active');
-      }
+    // Aktualizuj przyciski (tylko login/register mają przyciski w nav)
+    document.querySelectorAll('.auth-tabs .tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
   };
 
@@ -2082,6 +2211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'show-section': (el) => showSection(el.dataset.section),
     'open-profile': () => openProfile(),
     'handle-logout': () => handleLogout(),
+    'open-mobile-menu': () => setMobileDrawer(true),
 
     // Kategorie - dodawanie
     'add-category': () => addCategory(),
@@ -2091,7 +2221,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const period = el.dataset.period;
       // Konwertuj na number jeśli to liczba
       const parsedPeriod = period === 'all' || period === 'custom' ? period : parseInt(period, 10);
-      selectPeriod(parsedPeriod);
+      selectPeriod(parsedPeriod, el);
     },
     'apply-custom-period': () => applyCustomPeriod(),
 
@@ -2099,12 +2229,118 @@ document.addEventListener('DOMContentLoaded', () => {
     'export-budget-data': (el) => handleExportBudgetData(el.dataset.format),
 
     // Symulacja wydatku
-    'simulate-expense': () => handleSimulateExpense()
+    'simulate-expense': () => handleSimulateExpense(),
+
+    // Modale dodawania
+    'open-add-expense-modal': () => {
+      openModal('addExpenseModal');
+      setupCategorySuggestions();
+      setupExpenseTypeToggle();
+    },
+    'open-add-income-modal': () => {
+      openModal('addIncomeModal');
+      setupIncomeTypeToggle();
+      setupSourceSuggestions();
+    },
+    'open-correction-modal': () => openModal('correctionModal'),
+    'open-change-password': () => showProfileModal(),
+
+    // Zapis profilu w ustawieniach
+    'save-profile-name': async () => {
+      const input = document.getElementById('profileDisplayName');
+      const name = input?.value?.trim();
+      if (!name || name.length < 2) {
+        showErrorMessage('Nazwa musi mieć minimum 2 znaki');
+        return;
+      }
+      try {
+        const user = getCurrentUser();
+        await updateDisplayName(user.uid, name);
+        showSuccessMessage('Profil zaktualizowany');
+      } catch (e) {
+        showErrorMessage('Nie udało się zaktualizować profilu');
+      }
+    },
+
+    // Filtry wydatków
+    'filter-expenses': (el) => {
+      const filter = el.dataset.filter;
+      document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      document.querySelectorAll('#expensesTableBody tr').forEach(row => {
+        if (filter === 'all') {
+          row.style.display = '';
+        } else if (filter === 'normal') {
+          row.style.display = row.classList.contains('realised') ? '' : 'none';
+        } else {
+          row.style.display = row.classList.contains('planned') ? '' : 'none';
+        }
+      });
+    },
+
+    // Filtry przychodów
+    'filter-incomes': (el) => {
+      const filter = el.dataset.filter;
+      document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      document.querySelectorAll('#sourcesTableBody tr').forEach(row => {
+        if (filter === 'all') {
+          row.style.display = '';
+        } else if (filter === 'normal') {
+          row.style.display = (row.classList.contains('realised') || row.classList.contains('correction')) ? '' : 'none';
+        } else {
+          row.style.display = row.classList.contains('planned') ? '' : 'none';
+        }
+      });
+    }
+  });
+
+  // Wyszukiwanie wydatków
+  const expenseSearchEl = document.getElementById('expenseSearch');
+  if (expenseSearchEl) {
+    expenseSearchEl.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      document.querySelectorAll('#expensesTableBody tr').forEach(row => {
+        row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
+      });
+    });
+  }
+  const incomeSearchEl = document.getElementById('incomeSearch');
+  if (incomeSearchEl) {
+    incomeSearchEl.addEventListener('input', (e) => {
+      const val = e.target.value.toLowerCase();
+      document.querySelectorAll('#sourcesTableBody tr').forEach(row => {
+        row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
+      });
+    });
+  }
+  document.addEventListener('expense-search', (e) => {
+    const val = e.detail.toLowerCase();
+    document.querySelectorAll('#expensesTableBody tr').forEach(row => {
+      row.style.display = val === '' || row.textContent.toLowerCase().includes(val) ? '' : 'none';
+    });
   });
 
   // Podpięcie formularzy (zamiast inline onsubmit)
   document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
   document.getElementById('registerForm')?.addEventListener('submit', handleRegister);
+  document.getElementById('forgotForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = e.target.forgotEmail.value.trim();
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Wysyłanie...'; }
+    try {
+      await sendPasswordReset(email);
+      showAuthTab('forgot-sent');
+      e.target.reset();
+    } catch (err) {
+      showErrorMessage('Nie udało się wysłać linku resetującego');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Wyślij link resetujący →'; }
+    }
+  });
   document.getElementById('expenseForm')?.addEventListener('submit', addExpense);
   document.getElementById('incomeForm')?.addEventListener('submit', addIncome);
   document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);

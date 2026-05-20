@@ -78,10 +78,10 @@ function createProfileModal() {
       
       <div class="form-group">
         <label>Email</label>
-        <p id="profileEmail" style="color: var(--gray);"></p>
+        <p id="profileEmail" style="color: var(--ink-3);"></p>
       </div>
 
-      <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--border);">
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid var(--line);">
 
       <h3>👥 Użytkownicy budżetu</h3>
       <div id="budgetUsersList"></div>
@@ -333,7 +333,7 @@ function createEditCategoryModal() {
         <button class="modal-close" onclick="closeModal('editCategoryModal')">✕</button>
       </div>
 
-      <p style="margin-bottom: 20px; color: var(--gray);">
+      <p style="margin-bottom: 20px; color: var(--ink-3);">
         Edytujesz kategorię: <strong id="editCategoryCurrentName"></strong>
       </p>
 

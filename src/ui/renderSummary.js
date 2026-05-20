@@ -13,12 +13,123 @@ import {
   calculateSpendingDynamics
 } from '../modules/budgetCalculator.js';
 
-import { getDynamicsPeriod, getIncomes, getExpenses } from '../modules/dataManager.js';
+import { getDynamicsPeriod, getIncomes, getExpenses, getCategories } from '../modules/dataManager.js';
 import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
-import { sanitizeHTML } from '../utils/sanitizer.js';
+import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
 import { animateNumber } from '../utils/animateNumber.js';
 import { startCountdownTimers } from '../utils/countdownTimer.js';
+import { sparklineHTML, dailyChartHTML } from './charts.js';
+import { icon } from '../utils/icons.js';
+
+function buildLastNDaysData(n = 30) {
+  const expenses = getExpenses();
+  const data = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = getWarsawDateString(d);
+    const total = expenses
+      .filter(e => e.type === 'normal' && e.date === dateStr)
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+    data.push({ date: dateStr, value: total });
+  }
+  return data;
+}
+
+let heroSparklineDays = 7;
+
+function renderSparkline(days = heroSparklineDays) {
+  const wrap = document.getElementById('spendingSparklineWrap');
+  if (!wrap) return;
+  const data = buildLastNDaysData(days);
+  const values = data.map(d => d.value);
+  wrap.innerHTML = sparklineHTML(values, { height: 48 });
+  const svg = wrap.querySelector('svg');
+  if (svg) { svg.style.cssText = 'width:100%;height:100%;display:block'; }
+
+  // Średnia + delta
+  const meta = document.getElementById('heroSparklineMeta');
+  if (!meta) return;
+  const nonZero = values.filter(v => v > 0);
+  const avg = nonZero.length > 0 ? nonZero.reduce((s, v) => s + v, 0) / nonZero.length : 0;
+
+  const prevData = buildLastNDaysData(days * 2).slice(0, days);
+  const prevNonZero = prevData.map(d => d.value).filter(v => v > 0);
+  const prevAvg = prevNonZero.length > 0 ? prevNonZero.reduce((s, v) => s + v, 0) / prevNonZero.length : 0;
+
+  const avgFmt = avg.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  let deltaHtml = '';
+  if (prevAvg > 0) {
+    const pct = ((avg - prevAvg) / prevAvg) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    const tone = pct > 0 ? 'up bad' : 'down good';
+    const arrow = pct > 0 ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
+    deltaHtml = `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1)}% vs poprzednie ${days}d</span>`;
+  }
+  meta.innerHTML = sanitizeHTML(
+    `<span style="color:var(--ink-3)">Średnia ${days}d: <strong class="num" style="color:var(--ink-1)">${avgFmt} zł</strong></span>${deltaHtml ? ' ' + deltaHtml : ''}`
+  );
+}
+
+function initHeroSparklineSeg() {
+  const seg = document.getElementById('heroSparklineSeg');
+  if (!seg) return;
+  seg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-days]');
+    if (!btn) return;
+    heroSparklineDays = parseInt(btn.dataset.days, 10);
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+    renderSparkline(heroSparklineDays);
+  });
+}
+
+function deltaHTML(current, prev, invert = false) {
+  if (prev <= 0) return '';
+  const pct = ((current - prev) / prev) * 100;
+  const sign = pct >= 0 ? '+' : '';
+  // invert=true → wzrost wydatków to zło (up bad), spadek to dobro (down good)
+  const up = pct > 0;
+  const tone = invert ? (up ? 'up bad' : 'down good') : (up ? 'up good' : 'down bad');
+  const arrow = up ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
+  return `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1)}%</span>`;
+}
+
+function renderPeriodDeltas(todayExp, weekExp, monthExp) {
+  const expenses = getExpenses();
+  const now = new Date();
+
+  // Dziś vs wczoraj
+  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const yesterdayStr = getWarsawDateString(yesterday);
+  const yesterdayExp = expenses
+    .filter(e => e.type === 'normal' && e.date === yesterdayStr)
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const todayEl = document.getElementById('todayExpensesDelta');
+  if (todayEl) todayEl.innerHTML = sanitizeHTML(deltaHTML(todayExp, yesterdayExp, true) || '<span style="color:var(--ink-3);font-size:12px">vs wczoraj</span>');
+
+  // Tydzień vs poprzedni tydzień (ostatnie 7 dni vs 7 dni wcześniej)
+  const w1End = getWarsawDateString(now);
+  const w1Start = new Date(now); w1Start.setDate(now.getDate() - 6);
+  const w2End = new Date(now); w2End.setDate(now.getDate() - 7);
+  const w2Start = new Date(now); w2Start.setDate(now.getDate() - 13);
+  const prevWeekExp = expenses
+    .filter(e => e.type === 'normal' && e.date >= getWarsawDateString(w2Start) && e.date <= getWarsawDateString(w2End))
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const weekEl = document.getElementById('weekExpensesDelta');
+  if (weekEl) weekEl.innerHTML = sanitizeHTML(deltaHTML(weekExp, prevWeekExp, true) || '');
+
+  // Miesiąc vs poprzedni miesiąc (proporcjonalnie do dni)
+  const daysElapsed = now.getDate();
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthSameDay = new Date(now.getFullYear(), now.getMonth() - 1, daysElapsed);
+  const prevMonthExp = expenses
+    .filter(e => e.type === 'normal' && e.date >= getWarsawDateString(prevMonthStart) && e.date <= getWarsawDateString(prevMonthSameDay))
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const monthEl = document.getElementById('monthExpensesDelta');
+  if (monthEl) monthEl.innerHTML = sanitizeHTML(deltaHTML(monthExp, prevMonthExp, true) || '');
+}
 
 export function renderSummary() {
   const { available, totalAvailable, savingsAmount } = calculateAvailableFunds();
@@ -40,7 +151,10 @@ export function renderSummary() {
   const savingsInfoEl = document.getElementById('savingsInfo');
   if (savingsInfoEl) {
     if (savingsAmount > 0) {
-      savingsInfoEl.innerHTML = sanitizeHTML(`<small style="font-size: 0.8rem; opacity: 0.8;">Z czego ${savingsAmount.toFixed(2)} zł odlozono jako oszczednosci</small>`);
+      const amtFmt = savingsAmount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      savingsInfoEl.innerHTML = sanitizeHTML(
+        `<span class="tag success dot">Po odjęciu oszczędności <strong class="num">${amtFmt} zł</strong></span>`
+      );
       savingsInfoEl.style.display = 'block';
     } else {
       savingsInfoEl.style.display = 'none';
@@ -48,28 +162,31 @@ export function renderSummary() {
   }
 
   // Wydatki dzisiaj
-  const todayLabel = document.querySelector('#todayExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
-  if (todayLabel) {
-    todayLabel.innerHTML = sanitizeHTML(`Wydano dziś<br><small style="font-size: 0.75rem; opacity: 0.8;">(${todayDate})</small>`);
-  }
+  const todayLabelEl = document.getElementById('todayExpensesLabel');
+  if (todayLabelEl) todayLabelEl.textContent = `Dziś (${todayDate})`;
   const todayExpensesEl = document.getElementById('todayExpenses');
   if (todayExpensesEl) animateNumber(todayExpensesEl, todayExpenses);
 
   // Wydatki w tym tygodniu
-  const weekLabel = document.querySelector('#weekExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
-  if (weekLabel) {
-    weekLabel.innerHTML = sanitizeHTML(`Wydano w tym tygodniu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${weekRange.start} - ${weekRange.end})</small>`);
-  }
+  const weekLabelEl = document.getElementById('weekExpensesLabel');
+  if (weekLabelEl) weekLabelEl.textContent = `Tydzień (${weekRange.start}–${weekRange.end})`;
   const weekExpensesEl = document.getElementById('weekExpenses');
   if (weekExpensesEl) animateNumber(weekExpensesEl, weekExpenses);
 
   // Wydatki w tym miesiącu
-  const monthLabel = document.querySelector('#monthExpenses')?.closest('.stat-card')?.querySelector('.stat-label');
-  if (monthLabel) {
-    monthLabel.innerHTML = sanitizeHTML(`Wydano w tym miesiącu<br><small style="font-size: 0.75rem; opacity: 0.8;">(${monthName})</small>`);
-  }
+  const monthLabelEl = document.getElementById('monthExpensesLabel');
+  if (monthLabelEl) monthLabelEl.textContent = `Miesiąc (${monthName})`;
   const monthExpensesEl = document.getElementById('monthExpenses');
   if (monthExpensesEl) animateNumber(monthExpensesEl, monthExpenses);
+
+  // Średnia dzienna (bieżący miesiąc)
+  const daysElapsed = new Date().getDate();
+  const dailyAvg = daysElapsed > 0 ? monthExpenses / daysElapsed : 0;
+  const dailyAvgEl = document.getElementById('dailyAvgExpenses');
+  if (dailyAvgEl) animateNumber(dailyAvgEl, dailyAvg);
+
+  // Delty pod statystykami
+  renderPeriodDeltas(todayExpenses, weekExpenses, monthExpenses);
 
   // NOWE: Renderuj wszystkie okresy dynamicznie
   const { limits: limitsData, plannedTotals, calculatedAt } = getOrCalculateLimits();
@@ -98,83 +215,63 @@ export function renderSummary() {
 
   // Dynamika wydatków
   renderSpendingDynamics();
+
+  // Sparkline w hero
+  initHeroSparklineSeg();
+  renderSparkline();
+
+  // Nadchodzące transakcje
+  renderUpcomingTransactions();
 }
 
 export function renderSpendingDynamics() {
   const dynamics = calculateSpendingDynamics();
   const container = document.getElementById('dynamicsInfo');
-
   if (!container) return;
 
-  // Pobierz informację o wybranym okresie
   const { periods } = calculateSpendingPeriods();
   const dynamicsPeriodIndex = getDynamicsPeriod();
   const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
 
-  // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
   let periodInfo;
   if (selectedPeriod) {
     if (selectedPeriod.showToday) {
-      // Gdy wpływ jest dziś i nie podano czasu
-      periodInfo = `${selectedPeriod.name} (Dziś)`;
+      periodInfo = `${escapeHTML(selectedPeriod.name)} (Dziś)`;
     } else if (selectedPeriod.countdownFormat) {
-      // Gdy zostało < 1 dzień i podano czas
-      periodInfo = `${selectedPeriod.name} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>)`;
+      periodInfo = `${escapeHTML(selectedPeriod.name)} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>)`;
     } else {
-      // Gdy >= 1 dzień
-      periodInfo = `${selectedPeriod.name} (${selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`})`;
+      periodInfo = `${escapeHTML(selectedPeriod.name)} (${escapeHTML(selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`)})`;
     }
   } else {
     periodInfo = 'Brak okresu';
   }
 
-  let statusClass = '';
-  switch(dynamics.status) {
-    case 'excellent':
-      statusClass = 'dynamics-excellent';
-      break;
-    case 'good':
-      statusClass = 'dynamics-good';
-      break;
-    case 'moderate':
-      statusClass = 'dynamics-moderate';
-      break;
-    case 'warning':
-      statusClass = 'dynamics-warning';
-      break;
-    case 'critical':
-      statusClass = 'dynamics-critical';
-      break;
-    case 'no-date':
-      statusClass = 'dynamics-no-date';
-      break;
-  }
+  const statusColors = {
+    excellent: 'var(--success)',
+    good: 'color-mix(in srgb, var(--success) 65%, var(--line))',
+    moderate: 'var(--accent)',
+    warning: 'var(--warning)',
+    critical: 'var(--danger)',
+    'no-date': 'var(--ink-3)',
+  };
+  const dotColor = statusColors[dynamics.status] || 'var(--ink-3)';
+  const titleText = escapeHTML(dynamics.title.split(' ').slice(1).join(' '));
 
-  const detailsHTML = dynamics.details.length > 0 ? `
-    <div class="dynamics-details">
-      <strong>📊 Szczegóły:</strong>
-      <ul>
-        ${dynamics.details.map(detail => `<li>${detail}</li>`).join('')}
-      </ul>
-    </div>
-  ` : '';
+  const dailyData = buildLastNDaysData(30);
+  const chartHtml = dailyChartHTML(dailyData, { height: 180 });
 
   const html = `
-    <div class="dynamics-card ${statusClass}">
-      <h4 class="dynamics-title">${dynamics.title}</h4>
-      <p class="dynamics-summary">${dynamics.summary}</p>
-      <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 8px;">📅 Okres: ${periodInfo}</p>
-      ${detailsHTML}
-      <div class="dynamics-recommendation">
-        <strong>💡 Rekomendacja:</strong>
-        <p>${dynamics.recommendation}</p>
-      </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;background:${dotColor}"></span>
+      <span style="font-size:13px;font-weight:500">${titleText}</span>
     </div>
+    ${chartHtml}
+    <div class="text-mute text-sm" style="margin:6px 0 12px">Ostatnie 30 dni wydatków</div>
+    <div style="font-size:12px;color:var(--ink-2);line-height:1.5;margin-bottom:8px">${escapeHTML(dynamics.summary)}</div>
+    <div class="text-mute text-sm">📅 ${periodInfo}</div>
   `;
 
   container.innerHTML = sanitizeHTML(html);
-
-  // Uruchom countdown timery po wyrenderowaniu
   startCountdownTimers();
 }
 
@@ -184,164 +281,155 @@ export function renderSpendingDynamics() {
 function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt) {
   const { limits } = limitsData;
 
-  // Znajdź kontener na kafelki limitów - szukamy h3 z tekstem "📊 Limity dzienne"
-  const allH3 = Array.from(document.querySelectorAll('h3'));
-  const limitsContainer = allH3.find(h3 => h3.textContent.includes('Limity dzienne'));
+  const statsGrid = document.getElementById('limitsGrid');
+  if (!statsGrid) return;
 
-  if (!limitsContainer) {
-    console.error('Nie znaleziono kontenera limitów!');
-    return;
+  const calcDateEl = document.getElementById('limitsCalcDate');
+  if (calcDateEl) {
+    const calcDate = new Date(calculatedAt);
+    calcDateEl.textContent = `Wyliczono: ${calcDate.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
   }
 
-  // Dodaj info o dacie wyliczenia pod nagłówkiem
-  let dateInfo = limitsContainer.nextElementSibling;
-  if (!dateInfo || !dateInfo.classList.contains('limits-date-info')) {
-    dateInfo = document.createElement('div');
-    dateInfo.className = 'limits-date-info';
-    dateInfo.style.fontSize = '0.8rem';
-    dateInfo.style.opacity = '0.7';
-    dateInfo.style.marginBottom = '10px';
-    dateInfo.style.marginTop = '-10px';
-    limitsContainer.insertAdjacentElement('afterend', dateInfo);
-  }
-
-  // Formatuj datę wyliczenia
-  const calcDate = new Date(calculatedAt);
-  const formattedDate = calcDate.toLocaleString('pl-PL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  dateInfo.textContent = `Wyliczono: ${formattedDate}`;
-
-  const statsGrid = dateInfo.nextElementSibling;
-  if (!statsGrid || !statsGrid.classList.contains('stats-grid')) {
-    console.error('Nie znaleziono stats-grid!');
-    return;
-  }
-
-  // Wyczyść istniejące kafelki
   statsGrid.innerHTML = '';
 
-  // Jeśli brak okresów, pokaż komunikat
   if (limits.length === 0) {
-    const noPeriodsCard = document.createElement('div');
-    noPeriodsCard.className = 'stat-card';
-    noPeriodsCard.innerHTML = sanitizeHTML(`
-      <div class="stat-label">Brak planowanych przychodów</div>
-      <p style="margin-top: 10px; opacity: 0.8; font-size: 0.9rem;">
-        Dodaj przychody z typem "Zaplanowany", aby zobaczyć limity dzienne.
-      </p>
+    statsGrid.innerHTML = sanitizeHTML(`
+      <div class="card" style="text-align:center;padding:32px 20px;color:var(--ink-3)">
+        <div style="font-size:14px;font-weight:500;color:var(--ink-2);margin-bottom:6px">Brak planowanych przychodów</div>
+        <div style="font-size:13px">Dodaj przychody z typem „Planowany", aby zobaczyć limity dzienne dla każdego okresu.</div>
+      </div>
     `);
-    statsGrid.appendChild(noPeriodsCard);
     return;
   }
 
-  // Renderuj kafelek dla każdego okresu
   limits.forEach((limit, index) => {
     const realLimit = limit.realLimit || 0;
     const plannedLimit = limit.plannedLimit || 0;
-
-    const card = document.createElement('div');
-    card.className = 'stat-card';
-
-    // Nazwa wpływu na górze z ikoną i kwotą
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'stat-label';
-    nameDiv.style.fontWeight = 'bold';
-    nameDiv.style.marginBottom = '5px';
+    const delta = plannedLimit - realLimit;
+    const isFirst = index === 0;
     const limitIcon = getSourceIcon(limit.name || 'Planowany wpływ');
-    const amountText = limit.amount ? ` (${limit.amount.toFixed(2)} zł)` : '';
-    nameDiv.textContent = `${limitIcon} ${limit.name || 'Planowany wpływ'}${amountText}`;
 
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'stat-label';
-    dateDiv.style.fontSize = '0.85rem';
-    dateDiv.style.opacity = '0.7';
-    dateDiv.style.marginBottom = '4px';
+    let timeText;
+    if (limit.showToday) {
+      timeText = 'Dziś';
+    } else if (limit.countdownFormat) {
+      timeText = `<span class="countdown-timer" data-end-date="${limit.date}" data-end-time="${limit.time || ''}">${limit.countdownFormat}</span>`;
+    } else {
+      timeText = limit.timeFormatted || `${limit.daysLeft} dni`;
+    }
+
+    let dateStr = '';
     if (limit.date) {
       const [y, m, d] = limit.date.split('-');
-      dateDiv.textContent = `📅 ${d}.${m}.${y}`;
+      dateStr = `${d}.${m}.${y}`;
     }
 
-    const daysDiv = document.createElement('div');
-    daysDiv.className = 'stat-label';
-    daysDiv.style.marginTop = '2px';
+    const realColor = realLimit < 50 ? 'var(--danger)' : 'var(--ink-1)';
 
-    // ZMIANA: Pokazuj "Dziś", countdown timer (HH:MM:SS) lub liczbę dni
-    if (limit.showToday) {
-      // Gdy wpływ jest dziś i nie podano czasu, pokaż "Dziś"
-      daysDiv.textContent = `Pozostało: Dziś`;
-    } else if (limit.countdownFormat) {
-      // Gdy zostało < 1 dzień i podano czas, używamy countdown timera
-      daysDiv.innerHTML = `Pozostało: <span class="countdown-timer" data-end-date="${limit.date}" data-end-time="${limit.time || ''}">${limit.countdownFormat}</span>`;
-    } else {
-      // Gdy >= 1 dzień, pokazuj liczbę dni
-      daysDiv.textContent = `Pozostało: ${limit.timeFormatted || `${limit.daysLeft} dni`}`;
-    }
+    const html = `
+      <div class="card limit-tile${isFirst ? ' limit-tile--next' : ''}" style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <div class="limit-tile-icon">${limitIcon}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(limit.name || 'Planowany wpływ')}</div>
+            ${isFirst ? '<span class="badge" style="background:var(--accent);color:var(--accent-ink);font-size:10px;padding:1px 7px">Następny</span>' : ''}
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 10px;background:var(--surface-2);border-radius:8px;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Wpływ</span>
+            <span class="num" style="font-size:16px;font-weight:600;color:var(--success)">+${(limit.amount || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Data</span>
+            <span style="font-size:13px;font-weight:500"><span class="num">${dateStr}</span> <span style="font-size:11px;color:var(--ink-3)">· za ${timeText}</span></span>
+          </div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)">
+          <div style="padding:10px 12px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3);white-space:nowrap">💰 Realny</span>
+            <span style="font-size:11px;color:var(--ink-3)">· bez wpływu</span>
+            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:${realColor};white-space:nowrap">${realLimit.toFixed(2)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+          </div>
+          <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);background:color-mix(in srgb, var(--accent) 6%, transparent)">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--accent);white-space:nowrap">✨ Planowany</span>
+            <span style="font-size:11px;color:var(--ink-3)">· po wpływie</span>
+            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:var(--accent);white-space:nowrap">${plannedLimit.toFixed(2)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3);flex-wrap:wrap;gap:8px">
+          <span>Różnica: <strong class="num" style="color:var(--success)">+${delta.toFixed(2)} zł/d</strong></span>
+        </div>
+      </div>
+    `;
 
-    // Limit realny
-    const realLabelDiv = document.createElement('div');
-    realLabelDiv.className = 'stat-label';
-    realLabelDiv.style.fontSize = '0.9rem';
-    realLabelDiv.style.opacity = '0.8';
-    realLabelDiv.style.marginTop = '12px';
-    realLabelDiv.textContent = `💰 Limit realny`;
-
-    const realValueDiv = document.createElement('div');
-    realValueDiv.className = 'stat-value';
-    realValueDiv.style.fontSize = '1.8rem';
-    realValueDiv.style.marginBottom = '5px';
-    const realValueSpan = document.createElement('span');
-    realValueSpan.textContent = '0.00';
-    const realUnitSpan = document.createElement('span');
-    realUnitSpan.className = 'stat-unit';
-    realUnitSpan.textContent = 'zł/dzień';
-    realValueDiv.appendChild(realValueSpan);
-    realValueDiv.appendChild(realUnitSpan);
-
-    // Animuj wartość realną
-    requestAnimationFrame(() => {
-      animateNumber(realValueSpan, realLimit);
-    });
-
-    // Limit planowany
-    const plannedLabelDiv = document.createElement('div');
-    plannedLabelDiv.className = 'stat-label';
-    plannedLabelDiv.style.fontSize = '0.9rem';
-    plannedLabelDiv.style.opacity = '0.8';
-    plannedLabelDiv.style.marginTop = '12px';
-    plannedLabelDiv.textContent = `📊 Limit planowany`;
-
-    const plannedValueDiv = document.createElement('div');
-    plannedValueDiv.className = 'stat-value';
-    plannedValueDiv.style.fontSize = '1.8rem';
-    const plannedValueSpan = document.createElement('span');
-    plannedValueSpan.textContent = '0.00';
-    const plannedUnitSpan = document.createElement('span');
-    plannedUnitSpan.className = 'stat-unit';
-    plannedUnitSpan.textContent = 'zł/dzień';
-    plannedValueDiv.appendChild(plannedValueSpan);
-    plannedValueDiv.appendChild(plannedUnitSpan);
-
-    // Animuj wartość planowaną
-    requestAnimationFrame(() => {
-      animateNumber(plannedValueSpan, plannedLimit);
-    });
-
-    card.appendChild(nameDiv);
-    if (limit.date) card.appendChild(dateDiv);
-    card.appendChild(daysDiv);
-    card.appendChild(realLabelDiv);
-    card.appendChild(realValueDiv);
-    card.appendChild(plannedLabelDiv);
-    card.appendChild(plannedValueDiv);
-
-    statsGrid.appendChild(card);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = sanitizeHTML(html);
+    statsGrid.appendChild(wrapper.firstElementChild);
   });
 
-  // Uruchom countdown timery po wyrenderowaniu kafli
   startCountdownTimers();
+}
+
+export function renderUpcomingTransactions() {
+  const container = document.getElementById('upcomingTransactionsList');
+  const countBadge = document.getElementById('upcomingCount');
+  if (!container) return;
+
+  const today = getWarsawDateString();
+  const incomes = getIncomes();
+  const expenses = getExpenses();
+  const categories = getCategories();
+
+  const catById = id => categories.find(c => c.id === id) || null;
+
+  const upcoming = [
+    ...expenses.filter(e => e.type === 'planned' && e.date >= today).map(e => ({ ...e, kind: 'expense' })),
+    ...incomes.filter(i => i.type === 'planned' && i.date >= today).map(i => ({ ...i, kind: 'income' })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 6);
+
+  if (countBadge) {
+    if (upcoming.length > 0) {
+      countBadge.textContent = upcoming.length;
+      countBadge.style.display = '';
+    } else {
+      countBadge.style.display = 'none';
+    }
+  }
+
+  if (upcoming.length === 0) {
+    container.innerHTML = '<div style="padding:24px 20px;text-align:center;color:var(--ink-3);font-size:13px">Brak zaplanowanych transakcji</div>';
+    return;
+  }
+
+  const arrowDownIcon = icon('ArrowDown', { size: 14, strokeWidth: 2 });
+  const arrowUpIcon   = icon('ArrowUp',   { size: 14, strokeWidth: 2 });
+
+  const html = upcoming.map(u => {
+    const isExpense = u.kind === 'expense';
+    const cat = isExpense ? catById(u.category) : null;
+    const label = isExpense ? escapeHTML(u.description || '—') : escapeHTML(u.source || '—');
+    const catName = cat ? escapeHTML(cat.name) : '';
+    const dateParts = u.date ? u.date.split('-') : [];
+    const dateStr = dateParts.length === 3 ? `${dateParts[2]}.${dateParts[1]}` : u.date || '';
+    const amountStr = (u.amount || 0).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const iconHtml = isExpense ? arrowDownIcon : arrowUpIcon;
+    const colorCls = isExpense ? 'var(--danger)' : 'var(--success)';
+    const bgCls    = isExpense ? 'var(--danger-soft)' : 'var(--success-soft)';
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line)">
+        <div style="width:36px;height:36px;border-radius:8px;background:${bgCls};color:${colorCls};display:grid;place-items:center;flex-shrink:0">
+          ${iconHtml}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${label}</div>
+          <div class="text-mute text-sm">${dateStr}${catName ? ' · ' + catName : ''}</div>
+        </div>
+        <div class="num" style="font-size:13px;font-weight:500;color:${colorCls};white-space:nowrap">
+          ${isExpense ? '−' : '+'}${amountStr} zł
+        </div>
+      </div>`;
+  }).join('');
+
+  container.innerHTML = sanitizeHTML(html);
 }

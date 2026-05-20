@@ -7,6 +7,9 @@
     <title>Krezus - Inteligentny Budżet Osobisty</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
     <link rel="stylesheet" href="src/styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- LOADER -->
@@ -15,606 +18,1032 @@
         <p>Ładowanie...</p>
     </div>
 
-    <!-- SEKCJA LOGOWANIA -->
-    <div id="authSection" class="auth-container hidden">
-        <div class="auth-hero">
-            <div class="auth-hero-content">
-                <h1 class="auth-logo">Krezus 💰</h1>
-                <p class="auth-tagline">Inteligentny Budżet Osobisty</p>
-                <p class="auth-description">
-                    Kompleksowe narzędzie do zarządzania finansami domowymi z inteligentną kopertą dnia,
-                    budżetami celowymi, planowaniem transakcji i szczegółową analityką wydatków.
+    <!-- ==================== AUTH ==================== -->
+    <div id="authSection" class="auth-shell hidden">
+        <div class="auth-side">
+            <div>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div class="brand-mark" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:22px">K</div>
+                    <div>
+                        <div style="font-size:16px;font-weight:600;color:var(--bg)">Krezus</div>
+                        <div style="font-size:12px;opacity:0.65;color:var(--bg)">Inteligentny budżet domowy</div>
+                    </div>
+                </div>
+                <p class="auth-tagline" style="font-family:'Instrument Serif',serif;font-style:italic">Pieniądze,<br>nad którymi panujesz.</p>
+                <p style="font-size:14px;opacity:0.65;line-height:1.6;max-width:360px;color:var(--bg)">
+                    Krezus liczy za ciebie ile możesz dziś wydać, ostrzega przed problemami i prowadzi do celu — bez tabelek w Excelu.
                 </p>
-
-                <div class="auth-features">
-                    <div class="feature-item">
-                        <div class="feature-icon">📊</div>
-                        <h3>Pełna kontrola</h3>
-                        <p>Śledź wydatki i przychody w czasie rzeczywistym</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">📩</div>
-                        <h3>Koperta dnia</h3>
-                        <p>Algorytm dostosowany do historii wydatków</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">🎯</div>
-                        <h3>Cele oszczędnościowe</h3>
-                        <p>Oszczędzaj na konkretne cele z automatycznymi sugestiami</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">📅</div>
-                        <h3>Planowane transakcje</h3>
-                        <p>Zaplanuj przyszłe wpływy i wydatki</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">📈</div>
-                        <h3>Analityka</h3>
-                        <p>Wykresy, porównania okresów i symulacja wydatków</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">🏷️</div>
-                        <h3>Kategorie</h3>
-                        <p>Organizuj wydatki według własnych kategorii</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">👥</div>
-                        <h3>Współdzielenie</h3>
-                        <p>Zarządzaj budżetem z rodziną lub współlokatorami</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">📝</div>
-                        <h3>Historia i logi</h3>
-                        <p>Pełna historia zmian i korekty budżetu</p>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">🔒</div>
-                        <h3>Bezpieczeństwo</h3>
-                        <p>Szyfrowane dane z dostępem z każdego urządzenia</p>
-                    </div>
+                <div class="auth-features" style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;max-width:480px;margin-top:24px">
+                    <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;opacity:0.85;color:var(--bg)"><span>📩</span><div><strong>Koperta dnia</strong><br><span style="opacity:0.7">Adaptacyjny dzienny limit</span></div></div>
+                    <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;opacity:0.85;color:var(--bg)"><span>🎯</span><div><strong>Cele</strong><br><span style="opacity:0.7">Oszczędności z prognozą</span></div></div>
+                    <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;opacity:0.85;color:var(--bg)"><span>🔮</span><div><strong>Symulacja</strong><br><span style="opacity:0.7">„Czy stać mnie na…?"</span></div></div>
+                    <div style="display:flex;gap:8px;align-items:flex-start;font-size:13px;opacity:0.85;color:var(--bg)"><span>📊</span><div><strong>Analityka</strong><br><span style="opacity:0.7">Trendy i porównania</span></div></div>
                 </div>
+            </div>
+            <div style="font-size:12px;opacity:0.5;color:var(--bg)">
+                &copy; 2026 Krezus &middot; Stworzone przez Sławomira Sprawskiego
             </div>
         </div>
 
-        <div class="auth-form-container">
-            <div class="auth-form-box">
-                <h2 class="auth-form-title">Witaj ponownie! 👋</h2>
-                
-                <div class="auth-tabs">
-                    <button class="tab-btn active" data-action="show-auth-tab" data-tab="login">Logowanie</button>
-                    <button class="tab-btn" data-action="show-auth-tab" data-tab="register">Rejestracja</button>
-                </div>
+        <div class="auth-form-wrap">
+            <div style="margin-bottom:24px">
+                <h2 style="font-size:26px;margin:0 0 4px;letter-spacing:-0.01em" id="authHeading">Witaj ponownie</h2>
+                <p style="color:var(--ink-3);margin:0;font-size:13px" id="authSubheading">Zaloguj się do swojego budżetu</p>
+            </div>
 
-                <div id="loginTab" class="tab-content active">
-                    <form id="loginForm">
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" name="loginEmail" required placeholder="twoj@email.pl">
-                        </div>
-                        <div class="form-group">
-                            <label>Hasło</label>
-                            <input type="password" name="loginPassword" required placeholder="••••••••">
-                        </div>
-                        <button type="submit" class="btn btn-primary" style="width: 100%;">Zaloguj się</button>
-                    </form>
-                </div>
+            <div class="auth-tabs" id="authTabs" style="margin-bottom:20px">
+                <button class="tab-btn active" data-action="show-auth-tab" data-tab="login">Logowanie</button>
+                <button class="tab-btn" data-action="show-auth-tab" data-tab="register">Rejestracja</button>
+            </div>
 
-                <div id="registerTab" class="tab-content">
-                    <form id="registerForm">
-                        <div class="form-group">
-                            <label>Nazwa użytkownika</label>
-                            <input type="text" name="registerDisplayName" required minlength="2" placeholder="Jan Kowalski">
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" name="registerEmail" required placeholder="twoj@email.pl">
-                        </div>
-                        <div class="form-group">
-                            <label>Hasło (min. 6 znaków)</label>
-                            <input type="password" name="registerPassword" required minlength="6" placeholder="••••••••">
-                        </div>
-                        <button type="submit" class="btn btn-success" style="width: 100%;">Zarejestruj się</button>
-                    </form>
+            <div id="loginTab" class="tab-content active">
+                <form id="loginForm" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-group">
+                        <label>Adres email</label>
+                        <input type="email" name="loginEmail" required placeholder="twoj@email.pl" style="font-size:14px;padding:11px 13px">
+                    </div>
+                    <div class="form-group">
+                        <label>Hasło</label>
+                        <input type="password" name="loginPassword" required placeholder="••••••••" style="font-size:14px;padding:11px 13px">
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px">
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);cursor:pointer">
+                            <input type="checkbox" checked> Pamiętaj mnie
+                        </label>
+                        <a href="#" data-action="show-auth-tab" data-tab="forgot" style="font-size:12px;color:var(--accent);text-decoration:none">Zapomniałem hasła</a>
+                    </div>
+                    <button type="submit" class="btn btn-accent" style="padding:11px;font-size:14px;margin-top:4px">Zaloguj się →</button>
+                </form>
+            </div>
+
+            <div id="registerTab" class="tab-content">
+                <form id="registerForm" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-group">
+                        <label>Imię i nazwisko</label>
+                        <input type="text" name="registerDisplayName" required minlength="2" placeholder="Jan Kowalski" style="font-size:14px;padding:11px 13px">
+                    </div>
+                    <div class="form-group">
+                        <label>Adres email</label>
+                        <input type="email" name="registerEmail" required placeholder="twoj@email.pl" style="font-size:14px;padding:11px 13px">
+                    </div>
+                    <div class="form-group">
+                        <label>Hasło (min. 6 znaków)</label>
+                        <input type="password" name="registerPassword" required minlength="6" placeholder="••••••••" style="font-size:14px;padding:11px 13px">
+                        <span class="form-hint">Min. 6 znaków — dobre hasło = przyszłość bez stresu</span>
+                    </div>
+                    <button type="submit" class="btn btn-accent" style="padding:11px;font-size:14px;margin-top:4px">Załóż konto →</button>
+                </form>
+            </div>
+
+            <div id="forgotTab" class="tab-content">
+                <form id="forgotForm" style="display:flex;flex-direction:column;gap:14px">
+                    <div class="form-group">
+                        <label>Adres email</label>
+                        <input type="email" name="forgotEmail" required placeholder="twoj@email.pl" style="font-size:14px;padding:11px 13px">
+                        <span class="form-hint">Na ten adres wyślemy link do resetu hasła</span>
+                    </div>
+                    <button type="submit" class="btn btn-accent" style="padding:11px;font-size:14px">Wyślij link resetujący →</button>
+                    <button type="button" class="btn btn-ghost" data-action="show-auth-tab" data-tab="login" style="padding:10px;font-size:13px">← Wróć do logowania</button>
+                </form>
+            </div>
+
+            <div id="forgotSentTab" class="tab-content">
+                <div style="text-align:center;padding:24px 0 8px">
+                    <div style="width:48px;height:48px;border-radius:50%;background:var(--success-soft);color:var(--success);display:grid;place-items:center;margin:0 auto 16px;font-size:22px">✓</div>
+                    <h3 style="font-size:18px;font-weight:600;margin:0 0 8px">Sprawdź skrzynkę</h3>
+                    <p style="font-size:13px;color:var(--ink-3);margin:0 0 24px;line-height:1.6">Wysłaliśmy link do resetowania hasła. Kliknij go w emailu — ważny przez 1 godzinę.</p>
+                    <button type="button" class="btn btn-ghost" data-action="show-auth-tab" data-tab="login" style="width:100%;padding:10px;font-size:13px">← Wróć do logowania</button>
                 </div>
+            </div>
+
+            <div style="margin-top:24px;text-align:center;font-size:12px;color:var(--ink-3)">
+                Rejestrując się akceptujesz <a href="#" style="color:var(--ink-2)">politykę prywatności</a>
             </div>
         </div>
-
-        <footer class="auth-footer">
-            <div class="auth-footer-content">
-                <p>&copy; 2025 <strong>Krezus</strong></p>
-                <p>•</p>
-                <p>Stworzone przez <a href="https://wordsmithseo.pl" target="_blank" rel="noopener noreferrer">Sławomir Sprawski</a></p>
-                <p>•</p>
-                <p class="footer-rights">Wszelkie prawa zastrzeżone</p>
-            </div>
-        </footer>
     </div>
 
+    <!-- ==================== APP ==================== -->
     <div id="appSection" class="hidden">
+        <!-- Hidden legacy header/nav -->
         <header class="app-header">
             <div class="header-content">
-                <div class="app-title">
-                    <h1>Krezus</h1>
-                    <span id="appVersion" class="app-version"></span>
-                </div>
+                <div class="app-title"><h1>Krezus</h1><span id="appVersion" class="app-version"></span></div>
                 <div class="header-user">
-                    <div class="user-info">
-                        <span id="username"></span>
-                    </div>
-                    <button id="profileBtn" class="btn-profile" data-action="open-profile" aria-label="Profil użytkownika">👤 Profil</button>
+                    <div class="user-info"><span id="username"></span></div>
+                    <button id="profileBtn" class="btn-profile" data-action="open-profile">👤 Profil</button>
                     <button class="btn-logout" data-action="handle-logout">Wyloguj</button>
                 </div>
             </div>
         </header>
-
         <nav class="app-nav">
             <div class="nav-container">
                 <div class="nav-menu" id="navMenu">
-                    <button class="nav-btn active" data-action="show-section" data-section="summarySection" aria-label="Podsumowanie">📊 Podsumowanie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="envelopeSection" aria-label="Koperta dnia">📩 Koperta dnia</button>
-                    <button class="nav-btn" data-action="show-section" data-section="sourcesSection" aria-label="Przychody">💰 Przychody</button>
-                    <button class="nav-btn" data-action="show-section" data-section="expensesSection" aria-label="Wydatki">💸 Wydatki</button>
-                    <button class="nav-btn" data-action="show-section" data-section="categoriesSection" aria-label="Kategorie">🏷️ Kategorie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="simulationSection" aria-label="Symulacja">🔮 Symulacja</button>
-                    <button class="nav-btn" data-action="show-section" data-section="analyticsSection" aria-label="Analityka">📈 Analityka</button>
-                    <button class="nav-btn" data-action="show-section" data-section="savingsGoalsSection" aria-label="Oszczędzanie">🎯 Oszczędzanie</button>
-                    <button class="nav-btn" data-action="show-section" data-section="settingsSection" aria-label="Ustawienia">⚙️ Ustawienia</button>
+                    <button class="nav-btn active" data-action="show-section" data-section="summarySection">📊 Podsumowanie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="envelopeSection">📩 Koperta dnia</button>
+                    <button class="nav-btn" data-action="show-section" data-section="sourcesSection">💰 Przychody</button>
+                    <button class="nav-btn" data-action="show-section" data-section="expensesSection">💸 Wydatki</button>
+                    <button class="nav-btn" data-action="show-section" data-section="categoriesSection">🏷️ Kategorie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="simulationSection">🔮 Symulacja</button>
+                    <button class="nav-btn" data-action="show-section" data-section="analyticsSection">📈 Analityka</button>
+                    <button class="nav-btn" data-action="show-section" data-section="savingsGoalsSection">🎯 Oszczędzanie</button>
+                    <button class="nav-btn" data-action="show-section" data-section="settingsSection">⚙️ Ustawienia</button>
                 </div>
             </div>
         </nav>
 
-        <div class="container">
-            <section id="summarySection" class="section active">
-                <div class="section-card">
-                    <h2>💰 Podsumowanie budżetu</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card beige">
-                            <div class="stat-label">Dostępne środki</div>
-                            <div class="stat-value"><span id="availableFunds">0.00</span><span class="stat-unit">zł</span></div>
-                            <div id="savingsInfo" style="display: none;"></div>
-                        </div>
-                    </div>
+        <div class="app-layout">
+            <!-- Backdrop dla mobile drawer -->
+            <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
-                    <h3>📅 Wydatki w okresach</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card danger">
-                            <div class="stat-label">Wydano dziś</div>
-                            <div class="stat-value"><span id="todayExpenses">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card danger">
-                            <div class="stat-label">Wydano w tym tygodniu</div>
-                            <div class="stat-value"><span id="weekExpenses">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card danger">
-                            <div class="stat-label">Wydano w tym miesiącu</div>
-                            <div class="stat-value"><span id="monthExpenses">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
+            <!-- ====== SIDEBAR ====== -->
+            <aside class="sidebar" id="appSidebar">
+                <div class="sidebar-brand">
+                    <div class="brand-mark" style="font-family:'Instrument Serif',serif;font-style:italic;font-size:22px;font-weight:400">K</div>
+                    <div>
+                        <div class="brand-name">Krezus</div>
                     </div>
-
-                    <h3>📊 Limity dzienne</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Limit dzienny (do <span id="currentLimitDate1">-</span>)</div>
-                            <div class="stat-value"><span id="currentLimit1">0.00</span><span class="stat-unit">zł/dzień</span></div>
-                            <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft1">0</span> dni</div>
-                            <div id="prognosis1" class="prognosis-text" style="display: none;"></div>
-                        </div>
-                        <div id="currentLimit2Section" class="stat-card" style="display: none;">
-                            <div class="stat-label">Limit dzienny (do <span id="currentLimitDate2">-</span>)</div>
-                            <div class="stat-value"><span id="currentLimit2">0.00</span><span class="stat-unit">zł/dzień</span></div>
-                            <div class="stat-label mt-10">Pozostało <span id="currentDaysLeft2">0</span> dni</div>
-                            <div id="prognosis2" class="prognosis-text" style="display: none;"></div>
-                        </div>
-                    </div>
-                    
-                    <h3>📊 Planowane transakcje</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card success">
-                            <div class="stat-label">Planowane przychody</div>
-                            <div class="stat-value"><span id="futureIncome">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card danger">
-                            <div class="stat-label">Planowane wydatki</div>
-                            <div class="stat-value"><span id="futureExpense">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                    </div>
-                    
-                    <h3>🎯 Dynamika wydatków</h3>
-                    <div id="dynamicsInfo" class="spending-dynamics"></div>
+                    <span class="brand-version" id="appVersion2"></span>
                 </div>
-            </section>
 
-            <section id="envelopeSection" class="section">
-                <div class="section-card">
-                    <h2>📩 Koperta dnia</h2>
-                    <div class="envelope-container">
-                        <div class="stat-label">Koperta dnia:</div>
-                        <div class="envelope-amount"><span id="envelopeAmount">0.00</span> zł</div>
-                        <div id="envelopePeriodInfo" style="margin-top: 8px; font-size: 0.9rem; opacity: 0.85;"></div>
-                        <div id="envelopeCalculationInfo" style="margin-top: 10px; margin-bottom: 15px;"></div>
-                        <div class="spending-gauge">
-                            <div id="spendingGauge" class="gauge-fill" style="width: 0%"></div>
+                <div class="nav-section-label">Budżet</div>
+                <button class="nav-item active" data-action="show-section" data-section="summarySection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h1v15h15v1H0V0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07z"/></svg>
+                    Podsumowanie
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="envelopeSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/></svg>
+                    Koperta dnia
+                    <span class="nav-badge" id="navBadgeEnvelope"></span>
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="expensesSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
+                    Wydatki
+                    <span class="nav-badge" id="navBadgeExpenses"></span>
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="sourcesSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1z"/></svg>
+                    Przychody
+                    <span class="nav-badge" id="navBadgeIncomes"></span>
+                </button>
+
+                <div class="nav-section-label">Narzędzia</div>
+                <button class="nav-item" data-action="show-section" data-section="categoriesSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2a1 1 0 0 1 1-1h4.586a1 1 0 0 1 .707.293l7 7a1 1 0 0 1 0 1.414l-4.586 4.586a1 1 0 0 1-1.414 0l-7-7A1 1 0 0 1 2 6.586V2zm3.5 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg>
+                    Kategorie
+                    <span class="nav-badge" id="navBadgeCategories"></span>
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="simulationSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M9.5 8a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+                    Symulacja
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="analyticsSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 0h1v15h15v1H0V0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07z"/></svg>
+                    Analityka
+                </button>
+                <button class="nav-item" data-action="show-section" data-section="savingsGoalsSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                    Oszczędności
+                </button>
+
+                <div class="nav-section-label">System</div>
+                <button class="nav-item" data-action="show-section" data-section="settingsSection">
+                    <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.47l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/><path d="M8 5.754a2.246 2.246 0 1 0 0 4.492 2.246 2.246 0 0 0 0-4.492z"/></svg>
+                    Ustawienia
+                </button>
+
+                <div class="sidebar-footer">
+                    <div class="sidebar-avatar" id="sidebarAvatar"></div>
+                    <div class="sidebar-user-meta">
+                        <div class="sidebar-user-name" id="sidebarUserName"></div>
+                        <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+                    </div>
+                    <button class="btn-icon" data-action="handle-logout" title="Wyloguj">
+                        <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/></svg>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- ====== MAIN AREA ====== -->
+            <div class="main-area">
+                <!-- TOPBAR -->
+                <div class="topbar" id="appTopbar">
+                    <button class="btn ghost icon-only mobile-menu-btn" id="mobileMenuBtn" data-action="open-mobile-menu" aria-label="Otwórz menu" title="Menu" data-icon="Menu"></button>
+                    <div class="topbar-title">
+                        <span class="topbar-crumb" id="topbarCrumb">Budżet</span>
+                        <span class="topbar-sep">/</span>
+                        <span class="topbar-heading" id="topbarHeading">Podsumowanie</span>
+                    </div>
+                    <div class="topbar-actions">
+                        <div class="presence-chip" id="presenceChip" style="display:none">
+                            <span class="presence-dot"></span>
+                            <span id="presenceNames"></span>
                         </div>
-                        <div class="envelope-details">
-                            <div><strong>Wydano:</strong> <span id="envelopeSpent">0.00</span> zł</div>
-                            <div><strong>Pozostało:</strong> <span id="envelopeRemaining">0.00</span> zł</div>
-                        </div>
-                        <div id="envelopeOverLimit" style="display: none;"></div>
-                        <div class="envelope-median"><strong>Mediana wydatków (30 dni):</strong> <span id="envelopeMedian">0.00</span> zł</div>
+                        <button class="btn accent sm" data-action="open-add-expense-modal" data-icon="Plus">
+                            Wydatek
+                        </button>
+                        <button class="btn ghost icon-only" data-action="open-profile" title="Profil" data-icon="Bell"></button>
+                        <button class="btn sm" data-action="handle-logout" data-icon="Logout">
+                            <span class="logout-text">Wyloguj</span>
+                        </button>
                     </div>
                 </div>
-            </section>
 
-            <section id="simulationSection" class="section">
-                <div class="section-card">
-                    <h2>🔮 Symulacja wydatku</h2>
-                    <p style="margin-bottom: 15px; opacity: 0.8;">
-                        Sprawdź czy w danej dacie bezpiecznie jest dokonać planowanego wydatku. Algorytm analizuje Twój realny budżet (środki, które fizycznie posiadasz), planowane zobowiązania, dane historyczne i Twoje przyzwyczajenia.
-                    </p>
+                <!-- ====== CONTENT ====== -->
+                <div class="container">
+
+                    <!-- ==================== PODSUMOWANIE ==================== -->
+                    <section id="summarySection" class="section active">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+
+                            <!-- Hero + Envelope mini -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+
+                                <!-- Hero: Dostępne środki -->
+                                <div class="card" style="padding:24px;position:relative;overflow:hidden">
+                                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+                                        <div style="min-width:0;flex:1">
+                                            <div style="font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:8px">Dostępne środki</div>
+                                            <div class="num" style="font-size:clamp(28px,5.5vw,44px);font-weight:500;letter-spacing:-0.03em;line-height:1.05;white-space:nowrap">
+                                                <span id="availableFunds">0,00</span><span style="font-size:0.4em;color:var(--ink-3);font-weight:400;margin-left:4px">zł</span>
+                                            </div>
+                                            <div id="savingsInfo" style="display:none;margin-top:10px"></div>
+                                        </div>
+                                        <div class="seg" id="heroSparklineSeg" style="flex-shrink:0">
+                                            <button aria-pressed="true" data-days="7">7d</button>
+                                            <button aria-pressed="false" data-days="30">30d</button>
+                                            <button aria-pressed="false" data-days="90">90d</button>
+                                        </div>
+                                    </div>
+                                    <div id="spendingSparklineWrap" style="margin-top:16px;height:48px;overflow:hidden">
+                                        <svg id="spendingSparklineSvg" style="width:100%;height:100%;display:block"></svg>
+                                    </div>
+                                    <div id="heroSparklineMeta" style="margin-top:10px;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-2)"></div>
+                                </div>
+
+                                <!-- Envelope mini -->
+                                <div class="card" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+                                    <div style="position:relative;flex-shrink:0">
+                                        <div class="gauge-ring-wrap">
+                                            <svg id="envelopeGaugeSvg" viewBox="0 0 160 160" width="160" height="160">
+                                                <circle class="gauge-track" cx="80" cy="80" r="66" fill="none" stroke-width="14" transform="rotate(-90 80 80)"/>
+                                                <circle class="gauge-fill-svg" id="envelopeGaugeFillEl" cx="80" cy="80" r="66" fill="none" stroke-width="14" stroke-linecap="round" transform="rotate(-90 80 80)" style="stroke-dasharray:0 414.69"/>
+                                            </svg>
+                                            <div class="gauge-ring-center">
+                                                <div style="text-align:center">
+                                                    <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Koperta</div>
+                                                    <div class="num" id="envelopeGaugeRemaining" style="font-size:20px;font-weight:500;letter-spacing:-0.02em">0,00</div>
+                                                    <div style="font-size:11px;color:var(--ink-3)">zł</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="flex:1;min-width:130px">
+                                        <div style="font-size:13px;font-weight:500;margin-bottom:10px">Koperta dnia</div>
+                                        <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+                                            <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Budżet</span><span class="num"><span id="envelopeAmount">0,00</span> zł</span></div>
+                                            <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Wydano</span><span class="num"><span id="envelopeSpent">0,00</span> zł</span></div>
+                                            <div style="display:flex;justify-content:space-between"><span style="color:var(--ink-3)">Mediana 30d</span><span class="num"><span id="envelopeMedian">0,00</span> zł</span></div>
+                                        </div>
+                                        <div style="margin-top:10px" class="progress">
+                                            <div id="spendingGauge" style="height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease;width:0%"></div>
+                                        </div>
+                                        <div id="envelopePeriodInfo" style="margin-top:6px;font-size:11px;color:var(--ink-3)"></div>
+                                        <div id="envelopeCalculationInfo"></div>
+                                        <div id="envelopeOverLimit" style="display:none"></div>
+                                        <button class="btn btn-ghost btn-sm" data-action="show-section" data-section="envelopeSection" style="margin-top:10px;width:100%;font-size:12px">Szczegóły koperty →</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Wydatki w okresach -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Wydatki w okresach</h3>
+                                    <span class="card-sub">Aktywny okres budżetowy</span>
+                                </div>
+                                <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))">
+                                    <div class="stat">
+                                        <div class="label" id="todayExpensesLabel">Dziś</div>
+                                        <div class="value"><span id="todayExpenses">0,00</span><span class="unit">zł</span></div>
+                                        <div id="todayExpensesDelta" class="delta"></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label" id="weekExpensesLabel">Ten tydzień</div>
+                                        <div class="value"><span id="weekExpenses">0,00</span><span class="unit">zł</span></div>
+                                        <div id="weekExpensesDelta" class="delta"></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label" id="monthExpensesLabel">Ten miesiąc</div>
+                                        <div class="value"><span id="monthExpenses">0,00</span><span class="unit">zł</span></div>
+                                        <div id="monthExpensesDelta" class="delta"></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Śr. dzienna (mies.)</div>
+                                        <div class="value"><span id="dailyAvgExpenses">0,00</span><span class="unit">zł</span></div>
+                                        <div class="delta" style="color:var(--ink-3)">z ostatnich 30 dni</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Limity dzienne -->
+                            <div>
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;gap:8px">
+                                    <div>
+                                        <h3 style="font-size:16px;margin:0 0 2px">Limity dzienne</h3>
+                                        <div style="font-size:12px;color:var(--ink-3)">Limit „realny" zakłada brak wpływu. „Planowany" zakłada że wpływ dotrze. Każdy kafel = jeden planowany przychód.</div>
+                                    </div>
+                                    <span id="limitsCalcDate" style="font-size:12px;color:var(--ink-3)"></span>
+                                </div>
+                                <div id="limitsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:0">
+                                    <!-- renderDynamicLimits populates this -->
+                                </div>
+                            </div>
+
+                            <!-- Dynamika wydatków + Nadchodzące transakcje -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Dynamika wydatków</h3>
+                                    </div>
+                                    <div id="dynamicsInfo"></div>
+                                </div>
+                                <div class="card flush">
+                                    <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
+                                        <h3 style="flex:1;font-size:14px;font-weight:600;margin:0">Nadchodzące transakcje</h3>
+                                        <span class="badge" id="upcomingCount" style="display:none">0</span>
+                                    </div>
+                                    <div id="upcomingTransactionsList">
+                                        <div style="padding:24px 20px;text-align:center;color:var(--ink-3);font-size:13px">Brak zaplanowanych transakcji</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== KOPERTA DNIA ==================== -->
+                    <section id="envelopeSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+
+                            <!-- Hero row -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;align-items:stretch">
+
+                                <!-- Karta A: Ring gauge -->
+                                <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px">
+                                    <div class="gauge-ring-wrap">
+                                        <svg id="envelopeGaugeSvgFull" viewBox="0 0 200 200" width="200" height="200">
+                                            <circle class="gauge-track" cx="100" cy="100" r="86" fill="none" stroke-width="14" transform="rotate(-90 100 100)"/>
+                                            <circle class="gauge-fill-svg" id="envelopeGaugeFillFull" cx="100" cy="100" r="86" fill="none" stroke-width="14" stroke-linecap="round" transform="rotate(-90 100 100)" style="stroke-dasharray:0 540.35"/>
+                                        </svg>
+                                        <div class="gauge-ring-center">
+                                            <div style="text-align:center">
+                                                <div class="text-mute text-sm" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pozostało</div>
+                                                <div class="num" id="envelopeGaugeRemainingFull" style="font-size:26px;font-weight:500;letter-spacing:-0.02em">0,00</div>
+                                                <div class="text-mute text-sm">zł</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:center">
+                                        <div class="text-mute text-sm" style="margin-bottom:4px">Wydano dziś</div>
+                                        <div class="num" style="font-size:18px;font-weight:500">
+                                            <span id="envelopeSpentFull">0,00</span>
+                                            <span class="text-mute" style="font-size:13px"> z </span>
+                                            <span id="envelopeAmountFull">0,00</span>
+                                            <span class="text-mute" style="font-size:13px"> zł</span>
+                                        </div>
+                                    </div>
+                                    <div style="width:100%" class="progress"><div id="spendingGaugeFull" style="height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease;width:0%"></div></div>
+                                    <div id="envelopePeriodInfoFull" class="text-mute text-sm" style="text-align:center"></div>
+                                </div>
+
+                                <!-- Karta B: Info + metrics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Jak działa koperta dnia</h3>
+                                        <span class="card-sub">Algorytm adaptacyjny</span>
+                                    </div>
+                                    <p style="font-size:13px;color:var(--ink-2);margin:0 0 16px;line-height:1.6">
+                                        Koperta dnia to inteligentnie wyliczona kwota, jaką możesz wydać bez naruszenia długoterminowego planu. Bazuje na medianie wydatków z ostatnich 30 dni oraz dostępnym budżecie.
+                                    </p>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                        <div class="metric">
+                                            <div class="metric-label">Mediana 30 dni</div>
+                                            <div class="metric-value"><span id="envelopeMedianFull">0,00</span> <span class="text-mute text-sm">zł</span></div>
+                                        </div>
+                                        <div class="metric">
+                                            <div class="metric-label">Limit dzienny</div>
+                                            <div class="metric-value"><span id="envelopeLimitFull">0,00</span> <span class="text-mute text-sm">zł</span></div>
+                                        </div>
+                                        <div class="metric success">
+                                            <div class="metric-label">Pozostało dziś</div>
+                                            <div class="metric-value"><span id="envelopeRemaining">0,00</span> <span class="text-mute text-sm">zł</span></div>
+                                        </div>
+                                        <div class="metric">
+                                            <div class="metric-label">Dni do końca</div>
+                                            <div class="metric-value"><span id="envelopeDaysLeft">—</span></div>
+                                        </div>
+                                    </div>
+                                    <hr class="divider">
+                                    <div class="card-header" style="margin-bottom:12px">
+                                        <h3>Dziś o tej porze</h3>
+                                        <span class="card-sub">Sugerowane tempo wydatków</span>
+                                    </div>
+                                    <div id="envelopeDayProgress" style="display:flex;align-items:center;gap:12px"></div>
+                                    <div id="envelopeDayText" class="text-mute text-sm" style="margin-top:10px;line-height:1.6"></div>
+                                    <div id="envelopeCalculationInfoFull" style="margin-top:12px;font-size:12px;color:var(--ink-3)"></div>
+                                </div>
+                            </div>
+
+                            <!-- 14-day chart -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Wydatki vs koperta — ostatnie 14 dni</h3>
+                                    <span class="card-sub">Przekroczenia na czerwono</span>
+                                </div>
+                                <div id="envelopeChart14"></div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <!-- ==================== WYDATKI ==================== -->
+                    <section id="expensesSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+                            <!-- Stats -->
+                            <div class="card">
+                                <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                                    <div class="stat">
+                                        <div class="label">Wydatki w tym miesiącu</div>
+                                        <div class="value"><span id="expensesMonthTotal">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Planowane wydatki</div>
+                                        <div class="value"><span id="expensesPlannedTotal">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Łącznie transakcji</div>
+                                        <div class="value"><span id="expensesCount">0</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Table card -->
+                            <div class="card flush">
+                                <!-- Toolbar -->
+                                <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                    <div class="seg" id="expenseFilterSeg">
+                                        <button class="active" data-action="filter-expenses" data-filter="all">Wszystkie</button>
+                                        <button data-action="filter-expenses" data-filter="normal">Zrealizowane</button>
+                                        <button data-action="filter-expenses" data-filter="planned">Planowane</button>
+                                    </div>
+                                    <div style="position:relative;flex:1;max-width:280px">
+                                        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-3)">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                                        </span>
+                                        <input class="input" id="expenseSearch" placeholder="Szukaj…" style="padding-left:32px">
+                                    </div>
+                                    <div style="margin-left:auto;display:flex;gap:8px">
+                                        <button class="btn btn-accent btn-sm" data-action="open-add-expense-modal">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                                            Dodaj wydatek
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Table -->
+                                <div style="overflow-x:auto">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Kategoria</th>
+                                                <th>Opis</th>
+                                                <th>Użytkownik</th>
+                                                <th>Typ</th>
+                                                <th class="amount">Kwota</th>
+                                                <th class="actions"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="expensesTableBody">
+                                            <tr><td colspan="7" class="empty-state">Brak wydatków do wyświetlenia</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Pagination -->
+                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center">
+                                    <div id="expensesPagination" class="pagination"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== PRZYCHODY ==================== -->
+                    <section id="sourcesSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+                            <!-- Stats -->
+                            <div class="card">
+                                <div class="stat-grid" style="margin-bottom:0;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+                                    <div class="stat">
+                                        <div class="label">Przychody w tym miesiącu</div>
+                                        <div class="value"><span id="incomesMonthTotal">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Planowane przychody</div>
+                                        <div class="value"><span id="incomesPlannedTotal">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Łącznie transakcji</div>
+                                        <div class="value"><span id="incomesCount">0</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Table card -->
+                            <div class="card flush">
+                                <!-- Toolbar -->
+                                <div style="padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                    <div class="seg" id="incomeFilterSeg">
+                                        <button class="active" data-action="filter-incomes" data-filter="all">Wszystkie</button>
+                                        <button data-action="filter-incomes" data-filter="normal">Zrealizowane</button>
+                                        <button data-action="filter-incomes" data-filter="planned">Planowane</button>
+                                    </div>
+                                    <div style="position:relative;flex:1;max-width:280px">
+                                        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--ink-3)">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg>
+                                        </span>
+                                        <input class="input" id="incomeSearch" placeholder="Szukaj…" style="padding-left:32px">
+                                    </div>
+                                    <div style="margin-left:auto;display:flex;gap:8px">
+                                        <button class="btn btn-sm" data-action="open-correction-modal">
+                                            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12zm.5-8.5a.5.5 0 0 0-1 0V7H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V8H10a.5.5 0 0 0 0-1H8.5V5.5z"/></svg>
+                                            Korekta budżetu
+                                        </button>
+                                        <button class="btn btn-accent btn-sm" data-action="open-add-income-modal">
+                                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
+                                            Dodaj przychód
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Table -->
+                                <div style="overflow-x:auto">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Źródło</th>
+                                                <th>Użytkownik</th>
+                                                <th>Typ</th>
+                                                <th class="amount">Kwota</th>
+                                                <th class="actions"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="sourcesTableBody">
+                                            <tr><td colspan="6" class="empty-state">Brak przychodów</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Pagination -->
+                                <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:center">
+                                    <div id="incomesPagination" class="pagination"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== KATEGORIE ==================== -->
+                    <section id="categoriesSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+                            <div class="row between" style="flex-wrap:wrap;gap:12px;align-items:flex-start">
+                                <p class="lead" style="margin:0">Organizuj wydatki według własnych kategorii. Statystyki za ostatnie 30 dni.</p>
+                                <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+                                    <input type="text" id="newCategoryName" placeholder="Nazwa kategorii" class="input" style="width:180px">
+                                    <button class="btn accent sm" data-action="add-category" data-icon="Plus">Nowa kategoria</button>
+                                </div>
+                            </div>
+                            <!-- Category list rendered by JS -->
+                            <div id="categoriesList"></div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== SYMULACJA ==================== -->
+                    <section id="simulationSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+                            <p class="lead">Sprawdź czy w danej dacie bezpiecznie jest dokonać planowanego wydatku. Algorytm uwzględnia środki, zobowiązania, historię i twoje przyzwyczajenia.</p>
+
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+                                <!-- Parameters card -->
+                                <div class="card">
+                                    <div class="card-header"><h3>Parametry symulacji</h3></div>
+                                    <div class="col" style="gap:14px">
+                                        <div class="field">
+                                            <label>Data wydatku</label>
+                                            <input type="date" id="simulationDate" class="input">
+                                        </div>
+                                        <div class="field">
+                                            <label>Kwota (zł)</label>
+                                            <input type="number" id="simulationAmount" step="0.01" min="0.01" placeholder="0,00" class="input mono lg">
+                                            <span class="hint">Wprowadź planowaną kwotę wydatku</span>
+                                        </div>
+                                        <div class="field">
+                                            <label>Kategoria (opcjonalnie)</label>
+                                            <select id="simulationCategory" class="select">
+                                                <option value="">Bez kategorii</option>
+                                            </select>
+                                        </div>
+                                        <button class="btn accent" data-action="simulate-expense" data-icon="Sparkles">Przeanalizuj</button>
+                                    </div>
+                                </div>
+
+                                <!-- Result card -->
+                                <div class="card">
+                                    <div id="simulationResult">
+                                        <div class="empty-state">
+                                            <h3>Brak wyników</h3>
+                                            <p class="hint">Wprowadź dane i kliknij Przeanalizuj</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== ANALITYKA ==================== -->
+                    <section id="analyticsSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+                            <!-- Period selector -->
+                            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+                                <p style="margin:0;font-size:14px;color:var(--ink-2)">Analiza wydatków i przychodów w wybranym okresie. Porównanie z analogicznym poprzednim okresem.</p>
+                                <div class="seg" id="analyticsPeriodSeg">
+                                    <button aria-pressed="false" data-action="select-period" data-period="7">7d</button>
+                                    <button aria-pressed="false" data-action="select-period" data-period="14">14d</button>
+                                    <button aria-pressed="true" data-action="select-period" data-period="30">30d</button>
+                                    <button aria-pressed="false" data-action="select-period" data-period="90">90d</button>
+                                    <button aria-pressed="false" data-action="select-period" data-period="all">Wszystko</button>
+                                    <button aria-pressed="false" data-action="select-period" data-period="custom">Własny</button>
+                                </div>
+                            </div>
+
+                            <!-- Custom period -->
+                            <div id="customPeriodInputs" class="custom-period" style="display:none">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Data od</label>
+                                        <input type="date" id="analyticsDateFrom">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Data do</label>
+                                        <input type="date" id="analyticsDateTo">
+                                    </div>
+                                    <div class="form-group" style="display:flex;align-items:flex-end">
+                                        <button class="btn btn-primary" data-action="apply-custom-period">Zastosuj</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stats -->
+                            <div class="card">
+                                <div class="stat-grid" style="margin-bottom:0">
+                                    <div class="stat">
+                                        <div class="label">Wydatki w okresie</div>
+                                        <div class="value" style="color:var(--danger)"><span id="periodExpenses">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Przychody w okresie</div>
+                                        <div class="value" style="color:var(--success)"><span id="periodIncomes">0,00</span><span class="unit">zł</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Liczba wydatków</div>
+                                        <div class="value"><span id="periodExpensesCount">0</span></div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="label">Liczba przychodów</div>
+                                        <div class="value"><span id="periodIncomesCount">0</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Comparison card -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Porównanie z poprzednim okresem</h3>
+                                    <span class="card-sub" id="analyticsPrevPeriodLabel"></span>
+                                </div>
+                                <div id="analyticsComparison" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px"></div>
+                                <!-- hidden spans kept for JS compatibility -->
+                                <span id="expenseChange" style="display:none"></span>
+                                <span id="incomeChange" style="display:none"></span>
+                                <span id="expenseCountChange" style="display:none"></span>
+                                <span id="incomeCountChange" style="display:none"></span>
+                            </div>
+
+                            <!-- Breakdown cards -->
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px">
+                                <div class="card">
+                                    <div class="card-hd"><h3>Udział kategorii</h3><span class="sub">Top 8</span></div>
+                                    <div id="mostExpensiveCategory"></div>
+                                </div>
+                                <div class="card">
+                                    <div class="card-hd"><h3>Wydatki użytkowników</h3></div>
+                                    <div id="userExpensesBreakdown"></div>
+                                </div>
+                            </div>
+
+                            <!-- Chart card (legacy canvas, hidden) -->
+                            <div class="card" style="display:none">
+                                <div class="card-hd"><h3>Wykres kategorii</h3></div>
+                                <div class="chart-container">
+                                    <canvas id="categoriesChart" width="800" height="400"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Trend dzienny -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Trend dzienny</h3>
+                                    <span class="card-sub">Wydatki w ostatnich 30 dniach</span>
+                                </div>
+                                <div id="analyticsDailyChart"></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== OSZCZĘDNOŚCI ==================== -->
+                    <section id="savingsGoalsSection" class="section">
+                        <div id="savingsGoalsContent">
+                            <!-- Rendered by renderSavingsGoals() -->
+                            <div style="text-align:center;padding:60px 20px;color:var(--ink-3)">
+                                <div style="font-size:14px;color:var(--ink-2);margin-bottom:4px">Ładowanie celów...</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== USTAWIENIA ==================== -->
+                    <section id="settingsSection" class="section">
+                        <div style="display:flex;flex-direction:column;gap:20px">
+
+                            <!-- Profile card -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Profil i bezpieczeństwo</h3>
+                                    <span class="card-sub">Zarządzaj swoim kontem</span>
+                                </div>
+                                <div class="form-row" style="margin-bottom:16px">
+                                    <div class="field">
+                                        <label>Wyświetlana nazwa</label>
+                                        <input type="text" id="profileDisplayName" class="input" placeholder="Twoja nazwa">
+                                        <span class="hint">Widoczna dla innych użytkowników budżetu</span>
+                                    </div>
+                                    <div class="field">
+                                        <label>Adres email</label>
+                                        <input type="email" id="profileEmail" class="input" disabled>
+                                        <span class="hint">Email nie może zostać zmieniony</span>
+                                    </div>
+                                </div>
+                                <div class="field" style="margin-bottom:16px">
+                                    <label>Hasło</label>
+                                    <div style="display:flex;gap:8px;align-items:center">
+                                        <input type="password" class="input" value="••••••••" disabled style="flex:1">
+                                        <button class="btn sm" data-action="open-change-password">
+                                            <span data-icon="Lock"></span>
+                                            Zmień hasło
+                                        </button>
+                                    </div>
+                                </div>
+                                <button class="btn accent" data-action="save-profile-name">Zapisz profil</button>
+                            </div>
+
+                            <!-- Budget settings -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Ustawienia budżetu</h3>
+                                    <span class="card-sub">Wpływają na obliczenia limitów</span>
+                                </div>
+                                <form id="settingsForm">
+                                    <div class="form-row">
+                                        <div class="field">
+                                            <label>Okres dla Koperty Dnia</label>
+                                            <select id="settingsEnvelopePeriod" class="select" name="envelopePeriod">
+                                                <option value="0">Najkrótszy okres (domyślnie)</option>
+                                            </select>
+                                            <span class="hint">Algorytm dostosuje kopertę do wybranego horyzontu</span>
+                                        </div>
+                                        <div class="field">
+                                            <label>Okres dla Dynamiki Wydatków</label>
+                                            <select id="settingsDynamicsPeriod" class="select" name="dynamicsPeriod">
+                                                <option value="0">Najkrótszy okres (domyślnie)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn accent" style="margin-top:4px">Zapisz ustawienia</button>
+                                </form>
+                            </div>
+
+                            <!-- Export -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Eksport danych</h3>
+                                    <span class="card-sub">Format kompatybilny z LLM</span>
+                                </div>
+                                <p style="font-size:13px;color:var(--ink-2);margin:0 0 14px;line-height:1.5">
+                                    Pobierz kompletne dane budżetowe (przychody, wydatki, kategorie, limity) w formacie gotowym do analizy przez ChatGPT lub Claude.
+                                </p>
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                    <button class="btn" data-action="export-budget-data" data-format="json">
+                                        <span data-icon="Download"></span>
+                                        JSON (technical)
+                                    </button>
+                                    <button class="btn" data-action="export-budget-data" data-format="txt">
+                                        <span data-icon="Download"></span>
+                                        TXT (czytelny dla LLM)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Logs -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Logi systemu</h3>
+                                    <span class="card-sub">Ostatnie 50 wpisów</span>
+                                </div>
+                                <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+                                    <div class="metric">
+                                        <div class="metric-label">Rozmiar</div>
+                                        <div class="metric-value num"><span id="logsSize">0 KB</span></div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-label">Wpisy</div>
+                                        <div class="metric-value num"><span id="logsCount">0</span></div>
+                                    </div>
+                                </div>
+                                <div id="logsList" class="logs-list" style="max-height:300px;overflow-y:auto"></div>
+                                <button class="btn danger sm" data-action="clear-logs" style="margin-top:14px">
+                                    <span data-icon="Trash"></span>
+                                    Wyczyść logi
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                </div><!-- /.container -->
+            </div><!-- /.main-area -->
+        </div><!-- /.app-layout -->
+    </div><!-- /#appSection -->
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Add Expense Modal -->
+    <div id="addExpenseModal" class="modal">
+        <div class="modal-content" style="max-width:640px">
+            <div class="modal-header">
+                <h3 id="expenseFormTitle">Nowy wydatek</h3>
+                <button class="modal-close" onclick="closeModal('addExpenseModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="expenseForm">
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Data wydatku</label>
-                            <input type="date" id="simulationDate">
+                            <label>Kwota (zł)</label>
+                            <input type="number" name="expenseAmount" step="0.01" required class="num" style="font-size:15px">
                         </div>
+                        <div class="form-group">
+                            <label>Typ transakcji</label>
+                            <select id="expenseType" name="expenseType" required>
+                                <option value="normal">Zwykły</option>
+                                <option value="planned">Planowany</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row" id="expenseDateTimeRow">
+                        <div class="form-group">
+                            <label>Data</label>
+                            <input type="date" id="expenseDate" name="expenseDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Godzina (opcjonalnie)</label>
+                            <input type="time" id="expenseTime" name="expenseTime">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Użytkownik</label>
+                            <select id="expenseUser" name="expenseUser" required>
+                                <option value="">Wybierz użytkownika</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kategoria</label>
+                            <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off" placeholder="Wpisz lub wybierz kategorię">
+                            <div id="categoryButtons" class="top-categories-buttons"></div>
+                            <div id="categorySuggestions" class="suggestions-container"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Opis</label>
+                        <input type="text" id="expenseDescription" name="expenseDescription" required autocomplete="off" placeholder="np. Biedronka, zakupy tygodniowe">
+                        <div id="descriptionButtons" class="top-categories-buttons"></div>
+                        <div id="descriptionSuggestions" class="suggestions-container"></div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn" onclick="closeModal('addExpenseModal')">Anuluj</button>
+                        <button type="submit" class="btn btn-accent">Zapisz wydatek</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Income Modal -->
+    <div id="addIncomeModal" class="modal">
+        <div class="modal-content" style="max-width:560px">
+            <div class="modal-header">
+                <h3 id="incomeFormTitle">Nowy przychód</h3>
+                <button class="modal-close" onclick="closeModal('addIncomeModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="incomeForm">
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Kwota (zł)</label>
-                            <input type="number" id="simulationAmount" step="0.01" min="0.01" placeholder="np. 500.00">
-                        </div>
-                        <div class="form-group" style="display: flex; align-items: flex-end;">
-                            <button class="btn btn-primary" data-action="simulate-expense">Analizuj</button>
-                        </div>
-                    </div>
-                    <div id="simulationResult"></div>
-                </div>
-            </section>
-
-            <section id="sourcesSection" class="section">
-                <div class="section-card">
-                    <h2 id="incomeFormTitle">💰 Dodaj przychód</h2>
-                    <form id="incomeForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kwota (zł)</label>
-                                <input type="number" name="incomeAmount" step="0.01" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Typ transakcji</label>
-                                <select id="incomeType" name="incomeType" required>
-                                    <option value="normal">Zwykły</option>
-                                    <option value="planned">Planowany</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Data</label>
-                                <input type="date" id="incomeDate" name="incomeDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Godzina (opcjonalnie)</label>
-                                <input type="time" id="incomeTime" name="incomeTime">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Użytkownik</label>
-                                <select id="incomeUser" name="incomeUser" required>
-                                    <option value="">Wybierz użytkownika</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Źródło</label>
-                                <input type="text" id="incomeSource" name="incomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
-                                <div id="sourceButtons" class="top-sources-buttons"></div>
-                                <div id="sourceSuggestions" class="suggestions-container"></div>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-success mt-20">Zapisz przychód</button>
-                    </form>
-                </div>
-                
-                <div class="section-card">
-                    <h2>🔧 Korekta posiadanych środków</h2>
-                    <p style="margin-bottom: 15px; color: var(--gray);">
-                        Aktualne dostępne środki: <strong><span id="currentFundsDisplay">0.00</span> zł</strong>
-                    </p>
-                    <form id="correctionForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Nowa kwota całkowitych środków (zł)</label>
-                                <input type="number" name="correctionAmount" step="0.01" required placeholder="np. 5000.00">
-                                <small class="text-muted">Wprowadź jaką kwotę środków CHCESZ mieć po korekcie</small>
-                            </div>
-                            <div class="form-group">
-                                <label>Powód korekty</label>
-                                <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu, Korekta bankowa">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-warning mt-20">Wprowadź korektę</button>
-                    </form>
-                </div>
-                
-                <div class="section-card">
-                    <h3>📋 Historia przychodów</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Data</th><th>Godzina</th><th>Kwota</th><th>Użytkownik</th><th>Źródło</th><th>Typ</th><th>Akcje</th>
-                                </tr>
-                            </thead>
-                            <tbody id="sourcesTableBody">
-                                <tr><td colspan="7" class="empty-state">Brak przychodów</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="pagination-container"><div id="incomesPagination"></div></div>
-                </div>
-            </section>
-
-            <section id="expensesSection" class="section">
-                <div class="section-card">
-                    <h2 id="expenseFormTitle">💸 Dodaj wydatek</h2>
-                    <form id="expenseForm">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kwota (zł)</label>
-                                <input type="number" name="expenseAmount" step="0.01" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Typ transakcji</label>
-                                <select id="expenseType" name="expenseType" required>
-                                    <option value="normal">Zwykły</option>
-                                    <option value="planned">Planowany</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Data</label>
-                                <input type="date" id="expenseDate" name="expenseDate" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Godzina (opcjonalnie)</label>
-                                <input type="time" id="expenseTime" name="expenseTime">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Użytkownik</label>
-                                <select id="expenseUser" name="expenseUser" required>
-                                    <option value="">Wybierz użytkownika</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Kategoria</label>
-                                <input type="text" id="expenseCategory" name="expenseCategory" required autocomplete="off">
-                                <div id="categoryButtons" class="top-categories-buttons"></div>
-                                <div id="categorySuggestions" class="suggestions-container"></div>
-                            </div>
+                            <input type="number" name="incomeAmount" step="0.01" required class="num" style="font-size:15px">
                         </div>
                         <div class="form-group">
-                            <label>Opis</label>
-                            <input type="text" id="expenseDescription" name="expenseDescription" required autocomplete="off">
-                            <div id="descriptionButtons" class="top-categories-buttons"></div>
-                            <div id="descriptionSuggestions" class="suggestions-container"></div>
-                        </div>
-                        <button type="submit" class="btn btn-primary mt-20">Zapisz wydatek</button>
-                    </form>
-                </div>
-                <div class="section-card">
-                    <h3>📋 Historia wydatków</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Data</th><th>Godzina</th><th>Kwota</th><th>Użytkownik</th><th>Kategoria</th><th>Opis</th><th>Typ</th><th>Akcje</th>
-                                </tr>
-                            </thead>
-                            <tbody id="expensesTableBody">
-                                <tr><td colspan="8" class="empty-state">Brak wydatków</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="pagination-container"><div id="expensesPagination"></div></div>
-                </div>
-            </section>
-
-            <section id="categoriesSection" class="section">
-                <div class="section-card">
-                    <h2>🏷️ Zarządzaj kategoriami</h2>
-                    <div class="form-group">
-                        <label>Nowa kategoria</label>
-                        <div style="display: flex; gap: 10px;">
-                            <input type="text" id="newCategoryName" placeholder="Nazwa kategorii" style="flex: 1;">
-                            <button class="btn btn-success" data-action="add-category">Dodaj</button>
-                        </div>
-                    </div>
-                    <div class="mt-20">
-                        <h3>📋 Lista kategorii</h3>
-                        <div id="categoriesList"></div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="analyticsSection" class="section">
-                <div class="section-card">
-                    <h2>📈 Analiza wydatków</h2>
-                    <div class="analytics-controls">
-                        <div class="form-group">
-                            <label>Wybierz okres</label>
-                            <div class="period-buttons">
-                                <button class="period-btn active" data-action="select-period" data-period="all">📊 Wszystko</button>
-                                <button class="period-btn" data-action="select-period" data-period="7">7 dni</button>
-                                <button class="period-btn" data-action="select-period" data-period="14">14 dni</button>
-                                <button class="period-btn" data-action="select-period" data-period="30">30 dni</button>
-                                <button class="period-btn" data-action="select-period" data-period="90">90 dni</button>
-                                <button class="period-btn" data-action="select-period" data-period="custom">Własny</button>
-                            </div>
-                        </div>
-                        <div id="customPeriodInputs" class="custom-period" style="display: none;">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Data od</label>
-                                    <input type="date" id="analyticsDateFrom">
-                                </div>
-                                <div class="form-group">
-                                    <label>Data do</label>
-                                    <input type="date" id="analyticsDateTo">
-                                </div>
-                                <div class="form-group" style="display: flex; align-items: flex-end;">
-                                    <button class="btn btn-primary" data-action="apply-custom-period">Zastosuj</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <h3>📊 Podsumowanie okresu</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card danger">
-                            <div class="stat-label">Wydatki w okresie</div>
-                            <div class="stat-value"><span id="periodExpenses">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card success">
-                            <div class="stat-label">Przychody w okresie</div>
-                            <div class="stat-value"><span id="periodIncomes">0.00</span><span class="stat-unit">zł</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Liczba wydatków</div>
-                            <div class="stat-value"><span id="periodExpensesCount">0</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Liczba przychodów</div>
-                            <div class="stat-value"><span id="periodIncomesCount">0</span></div>
-                        </div>
-                    </div>
-                    <h3>🔄 Porównanie z poprzednim okresem</h3>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-label">Zmiana wydatków</div>
-                            <div class="stat-value stat-value-white"><span id="expenseChange">0.0%</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Zmiana przychodów</div>
-                            <div class="stat-value stat-value-white"><span id="incomeChange">0.0%</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Zmiana liczby wydatków</div>
-                            <div class="stat-value stat-value-white"><span id="expenseCountChange">0.0%</span></div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Zmiana liczby przychodów</div>
-                            <div class="stat-value stat-value-white"><span id="incomeCountChange">0.0%</span></div>
-                        </div>
-                    </div>
-                    <h3>👥 Wydatki użytkowników</h3>
-                    <div id="userExpensesBreakdown"></div>
-                    <h3>🏆 Top 3 najkosztowniejszych kategorii</h3>
-                    <div id="mostExpensiveCategory"></div>
-                    <h3>📊 Udział kategorii w wydatkach</h3>
-                    <div class="chart-container">
-                        <canvas id="categoriesChart" width="800" height="400"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <section id="savingsGoalsSection" class="section">
-                <div class="section-card">
-                    <h2>🎯 Oszczednosci</h2>
-                    <p style="margin-bottom: 20px; opacity: 0.8;">Zdefiniuj kwote oszczednosci, ktora zostanie wylaczona z budzetu ogolnego. Ta kwota nie bedzie wliczana do dostepnych srodkow.</p>
-
-                    <form id="savingsAmountForm">
-                        <div class="form-group">
-                            <label for="savingsAmountInput">Kwota oszczednosci (zl)</label>
-                            <input type="number" id="savingsAmountInput" name="savingsAmount" step="0.01" min="0" class="form-control" placeholder="0.00" />
-                            <small class="text-muted">Podaj kwote, ktora chcesz odlozyc. Zostanie odjeta od dostepnych srodkow.</small>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Zapisz kwote oszczednosci</button>
-                    </form>
-
-                    <div id="savingsStatusInfo" style="margin-top: 20px;"></div>
-                </div>
-            </section>
-
-            <section id="settingsSection" class="section">
-                <div class="section-card">
-                    <h2>⚙️ Ustawienia budżetu</h2>
-
-                    <form id="settingsForm">
-                        <div class="form-group">
-                            <label>Okres dla Koperty Dnia</label>
-                            <select id="settingsEnvelopePeriod" name="envelopePeriod" class="form-control">
-                                <option value="0">Najkrótszy okres (domyślnie)</option>
+                            <label>Typ transakcji</label>
+                            <select id="incomeType" name="incomeType" required>
+                                <option value="normal">Zwykły</option>
+                                <option value="planned">Planowany</option>
                             </select>
-                            <small class="text-muted">Wybierz okres budżetowy dla Koperty Dnia</small>
                         </div>
-
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
-                            <label>Okres dla Dynamiki Wydatków</label>
-                            <select id="settingsDynamicsPeriod" name="dynamicsPeriod" class="form-control">
-                                <option value="0">Najkrótszy okres (domyślnie)</option>
-                            </select>
-                            <small class="text-muted">Wybierz okres budżetowy dla Dynamiki Wydatków</small>
+                            <label>Data</label>
+                            <input type="date" id="incomeDate" name="incomeDate" required>
                         </div>
-
-                        <button type="submit" class="btn btn-primary">Zapisz ustawienia</button>
-                    </form>
-                </div>
-
-                <div class="section-card">
-                    <h2>📊 Eksport danych do analizy LLM</h2>
-                    <p class="text-muted" style="margin-bottom: 15px;">
-                        Eksportuj kompletne dane budżetowe w formacie przystosowanym do analizy przez modele AI (ChatGPT, Claude, itp.).
-                        Eksport zawiera wszystkie szczegóły: przychody, wydatki, kategorie, limity, historię transakcji z dokładnym osadzeniem w czasie.
-                    </p>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn btn-success" data-action="export-budget-data" data-format="json">
-                            📥 Eksportuj jako JSON
-                        </button>
-                        <button class="btn btn-success" data-action="export-budget-data" data-format="txt">
-                            📄 Eksportuj jako TXT (czytelny)
-                        </button>
+                        <div class="form-group">
+                            <label>Godzina (opcjonalnie)</label>
+                            <input type="time" id="incomeTime" name="incomeTime">
+                        </div>
                     </div>
-                </div>
-
-                <div class="section-card">
-                    <h2>📜 Logi systemu</h2>
-                    <div class="logs-info">
-                        <p><strong>Rozmiar logów:</strong> <span id="logsSize">0 KB</span></p>
-                        <p><strong>Liczba wpisów:</strong> <span id="logsCount">0</span></p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Użytkownik</label>
+                            <select id="incomeUser" name="incomeUser" required>
+                                <option value="">Wybierz użytkownika</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Źródło</label>
+                            <input type="text" id="incomeSource" name="incomeSource" placeholder="np. Wynagrodzenie" autocomplete="off">
+                            <div id="sourceButtons" class="top-sources-buttons"></div>
+                            <div id="sourceSuggestions" class="suggestions-container"></div>
+                        </div>
                     </div>
-                    <button class="btn btn-danger mt-20" data-action="clear-logs">🗑️ Wyczyść logi</button>
-                    <div class="mt-20">
-                        <h3>📋 Ostatnie wpisy</h3>
-                        <div id="logsList" class="logs-list"></div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn" onclick="closeModal('addIncomeModal')">Anuluj</button>
+                        <button type="submit" class="btn btn-accent">Zapisz przychód</button>
                     </div>
-                </div>
-            </section>
-        </div>
-         <footer class="app-footer">
-            <div class="footer-content">
-                <p>&copy; 2025 <strong>Krezus</strong> - Inteligentny Budżet Osobisty</p>
-                <p>Stworzone przez <a href="https://wordsmithseo.pl" target="_blank" rel="noopener noreferrer">Sławomir Sprawski - WordsmithSEO.pl</a></p>
-                <p class="footer-rights">Wszelkie prawa zastrzeżone.</p>
+                </form>
             </div>
-        </footer>
+        </div>
+    </div>
+
+    <!-- Correction Modal -->
+    <div id="correctionModal" class="modal">
+        <div class="modal-content" style="max-width:480px">
+            <div class="modal-header">
+                <h3>Korekta posiadanych środków</h3>
+                <button class="modal-close" onclick="closeModal('correctionModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="padding:14px;background:var(--info-soft);border-radius:var(--radius-sm);margin-bottom:16px">
+                    <div style="font-size:11px;color:var(--info);margin-bottom:2px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Aktualne dostępne środki</div>
+                    <div class="num" style="font-size:22px;font-weight:500;color:var(--info)"><span id="currentFundsDisplay">0,00</span> <span style="font-size:14px;opacity:0.7">zł</span></div>
+                </div>
+                <form id="correctionForm">
+                    <div class="form-group">
+                        <label>Nowa kwota całkowitych środków (zł)</label>
+                        <input type="number" name="correctionAmount" step="0.01" required placeholder="np. 5000.00" class="num" style="font-size:15px">
+                        <span class="form-hint">Wprowadź kwotę, którą <strong>chcesz mieć po korekcie</strong>. System wyliczy różnicę i zapisze ją jako korektę.</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Powód korekty</label>
+                        <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu, korekta bankowa">
+                    </div>
+                    <div style="padding:12px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:12px;color:var(--ink-2);margin-bottom:16px">
+                        Korekta to różnica między obecnymi a deklarowanymi środkami. Wpisuje się jako pojedynczy wpis do historii przychodów.
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn" onclick="closeModal('correctionModal')">Anuluj</button>
+                        <button type="submit" class="btn btn-accent">Wprowadź korektę</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="src/app.js"></script>
     <script>
-        function showAuthTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            if (tab === 'login') {
-                document.querySelector('.tab-btn:first-child').classList.add('active');
-                document.getElementById('loginTab').classList.add('active');
-            } else {
-                document.querySelector('.tab-btn:last-child').classList.add('active');
-                document.getElementById('registerTab').classList.add('active');
-            }
-        }
-        
+        // Sync funds display in correction modal
         setInterval(() => {
             const fundsDisplay = document.getElementById('currentFundsDisplay');
             const availableFunds = document.getElementById('availableFunds');
@@ -622,6 +1051,12 @@
                 fundsDisplay.textContent = availableFunds.textContent;
             }
         }, 1000);
+
+        // Expose filterExpensesSearch globally for oninput handler
+        function filterExpensesSearch(val) {
+            // Handled via app.js dispatch
+            document.dispatchEvent(new CustomEvent('expense-search', { detail: val }));
+        }
     </script>
 </body>
 </html>

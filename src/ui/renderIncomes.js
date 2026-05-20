@@ -4,6 +4,7 @@ import { PAGINATION } from '../utils/constants.js';
 import { formatDateLabel } from '../utils/dateHelpers.js';
 import { getSourceIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
+import { icon } from '../utils/icons.js';
 
 let currentIncomePage = 1;
 let getBudgetUserNameFn = null;
@@ -34,34 +35,45 @@ export function renderSources() {
   const tbody = document.getElementById('sourcesTableBody');
 
   if (totalIncomes === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Brak przychodów do wyświetlenia</td></tr>';
     updatePaginationVisibility('sourcesTableBody', totalIncomes);
     return;
   }
+
+  const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
+  const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
+  const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
 
   const html = paginatedIncomes.map(inc => {
     const isCorrection = inc.source === 'KOREKTA';
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
     const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
+    const sourceHtml = isCorrection
+      ? `<span style="font-weight:600">⚙️ KOREKTA</span>${inc.correctionReason ? `<br><span class="text-mute text-sm">${escapeHTML(inc.correctionReason)}</span>` : ''}`
+      : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
     return `
     <tr class="${rowClass}">
-      <td>${formatDateLabel(inc.date)}</td>
-      <td>${inc.time || '-'}</td>
-      <td>${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)} zł</td>
-      <td>${inc.userId && getBudgetUserNameFn ? getBudgetUserNameFn(inc.userId) : '-'}</td>
-      <td>${isCorrection ? `<strong>⚙️ KOREKTA</strong><br><small>${inc.correctionReason || ''}</small>` : (sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'))}</td>
       <td>
-        <span class="status-badge ${inc.type === 'normal' ? 'status-normal' : 'status-planned'}">
-          ${inc.type === 'normal' ? '✓ Zwykły' : '⏳ Planowany'}
-        </span>
+        <div style="font-weight:500">${formatDateLabel(inc.date)}</div>
+        <div class="text-mute text-sm">${inc.time || ''}</div>
       </td>
+      <td>${sourceHtml}</td>
+      <td class="text-mute">${inc.userId && getBudgetUserNameFn ? escapeHTML(getBudgetUserNameFn(inc.userId)) : '—'}</td>
+      <td>${isCorrection
+        ? '<span class="tag accent dot">Korekta</span>'
+        : inc.type === 'planned'
+          ? '<span class="tag info dot">Planowany</span>'
+          : '<span class="tag success dot">Zrealizowany</span>'}</td>
+      <td class="amount" style="color:var(--success);font-weight:500">${inc.amount >= 0 ? '+' : ''}${inc.amount.toFixed(2)}</td>
       <td class="actions">
-         ${!isCorrection && inc.type === 'planned' ? `
-           <button class="btn-icon" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj teraz">✅</button>
-           <button class="btn-icon" data-action="edit-income" data-id="${inc.id}" title="Edytuj">✏️</button>
-           <button class="btn-icon" data-action="delete-income" data-id="${inc.id}" title="Usuń">🗑️</button>
-         ` : '<span class="no-actions">-</span>'}
+        ${!isCorrection ? `
+          ${inc.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
+          <div class="row-actions">
+            <button class="btn ghost icon-only sm" data-action="edit-income" data-id="${inc.id}" title="Edytuj">${iconEdit}</button>
+            <button class="btn ghost icon-only sm" data-action="delete-income" data-id="${inc.id}" title="Usuń">${iconTrash}</button>
+          </div>
+        ` : ''}
       </td>
     </tr>
   `}).join('');
@@ -80,8 +92,11 @@ function renderIncomesPagination(total) {
     return;
   }
 
+  const chevLeft  = icon('ChevronLeft',  { size: 14, strokeWidth: 1.5 });
+  const chevRight = icon('ChevronRight', { size: 14, strokeWidth: 1.5 });
+
   let html = '';
-  html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage - 1}">◀</button>`;
+  html += `<button class="pagination-btn" ${currentIncomePage === 1 ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage - 1}">${chevLeft}</button>`;
 
   const maxButtons = PAGINATION.MAX_PAGE_BUTTONS;
   let startPage = Math.max(1, currentIncomePage - Math.floor(maxButtons / 2));
@@ -95,7 +110,7 @@ function renderIncomesPagination(total) {
     html += `<button class="pagination-btn ${i === currentIncomePage ? 'active' : ''}" data-action="change-income-page" data-page="${i}">${i}</button>`;
   }
 
-  html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage + 1}">▶</button>`;
+  html += `<button class="pagination-btn" ${currentIncomePage === totalPages ? 'disabled' : ''} data-action="change-income-page" data-page="${currentIncomePage + 1}">${chevRight}</button>`;
   container.innerHTML = html;
 }
 

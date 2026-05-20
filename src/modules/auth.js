@@ -1,11 +1,12 @@
 // src/modules/auth.js - Moduł autoryzacji z zarządzaniem użytkownikami v1.3.0
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 
 import { ref, get, set, update, onValue, push } from 'firebase/database';
@@ -67,6 +68,13 @@ export async function loginUser(email, password) {
     console.error('❌ Błąd logowania:', error);
     throw new Error(getAuthErrorMessage(error.code));
   }
+}
+
+/**
+ * Wysyłanie emaila resetującego hasło
+ */
+export async function sendPasswordReset(email) {
+  await sendPasswordResetEmail(auth, email);
 }
 
 /**

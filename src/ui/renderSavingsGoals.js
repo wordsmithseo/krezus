@@ -1,287 +1,201 @@
 // src/ui/renderSavingsGoals.js
-import { sanitizeHTML } from '../utils/sanitizer.js';
-import { getSavingsGoals, getSavingsGoalsStats } from '../modules/savingsGoalManager.js';
+import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
+import { getSavingsGoals } from '../modules/savingsGoalManager.js';
 import { calculateAllSuggestions, calculateGoalProgress, calculateSavingsStats } from '../modules/savingsGoalCalculator.js';
+import { icon } from '../utils/icons.js';
 
-// Paginacja
 const GOALS_PER_PAGE = 25;
 let currentGoalsPage = 1;
 
-/**
- * Renderuje sekcję oszczędzania
- */
 export function renderSavingsGoals() {
-    console.log('🎯 Renderowanie sekcji oszczędzania');
-
     const contentDiv = document.getElementById('savingsGoalsContent');
-    if (!contentDiv) {
-        console.error('❌ Nie znaleziono elementu #savingsGoalsContent');
-        return;
-    }
+    if (!contentDiv) return;
 
-    // Pobierz dane
     const goals = getSavingsGoals();
     const stats = calculateSavingsStats();
     const suggestions = calculateAllSuggestions();
 
-    console.log('📊 Liczba celów:', goals.length);
-    console.log('💡 Liczba sugestii:', suggestions.length);
-
-    // Generuj HTML
-    let html = `
-        <div class="savings-goals-section">
-            <div class="section-card">
-                <div class="section-header-inline">
-                    <h2>🎯 Oszczędzanie</h2>
-                    <button class="btn btn-primary mt-20" onclick="window.showAddSavingsGoalModal()">
-                        ➕ Dodaj cel oszczędzania
-                    </button>
+    const html = `
+        <div class="card" style="margin-bottom:16px">
+            <div class="card-header">
+                <div>
+                    <h3>Oszczędzanie</h3>
+                    <span class="card-sub">Twoje cele i postępy</span>
                 </div>
-
-                ${renderSavingsStats(stats)}
+                <button class="btn accent sm" onclick="window.showAddSavingsGoalModal()">
+                    ${icon('Plus', { size: 13, strokeWidth: 2 })} Dodaj cel
+                </button>
             </div>
-
-            ${renderSavingsGoalsList(goals, suggestions)}
+            ${renderSavingsStats(stats)}
         </div>
+        ${renderSavingsGoalsList(goals, suggestions)}
     `;
 
-    contentDiv.innerHTML = html;
-
-    console.log('✅ Sekcja oszczędzania wyrenderowana');
+    contentDiv.innerHTML = sanitizeHTML(html);
 }
 
-/**
- * Renderuje statystyki oszczędzania
- */
 function renderSavingsStats(stats) {
     if (stats.totalGoals === 0) {
         return `
-            <div class="savings-empty-state">
-                <p class="empty-icon">🎯</p>
-                <h3>Brak celów oszczędzania</h3>
-                <p>Dodaj swój pierwszy cel oszczędzania, a aplikacja automatycznie będzie sugerowała bezpieczne kwoty do odłożenia.</p>
-                <button class="btn btn-primary mt-20" onclick="window.showAddSavingsGoalModal()">
-                    ➕ Dodaj pierwszy cel
-                </button>
+            <div class="empty-state" style="padding:40px 20px">
+                <p style="font-size:2rem;margin:0 0 12px">🎯</p>
+                <p style="font-weight:500;margin:0 0 8px">Brak celów oszczędzania</p>
+                <p class="text-mute text-sm" style="max-width:360px;margin:0 auto 0">Dodaj swój pierwszy cel, a aplikacja automatycznie będzie sugerowała bezpieczne kwoty do odłożenia.</p>
             </div>
         `;
     }
 
     return `
-        <div class="savings-stats">
-            <div class="stat-card">
-                <div class="stat-label">Aktywne cele</div>
-                <div class="stat-value">${stats.activeGoals}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+            <div class="metric">
+                <div class="metric-label">Aktywne cele</div>
+                <div class="metric-value">${stats.activeGoals}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Ukończone cele</div>
-                <div class="stat-value">${stats.completedGoals}</div>
+            <div class="metric">
+                <div class="metric-label">Ukończone</div>
+                <div class="metric-value">${stats.completedGoals}</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Odłożono razem</div>
-                <div class="stat-value">${stats.totalCurrentAmount.toFixed(2)} zł</div>
+            <div class="metric">
+                <div class="metric-label">Odłożono razem</div>
+                <div class="metric-value num">${stats.totalCurrentAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Cel docelowy</div>
-                <div class="stat-value">${stats.totalTargetAmount.toFixed(2)} zł</div>
+            <div class="metric">
+                <div class="metric-label">Cel docelowy</div>
+                <div class="metric-value num">${stats.totalTargetAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Postęp ogólny</div>
-                <div class="stat-value">${stats.progressPercentage.toFixed(1)}%</div>
+            <div class="metric">
+                <div class="metric-label">Postęp ogólny</div>
+                <div class="metric-value">${stats.progressPercentage.toFixed(1)}%</div>
             </div>
         </div>
     `;
 }
 
-/**
- * Renderuje listę celów oszczędzania z paginacją
- */
 function renderSavingsGoalsList(goals, suggestions) {
-    if (goals.length === 0) {
-        return '';
-    }
+    if (goals.length === 0) return '';
 
-    // Sortuj cele: aktywne na górze, potem ukończone, potem wstrzymane
     const sortedGoals = [
         ...goals.filter(g => g.status === 'active'),
         ...goals.filter(g => g.status === 'completed'),
         ...goals.filter(g => g.status === 'paused')
     ];
 
-    // Paginacja
     const totalGoals = sortedGoals.length;
     const totalPages = Math.ceil(totalGoals / GOALS_PER_PAGE);
-    const startIndex = (currentGoalsPage - 1) * GOALS_PER_PAGE;
-    const endIndex = startIndex + GOALS_PER_PAGE;
-    const goalsToShow = sortedGoals.slice(startIndex, endIndex);
+    const goalsToShow = sortedGoals.slice(
+        (currentGoalsPage - 1) * GOALS_PER_PAGE,
+        currentGoalsPage * GOALS_PER_PAGE
+    );
+
+    const iconArrowUp   = icon('ArrowUp',   { size: 13, strokeWidth: 1.5 });
+    const iconArrowDown = icon('ArrowDown', { size: 13, strokeWidth: 1.5 });
 
     let html = `
-        <div class="section-card">
-            <div class="goals-list-header">
-                <h3>📋 Lista celów (${totalGoals})</h3>
-                <div class="goals-collapse-controls">
-                    <button class="btn btn-secondary" onclick="window.collapseAllGoals()">
-                        ⬆️ Zwiń wszystkie
+        <div class="card">
+            <div class="card-header">
+                <h3>Lista celów <span class="tag" style="font-weight:400;font-size:12px">${totalGoals}</span></h3>
+                <div style="display:flex;gap:6px">
+                    <button class="btn ghost sm" onclick="window.collapseAllGoals()">
+                        ${iconArrowUp} Zwiń
                     </button>
-                    <button class="btn btn-secondary" onclick="window.expandAllGoals()">
-                        ⬇️ Rozwiń wszystkie
+                    <button class="btn ghost sm" onclick="window.expandAllGoals()">
+                        ${iconArrowDown} Rozwiń
                     </button>
                 </div>
             </div>
             <div class="savings-goals-list">
     `;
 
-    // Renderuj cele jako listę
     goalsToShow.forEach(goal => {
         const suggestion = suggestions.find(s => s.goal.id === goal.id);
         html += renderSavingsGoalCard(goal, suggestion);
     });
 
     html += '</div>';
-
-    // Paginacja
-    if (totalPages > 1) {
-        html += renderGoalsPagination(totalPages);
-    }
-
+    if (totalPages > 1) html += renderGoalsPagination(totalPages);
     html += '</div>';
-
     return html;
 }
 
-/**
- * Renderuje paginację dla celów
- */
 function renderGoalsPagination(totalPages) {
-    let html = '<div class="pagination">';
-
+    const chevLeft  = icon('ChevronLeft',  { size: 14, strokeWidth: 1.5 });
+    const chevRight = icon('ChevronRight', { size: 14, strokeWidth: 1.5 });
+    let html = '<div style="display:flex;justify-content:center;gap:4px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">';
+    html += `<button class="pagination-btn" ${currentGoalsPage === 1 ? 'disabled' : ''} onclick="window.changeGoalsPage(${currentGoalsPage - 1})">${chevLeft}</button>`;
     for (let i = 1; i <= totalPages; i++) {
-        const activeClass = i === currentGoalsPage ? 'active' : '';
-        html += `<button class="page-btn ${activeClass}" onclick="window.changeGoalsPage(${i})">${i}</button>`;
+        html += `<button class="pagination-btn ${i === currentGoalsPage ? 'active' : ''}" onclick="window.changeGoalsPage(${i})">${i}</button>`;
     }
-
+    html += `<button class="pagination-btn" ${currentGoalsPage === totalPages ? 'disabled' : ''} onclick="window.changeGoalsPage(${currentGoalsPage + 1})">${chevRight}</button>`;
     html += '</div>';
     return html;
 }
 
-/**
- * Zmienia stronę celów
- */
 window.changeGoalsPage = function(page) {
     currentGoalsPage = page;
     renderSavingsGoals();
 };
 
-/**
- * Przełącza collapse/expand dla celu
- */
 window.toggleGoalCollapse = function(goalId) {
     const card = document.querySelector(`[data-goal-id="${goalId}"]`);
-    if (!card) return;
-
-    card.classList.toggle('collapsed');
+    if (card) card.classList.toggle('collapsed');
 };
 
-/**
- * Zwija wszystkie cele
- */
 window.collapseAllGoals = function() {
-    document.querySelectorAll('.savings-goal-card').forEach(card => {
-        card.classList.add('collapsed');
-    });
+    document.querySelectorAll('.savings-goal-card').forEach(c => c.classList.add('collapsed'));
 };
 
-/**
- * Rozwija wszystkie cele
- */
 window.expandAllGoals = function() {
-    document.querySelectorAll('.savings-goal-card').forEach(card => {
-        card.classList.remove('collapsed');
-    });
+    document.querySelectorAll('.savings-goal-card').forEach(c => c.classList.remove('collapsed'));
 };
 
-/**
- * Renderuje pojedynczą kartę celu oszczędzania
- */
 function renderSavingsGoalCard(goal, suggestion) {
     const progress = calculateGoalProgress(goal.id);
     const remaining = goal.targetAmount - goal.currentAmount;
 
-    // Oblicz deadline jeśli istnieje
     let deadlineHtml = '';
-    let daysToDeadline = null;
     if (goal.targetDate) {
         const targetDateObj = new Date(goal.targetDate);
         const today = new Date();
-        daysToDeadline = Math.max(0, Math.floor((targetDateObj - today) / (1000 * 60 * 60 * 24)));
-
-        let deadlineClass = 'deadline-normal';
-        let deadlineIcon = '📅';
-
-        if (daysToDeadline < 7) {
-            deadlineClass = 'deadline-urgent';
-            deadlineIcon = '⏰';
-        } else if (daysToDeadline < 30) {
-            deadlineClass = 'deadline-soon';
-            deadlineIcon = '⏰';
-        }
-
-        const formattedDate = new Date(goal.targetDate).toLocaleDateString('pl-PL');
+        const daysToDeadline = Math.max(0, Math.floor((targetDateObj - today) / (1000 * 60 * 60 * 24)));
+        const isUrgent = daysToDeadline < 7;
+        const isSoon   = daysToDeadline < 30;
+        const formattedDate = targetDateObj.toLocaleDateString('pl-PL');
+        const calColor = isUrgent ? 'var(--danger)' : isSoon ? 'oklch(0.62 0.17 60)' : 'var(--ink-2)';
         deadlineHtml = `
-            <div class="goal-deadline ${deadlineClass}">
-                <span class="deadline-icon">${deadlineIcon}</span>
-                <span class="deadline-text">
-                    <strong>Deadline:</strong> ${formattedDate} (za ${daysToDeadline} ${daysToDeadline === 1 ? 'dzień' : 'dni'})
-                </span>
+            <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:${calColor};margin-bottom:10px">
+                ${icon('Calendar', { size: 13, strokeWidth: 1.5 })}
+                <span>Deadline: <strong>${escapeHTML(formattedDate)}</strong> (za ${daysToDeadline} ${daysToDeadline === 1 ? 'dzień' : 'dni'})</span>
             </div>
         `;
     }
 
-    // Ikona priorytetu
-    const priorityIcons = {
-        1: '🔴',  // Wysoki
-        2: '🟡',  // Średni
-        3: '🟢'   // Niski
-    };
+    const priorityNames  = { 1: 'Wysoki', 2: 'Średni', 3: 'Niski' };
+    const priorityColors = { 1: 'var(--danger)', 2: 'var(--accent)', 3: 'var(--success)' };
+    const priorityName   = priorityNames[goal.priority]  || 'Średni';
+    const priorityColor  = priorityColors[goal.priority] || 'var(--accent)';
 
-    const priorityNames = {
-        1: 'Wysoki',
-        2: 'Średni',
-        3: 'Niski'
-    };
-
-    const priorityIcon = priorityIcons[goal.priority] || '🟡';
-    const priorityName = priorityNames[goal.priority] || 'Średni';
-
-    // Status badge
     let statusBadge = '';
-    if (goal.status === 'completed') {
-        statusBadge = '<span class="status-badge status-completed">✅ Ukończono</span>';
-    } else if (goal.status === 'paused') {
-        statusBadge = '<span class="status-badge status-paused">⏸️ Wstrzymano</span>';
-    }
+    if      (goal.status === 'completed') statusBadge = '<span class="tag success dot">Ukończono</span>';
+    else if (goal.status === 'paused')    statusBadge = '<span class="tag dot">Wstrzymano</span>';
 
-    // Suggestion section
     let suggestionHtml = '';
-    if (suggestion && suggestion.suggestion.canSuggest) {
+    if (suggestion?.suggestion?.canSuggest) {
         const sug = suggestion.suggestion;
         suggestionHtml = `
-            <div class="suggestion-box suggestion-available">
-                <div class="suggestion-header">
-                    <span class="suggestion-icon">💡</span>
-                    <span class="suggestion-title">Bezpieczna kwota do odłożenia</span>
+            <div style="background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:var(--radius-sm);padding:12px;margin-top:12px">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                    ${icon('Sparkles', { size: 14, strokeWidth: 1.5 })}
+                    <span style="font-size:12px;font-weight:600">Bezpieczna kwota do odłożenia</span>
                 </div>
-                <div class="suggestion-amount">${sug.amount.toFixed(2)} zł</div>
-                <div class="suggestion-reason">${sanitizeHTML(sug.reason)}</div>
-                <div class="suggestion-details">
-                    ${sug.details.map(d => `<div class="suggestion-detail">• ${sanitizeHTML(d)}</div>`).join('')}
-                </div>
-                <div class="suggestion-actions">
-                    <button class="btn btn-success" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
-                        ✅ Zaakceptuj
+                <div class="num" style="font-size:1.2rem;font-weight:700;color:var(--accent);margin-bottom:4px">${sug.amount.toFixed(2)} zł</div>
+                <div class="text-sm text-mute" style="margin-bottom:8px">${sanitizeHTML(sug.reason)}</div>
+                ${sug.details.length ? `<ul style="margin:0 0 10px;padding-left:16px;font-size:12px;color:var(--ink-2)">${sug.details.map(d => `<li>${sanitizeHTML(d)}</li>`).join('')}</ul>` : ''}
+                <div style="display:flex;gap:6px">
+                    <button class="btn accent sm" onclick="window.acceptSuggestion('${goal.id}', ${sug.amount})">
+                        ${icon('Check', { size: 12, strokeWidth: 2 })} Zaakceptuj
                     </button>
-                    <button class="btn btn-secondary" onclick="window.rejectSuggestion('${goal.id}')">
-                        ❌ Odrzuć
+                    <button class="btn ghost sm" onclick="window.rejectSuggestion('${goal.id}')">
+                        ${icon('X', { size: 12, strokeWidth: 2 })} Odrzuć
                     </button>
                 </div>
             </div>
@@ -289,24 +203,21 @@ function renderSavingsGoalCard(goal, suggestion) {
     } else if (suggestion && !suggestion.suggestion.canSuggest) {
         const sug = suggestion.suggestion;
         suggestionHtml = `
-            <div class="suggestion-box suggestion-unavailable">
-                <div class="suggestion-header">
-                    <span class="suggestion-icon">ℹ️</span>
-                    <span class="suggestion-title">Brak sugestii</span>
-                </div>
-                <div class="suggestion-reason">${sanitizeHTML(sug.reason)}</div>
-                ${sug.details.length > 0 ? `
-                    <div class="suggestion-details">
-                        ${sug.details.map(d => `<div class="suggestion-detail">• ${sanitizeHTML(d)}</div>`).join('')}
-                    </div>
-                ` : ''}
+            <div style="background:var(--surface-2);border-radius:var(--radius-sm);padding:10px;margin-top:10px;display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--ink-3)">
+                ${icon('Info', { size: 13, strokeWidth: 1.5 })}
+                <span>${sanitizeHTML(sug.reason)}</span>
             </div>
         `;
     }
 
+    const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
+    const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
+    const iconChart = icon('Chart', { size: 13, strokeWidth: 1.5 });
+    const pct = Math.min(progress.percentage, 100);
+    const fillColor = progress.percentage >= 100 ? 'var(--success)' : 'var(--accent)';
+
     return `
         <div class="savings-goal-card ${goal.status} collapsed" data-goal-id="${goal.id}">
-            <!-- Header z możliwością collapse -->
             <div class="goal-header-collapsible" onclick="window.toggleGoalCollapse('${goal.id}')">
                 <div class="goal-collapse-left">
                     <button class="collapse-toggle" title="Rozwiń/Zwiń">
@@ -314,73 +225,61 @@ function renderSavingsGoalCard(goal, suggestion) {
                     </button>
                     <span class="goal-icon">${sanitizeHTML(goal.icon)}</span>
                     <div class="goal-title-section">
-                        <h3 class="goal-name">${sanitizeHTML(goal.name)}</h3>
+                        <span style="font-weight:500">${sanitizeHTML(goal.name)}</span>
                         ${statusBadge}
                     </div>
                 </div>
-
-                <!-- Info widoczne gdy collapsed -->
                 <div class="goal-collapsed-info">
-                    <div class="collapsed-amounts">
-                        <span class="collapsed-current">${goal.currentAmount.toFixed(2)} zł</span>
-                        <span class="collapsed-separator">/</span>
-                        <span class="collapsed-target">${goal.targetAmount.toFixed(2)} zł</span>
+                    <div class="num" style="font-size:13px">
+                        ${goal.currentAmount.toFixed(2)}<span class="text-mute"> / ${goal.targetAmount.toFixed(2)} zł</span>
                     </div>
-                    <div class="collapsed-progress">${progress.percentage.toFixed(0)}%</div>
+                    <div class="text-mute text-sm">${progress.percentage.toFixed(0)}%</div>
                 </div>
             </div>
 
-            <!-- Akcje zawsze widoczne -->
             <div class="goal-actions-bar">
                 ${goal.status === 'active' ? `
-                    <button class="btn-icon" onclick="event.stopPropagation(); window.editSavingsGoal('${goal.id}')" title="Edytuj">
-                        ✏️
-                    </button>
+                    <button class="btn ghost icon-only sm" onclick="event.stopPropagation(); window.editSavingsGoal('${goal.id}')" title="Edytuj">${iconEdit}</button>
                 ` : ''}
-                <button class="btn-icon" onclick="event.stopPropagation(); window.deleteSavingsGoal('${goal.id}')" title="Usuń">
-                    🗑️
-                </button>
+                <button class="btn ghost icon-only sm" onclick="event.stopPropagation(); window.deleteSavingsGoal('${goal.id}')" title="Usuń">${iconTrash}</button>
             </div>
 
-            <!-- Zawartość rozwijalna -->
             <div class="goal-expandable-content">
-                ${goal.description ? `
-                    <div class="goal-description">${sanitizeHTML(goal.description)}</div>
-                ` : ''}
+                ${goal.description ? `<p class="text-sm text-mute" style="margin:0 0 10px">${sanitizeHTML(goal.description)}</p>` : ''}
 
                 ${deadlineHtml}
 
-                <div class="goal-info">
-                    <div class="goal-info-item">
-                        <span class="label">Priorytet:</span>
-                        <span class="value">${priorityIcon} ${priorityName}</span>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+                    <div class="metric">
+                        <div class="metric-label">Priorytet</div>
+                        <div class="metric-value" style="color:${priorityColor}">${escapeHTML(priorityName)}</div>
                     </div>
-                    <div class="goal-info-item">
-                        <span class="label">Odłożono:</span>
-                        <span class="value">${goal.currentAmount.toFixed(2)} zł</span>
+                    <div class="metric">
+                        <div class="metric-label">Odłożono</div>
+                        <div class="metric-value num">${goal.currentAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
                     </div>
-                    <div class="goal-info-item">
-                        <span class="label">Cel:</span>
-                        <span class="value">${goal.targetAmount.toFixed(2)} zł</span>
+                    <div class="metric">
+                        <div class="metric-label">Cel</div>
+                        <div class="metric-value num">${goal.targetAmount.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
                     </div>
-                    <div class="goal-info-item">
-                        <span class="label">Pozostało:</span>
-                        <span class="value">${remaining.toFixed(2)} zł</span>
+                    <div class="metric">
+                        <div class="metric-label">Pozostało</div>
+                        <div class="metric-value num">${remaining.toFixed(2)} <small style="font-size:0.55em;font-weight:400">zł</small></div>
                     </div>
                 </div>
 
-                <div class="goal-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress.percentage}%"></div>
+                <div style="margin-bottom:12px">
+                    <div class="progress" style="height:6px">
+                        <div style="width:${pct}%;height:100%;background:${fillColor};border-radius:inherit;transition:width 400ms ease"></div>
                     </div>
-                    <div class="progress-text">${progress.percentage.toFixed(1)}%</div>
+                    <div class="text-sm text-mute" style="margin-top:4px;text-align:right">${progress.percentage.toFixed(1)}%</div>
                 </div>
 
                 ${suggestionHtml}
 
                 ${goal.status === 'active' ? `
-                    <button class="btn-link view-history-btn" onclick="window.showGoalHistory('${goal.id}')">
-                        📊 Zobacz historię wpłat
+                    <button class="btn ghost sm" style="margin-top:10px" onclick="window.showGoalHistory('${goal.id}')">
+                        ${iconChart} Historia wpłat
                     </button>
                 ` : ''}
             </div>
@@ -388,78 +287,34 @@ function renderSavingsGoalCard(goal, suggestion) {
     `;
 }
 
-/**
- * Przełącza collapse/expand dla celu
- */
-window.toggleGoalCollapse = function(goalId) {
-    const card = document.querySelector(`[data-goal-id="${goalId}"]`);
-    if (!card) return;
-
-    card.classList.toggle('collapsed');
-};
-
-/**
- * Pokazuje komunikat sukcesu
- */
 export function showSavingsSuccessMessage(message) {
-    const contentDiv = document.getElementById('content');
-    if (!contentDiv) return;
-
     const messageDiv = document.createElement('div');
     messageDiv.className = 'success-message';
     messageDiv.textContent = message;
     messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #10b981;
-        color: white;
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 10000;
-        animation: slideInRight 0.3s ease-out;
+        position:fixed;top:20px;right:20px;background:var(--success);color:white;
+        padding:14px 20px;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);
+        z-index:10000;font-size:14px;animation:slideInRight 0.3s ease-out
     `;
-
     document.body.appendChild(messageDiv);
-
     setTimeout(() => {
         messageDiv.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => {
-            messageDiv.remove();
-        }, 300);
+        setTimeout(() => messageDiv.remove(), 300);
     }, 3000);
 }
 
-/**
- * Pokazuje komunikat błędu
- */
 export function showSavingsErrorMessage(message) {
-    const contentDiv = document.getElementById('content');
-    if (!contentDiv) return;
-
     const messageDiv = document.createElement('div');
     messageDiv.className = 'error-message';
     messageDiv.textContent = message;
     messageDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #ef4444;
-        color: white;
-        padding: 16px 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 10000;
-        animation: slideInRight 0.3s ease-out;
+        position:fixed;top:20px;right:20px;background:var(--danger);color:white;
+        padding:14px 20px;border-radius:var(--radius-sm);box-shadow:var(--shadow-md);
+        z-index:10000;font-size:14px;animation:slideInRight 0.3s ease-out
     `;
-
     document.body.appendChild(messageDiv);
-
     setTimeout(() => {
         messageDiv.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => {
-            messageDiv.remove();
-        }, 300);
+        setTimeout(() => messageDiv.remove(), 300);
     }, 3000);
 }
