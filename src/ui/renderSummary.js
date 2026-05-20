@@ -89,7 +89,7 @@ function initHeroSparklineSeg() {
 }
 
 function deltaHTML(current, prev, invert = false) {
-  if (prev <= 0) return '';
+  if (prev <= 0 || current === 0) return '';
   const pct = ((current - prev) / prev) * 100;
   const sign = pct >= 0 ? '+' : '';
   // invert=true → wzrost wydatków to zło (up bad), spadek to dobro (down good)
