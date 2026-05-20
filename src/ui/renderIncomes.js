@@ -60,7 +60,7 @@ export function renderSources() {
 
   const tbody = document.getElementById('sourcesTableBody');
   const tfoot = document.getElementById('sourcesTfoot');
-  const countEl = document.getElementById('incomesCount');
+  const countEl = document.getElementById('incomesTableCount');
 
   // Sync segmented control active state
   document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {

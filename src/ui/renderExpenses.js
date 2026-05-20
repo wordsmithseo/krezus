@@ -59,7 +59,7 @@ export function renderExpenses() {
 
   const tbody = document.getElementById('expensesTableBody');
   const tfoot = document.getElementById('expensesTfoot');
-  const countEl = document.getElementById('expensesCount');
+  const countEl = document.getElementById('expensesTableCount');
 
   // Sync segmented control active state
   document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
