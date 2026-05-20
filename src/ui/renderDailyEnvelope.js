@@ -275,6 +275,12 @@ export function renderDailyEnvelope() {
   updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 'envelopeGaugeRemaining', spent, total);
   updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', spent, total);
 
+  const totalLabel = `z ${Fmt.zl(total)} zł`;
+  const gaugeTotalEl = document.getElementById('envelopeGaugeTotal');
+  if (gaugeTotalEl) gaugeTotalEl.textContent = totalLabel;
+  const gaugeTotalFullEl = document.getElementById('envelopeGaugeTotalFull');
+  if (gaugeTotalFullEl) gaugeTotalFullEl.textContent = totalLabel;
+
   const calcInfoDiv = document.getElementById('envelopeCalculationInfo');
   if (calcInfoDiv && calcInfo) {
     calcInfoDiv.innerHTML = sanitizeHTML(
