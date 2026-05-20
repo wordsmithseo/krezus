@@ -234,26 +234,24 @@ export function getUserExpensesBreakdown() {
   }
   
   const userMap = new Map();
-  
+
   periodExpenses.forEach(exp => {
     const userId = exp.userId || 'unknown';
-    userMap.set(userId, (userMap.get(userId) || 0) + (exp.amount || 0));
+    const prev = userMap.get(userId) || { amount: 0, count: 0 };
+    userMap.set(userId, { amount: prev.amount + (exp.amount || 0), count: prev.count + 1 });
   });
   
   const total = periodExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  
+
   const getBudgetUserName = (userId) => {
     if (!userId || userId === 'unknown') return 'Nieznany';
-    
     const user = budgetUsersCache.find(u => u.id === userId);
-    if (!user) {
-      return null;
-    }
+    if (!user) return null;
     return user.name;
   };
-  
+
   const breakdown = Array.from(userMap.entries())
-    .map(([userId, amount]) => {
+    .map(([userId, { amount, count }]) => {
       const userName = getBudgetUserName(userId);
       const userIndex = budgetUsersCache.findIndex(u => u.id === userId);
       const color = USER_COLORS[userIndex >= 0 ? userIndex % USER_COLORS.length : 0];
@@ -261,6 +259,7 @@ export function getUserExpensesBreakdown() {
         userId,
         userName,
         amount,
+        count,
         percentage: total > 0 ? (amount / total) * 100 : 0,
         color
       };
