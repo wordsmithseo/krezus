@@ -10,10 +10,9 @@ import {
   getMonthExpenses,
   getWeekDateRange,
   getMonthName,
-  calculateSpendingDynamics
 } from '../modules/budgetCalculator.js';
 
-import { getDynamicsPeriod, getIncomes, getExpenses, getCategories } from '../modules/dataManager.js';
+import { getIncomes, getExpenses, getCategories } from '../modules/dataManager.js';
 import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
 import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
@@ -229,54 +228,13 @@ export function renderSummary() {
 }
 
 export function renderSpendingDynamics() {
-  const dynamics = calculateSpendingDynamics();
   const container = document.getElementById('dynamicsInfo');
   if (!container) return;
-
-  const { periods } = calculateSpendingPeriods();
-  const dynamicsPeriodIndex = getDynamicsPeriod();
-  const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
-
-  let periodInfo;
-  if (selectedPeriod) {
-    if (selectedPeriod.showToday) {
-      periodInfo = `${escapeHTML(selectedPeriod.name)} (Dziś)`;
-    } else if (selectedPeriod.countdownFormat) {
-      periodInfo = `${escapeHTML(selectedPeriod.name)} (<span class="countdown-timer" data-end-date="${selectedPeriod.date}" data-end-time="${selectedPeriod.time || ''}">${selectedPeriod.countdownFormat}</span>)`;
-    } else {
-      periodInfo = `${escapeHTML(selectedPeriod.name)} (${escapeHTML(selectedPeriod.timeFormatted || `${selectedPeriod.daysLeft} dni`)})`;
-    }
-  } else {
-    periodInfo = 'Brak okresu';
-  }
-
-  const statusColors = {
-    excellent: 'var(--success)',
-    good: 'color-mix(in srgb, var(--success) 65%, var(--line))',
-    moderate: 'var(--accent)',
-    warning: 'var(--warning)',
-    critical: 'var(--danger)',
-    'no-date': 'var(--ink-3)',
-  };
-  const dotColor = statusColors[dynamics.status] || 'var(--ink-3)';
-  const titleText = escapeHTML(dynamics.title.split(' ').slice(1).join(' '));
 
   const dailyData = buildLastNDaysData(30);
   const chartHtml = dailyChartHTML(dailyData, { height: 180 });
 
-  const html = `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-      <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;background:${dotColor}"></span>
-      <span style="font-size:13px;font-weight:500">${titleText}</span>
-    </div>
-    ${chartHtml}
-    <div class="text-mute text-sm" style="margin:6px 0 12px">Ostatnie 30 dni wydatków</div>
-    <div style="font-size:12px;color:var(--ink-2);line-height:1.5;margin-bottom:8px">${escapeHTML(dynamics.summary)}</div>
-    <div class="text-mute text-sm">📅 ${periodInfo}</div>
-  `;
-
-  container.innerHTML = sanitizeHTML(html);
-  startCountdownTimers();
+  container.innerHTML = sanitizeHTML(chartHtml);
 }
 
 /**
