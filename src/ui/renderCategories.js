@@ -36,9 +36,11 @@ export function renderCategories() {
 
   const mergingId = getMergingCategoryId();
 
-  const iconTrash = icon('Trash',         { size: 13, strokeWidth: 1.5 });
-  const iconMore  = icon('MoreHorizontal', { size: 15, strokeWidth: 1.5 });
-  const iconX     = icon('X',             { size: 13, strokeWidth: 2 });
+  const iconTrash    = icon('Trash',         { size: 13, strokeWidth: 1.5 });
+  const iconEdit     = icon('Edit',          { size: 13, strokeWidth: 1.5 });
+  const iconSparkles = icon('Sparkles',      { size: 13, strokeWidth: 1.5 });
+  const iconMore     = icon('MoreHorizontal', { size: 15, strokeWidth: 1.5 });
+  const iconX        = icon('X',             { size: 13, strokeWidth: 2 });
 
   let headerHtml = '';
   if (mergingId) {
@@ -82,8 +84,8 @@ export function renderCategories() {
           <div style="position:relative">
             <button class="btn ghost icon-only sm" data-action="toggle-cat-menu" data-id="${cat.id}" title="Opcje">${iconMore}</button>
             <div class="cat-menu-dropdown" id="cat-menu-${cat.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:100;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);min-width:160px;padding:4px">
-              <button class="cat-menu-item" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">Edytuj</button>
-              <button class="cat-menu-item" data-action="start-merge-category" data-id="${cat.id}">Scal z inną…</button>
+              <button class="cat-menu-item" data-action="edit-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">${iconEdit} Edytuj</button>
+              <button class="cat-menu-item" data-action="start-merge-category" data-id="${cat.id}">${iconSparkles} Scal z inną…</button>
               <button class="cat-menu-item danger" data-action="delete-category" data-id="${cat.id}" data-name="${escapeHTML(cat.name)}">${iconTrash} Usuń</button>
             </div>
           </div>
