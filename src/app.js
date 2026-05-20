@@ -114,6 +114,7 @@ import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setInc
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
+import { renderSavingsSection, setSavingsDeps } from './ui/renderSavings.js';
 import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
@@ -358,6 +359,7 @@ async function loadAllData() {
 
         renderSummary();
         renderDailyEnvelope();
+        renderSavingsSection();
       },
       onDailyEnvelopeChange: () => {
         renderSummary();
@@ -441,6 +443,7 @@ async function renderAll() {
   renderSummary();
   renderDailyEnvelope();
   renderAnalytics();
+  renderSavingsSection();
   updateSectionStats();
   await renderLogs();
   loadSettings();
@@ -737,10 +740,6 @@ const selectSource = (source) => {
 
 // addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget -> src/handlers/categoryHandlers.js
 
-export function renderSavingsSection() {
-  const el = document.getElementById('savingsGoalsContent');
-  if (el) el.innerHTML = '';
-}
 
 // window.addExpense, editExpense, deleteExpense -> src/handlers/expenseHandlers.js
 
@@ -1233,6 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setIncomeDeps({ getBudgetUserName });
   setCategoryHandlerDeps({ renderCategories, renderExpenses });
   setSummaryDeps({ getBudgetUsersCache: () => budgetUsersCache });
+  setSavingsDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setExpenseHandlerDeps({
     getBudgetUserName,
     getBudgetUsersCache: () => budgetUsersCache,
