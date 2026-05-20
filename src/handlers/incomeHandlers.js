@@ -253,6 +253,7 @@ export async function addCorrection(e) {
 
   const newTotalAmount = parseFloat(form.correctionAmount.value);
   const reason = form.correctionReason.value.trim();
+  const correctionDate = form.correctionDate?.value || getWarsawDateString();
 
   if (!Number.isFinite(newTotalAmount)) {
     showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
@@ -274,7 +275,7 @@ export async function addCorrection(e) {
   const correction = {
     id: `corr_${Date.now()}`,
     amount: difference,
-    date: getWarsawDateString(),
+    date: correctionDate,
     time: getCurrentTimeString(),
     type: 'normal',
     userId: 'system',

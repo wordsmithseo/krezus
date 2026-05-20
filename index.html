@@ -1066,32 +1066,39 @@
         <div class="modal-content" style="max-width:480px">
             <div class="modal-header">
                 <h3>Korekta posiadanych środków</h3>
-                <button class="modal-close" onclick="closeModal('correctionModal')">✕</button>
+                <button class="btn ghost icon-only" onclick="window.closeModal('correctionModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
-            <div class="modal-body">
-                <div style="padding:14px;background:var(--info-soft);border-radius:var(--radius-sm);margin-bottom:16px">
-                    <div style="font-size:11px;color:var(--info);margin-bottom:2px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Aktualne dostępne środki</div>
-                    <div class="num" style="font-size:22px;font-weight:500;color:var(--info)"><span id="currentFundsDisplay">0,00</span> <span style="font-size:14px;opacity:0.7">zł</span></div>
+            <form id="correctionForm">
+                <div class="modal-body">
+                    <div style="padding:14px;background:var(--info-soft);border-radius:var(--radius-sm);margin-bottom:16px">
+                        <div style="font-size:11px;color:var(--info);margin-bottom:2px;font-weight:500;text-transform:uppercase;letter-spacing:0.06em">Aktualne dostępne środki</div>
+                        <div class="num" style="font-size:22px;font-weight:500;color:var(--info)"><span id="currentFundsDisplay">0,00</span> <span style="font-size:14px;opacity:0.7">zł</span></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="field full">
+                            <label>Nowa kwota całkowitych środków (zł)</label>
+                            <input type="number" name="correctionAmount" step="0.01" required placeholder="0,00" class="num">
+                            <div class="hint">Wprowadź kwotę, którą <strong>chcesz mieć po korekcie</strong>. System wyliczy różnicę i zapisze ją jako korektę w historii.</div>
+                        </div>
+                        <div class="field full">
+                            <label>Powód korekty</label>
+                            <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu, korekta bankowa, zwrot z urzędu">
+                        </div>
+                        <div class="field">
+                            <label>Data</label>
+                            <input type="date" id="correctionDate" name="correctionDate">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:flex-start;padding:12px;background:var(--surface-2);border-radius:8px;font-size:12px;color:var(--ink-2);margin-top:16px">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink-3);flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                        <span>Korekta to różnica między obecnymi a deklarowanymi środkami. Wpisuje się jako pojedynczy wpis do historii przychodów (dodatnia lub ujemna), nie powiązana z konkretną transakcją.</span>
+                    </div>
                 </div>
-                <form id="correctionForm">
-                    <div class="form-group">
-                        <label>Nowa kwota całkowitych środków (zł)</label>
-                        <input type="number" name="correctionAmount" step="0.01" required placeholder="np. 5000.00" class="num" style="font-size:15px">
-                        <span class="form-hint">Wprowadź kwotę, którą <strong>chcesz mieć po korekcie</strong>. System wyliczy różnicę i zapisze ją jako korektę.</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Powód korekty</label>
-                        <input type="text" name="correctionReason" required placeholder="np. Błąd w rozliczeniu, korekta bankowa">
-                    </div>
-                    <div style="padding:12px;background:var(--surface-2);border-radius:var(--radius-sm);font-size:12px;color:var(--ink-2);margin-bottom:16px">
-                        Korekta to różnica między obecnymi a deklarowanymi środkami. Wpisuje się jako pojedynczy wpis do historii przychodów.
-                    </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn" onclick="closeModal('correctionModal')">Anuluj</button>
-                        <button type="submit" class="btn btn-accent">Wprowadź korektę</button>
-                    </div>
-                </form>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="window.closeModal('correctionModal')">Anuluj</button>
+                    <button type="submit" class="btn accent">Wprowadź korektę</button>
+                </div>
+            </form>
         </div>
     </div>
 
