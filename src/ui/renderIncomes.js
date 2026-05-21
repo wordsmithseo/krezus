@@ -80,9 +80,9 @@ export function renderSources() {
     return;
   }
 
-  const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
-  const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
-  const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
+  const iconEdit  = icon('Edit',  { size: 14, strokeWidth: 1.5 });
+  const iconTrash = icon('Trash', { size: 14, strokeWidth: 1.5 });
+  const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
 
   const html = paginatedIncomes.map(inc => {
     const isCorrection = inc.source === 'KOREKTA';

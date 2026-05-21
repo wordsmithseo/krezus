@@ -222,7 +222,9 @@ function showPresenceIndicator(count = 0) {
         <span>${count === 1 ? '1 sesja online' : `${count} sesje online`}</span>
       `;
     }
-    chip.style.display = 'flex';
+    if (!window.matchMedia('(max-width: 900px)').matches) {
+      chip.style.display = 'flex';
+    }
   }
 }
 

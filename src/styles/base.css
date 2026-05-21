@@ -22,11 +22,8 @@ body {
   font-feature-settings: "cv11" 1, "ss01" 1;
 }
 
-img, svg {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
+img, svg { display: block; }
+img { max-width: 100%; height: auto; }
 
 ul, ol {
   list-style: none;

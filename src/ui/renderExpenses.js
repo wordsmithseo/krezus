@@ -79,9 +79,9 @@ export function renderExpenses() {
     return;
   }
 
-  const iconEdit  = icon('Edit',  { size: 13, strokeWidth: 1.5 });
-  const iconTrash = icon('Trash', { size: 13, strokeWidth: 1.5 });
-  const iconCheck = icon('Check', { size: 13, strokeWidth: 2 });
+  const iconEdit  = icon('Edit',  { size: 14, strokeWidth: 1.5 });
+  const iconTrash = icon('Trash', { size: 14, strokeWidth: 1.5 });
+  const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
 
   const categories = getCategories().map((cat, idx) => ({ ...cat, color: CAT_COLORS[idx % CAT_COLORS.length] }));
   const catByName = name => categories.find(c => c.name === name) || null;

@@ -2,6 +2,10 @@
 
 Polska aplikacja do zarządzania budżetem domowym. Wdrożona na krezus.vercel.app.
 
+> **WAŻNE:** Przy debugowaniu i dodawaniu funkcji przeszukuj wyłącznie katalog `src/`. Nigdy nie używaj `grep -r .` ani `find .` bez jawnego ograniczenia do `src/` — wyklucza to `node_modules`, `dist`, `.git` i inne katalogi niezwiązane z kodem źródłowym.
+
+> **WAŻNE:** Nie instaluj żadnych pakietów npm (`npm install`, `npm i`, `npx`) bez wyraźnej prośby użytkownika. Nie konfiguruj Playwright, przeglądarek headless ani innych narzędzi testowych — do weryfikacji UI używaj wyłącznie `gnome-screenshot`. Proste zadanie = minimalne działanie.
+
 ## Stack
 
 - **Frontend:** Vanilla JavaScript (ES Modules)

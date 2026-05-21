@@ -35,4 +35,4 @@ table.table td { padding: var(--density-row) 14px; border-bottom: 1px solid var(
 table.table tr:last-child td { border-bottom: none; }
 table.table tr:hover td { background: var(--surface-2); }
 table.table .amount { font-family: var(--font-mono); font-feature-settings: "tnum" 1; text-align: right; }
-table.table .actions { width: 1px; text-align: right; white-space: nowrap; padding-right: 12px; }
+table.table .actions { display: table-cell; text-align: right; white-space: nowrap; padding-right: 12px; width: auto; }
