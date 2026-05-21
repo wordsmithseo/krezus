@@ -36,7 +36,9 @@ export function setExpenseSearch(query) {
 function getFilteredExpenses() {
   const sorted = [...getExpenses()].sort((a, b) => {
     if (a.type !== b.type) return a.type === 'planned' ? -1 : 1;
-    return b.date.localeCompare(a.date);
+    const dateCmp = b.date.localeCompare(a.date);
+    if (dateCmp !== 0) return dateCmp;
+    return (b.time || '').localeCompare(a.time || '');
   });
   return sorted.filter(exp => {
     if (currentExpenseFilter === 'all' && exp.type === 'planned') return false;

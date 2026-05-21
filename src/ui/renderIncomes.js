@@ -36,7 +36,9 @@ export function setIncomeSearch(query) {
 function getFilteredIncomes() {
   const sorted = [...getIncomes()].sort((a, b) => {
     if (a.type !== b.type) return a.type === 'planned' ? -1 : 1;
-    return b.date.localeCompare(a.date);
+    const dateCmp = b.date.localeCompare(a.date);
+    if (dateCmp !== 0) return dateCmp;
+    return (b.time || '').localeCompare(a.time || '');
   });
   return sorted.filter(inc => {
     if (currentIncomeFilter === 'all' && inc.type === 'planned') return false;
