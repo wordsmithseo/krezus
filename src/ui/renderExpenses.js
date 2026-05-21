@@ -39,6 +39,7 @@ function getFilteredExpenses() {
     return b.date.localeCompare(a.date);
   });
   return sorted.filter(exp => {
+    if (currentExpenseFilter === 'all' && exp.type === 'planned') return false;
     if (currentExpenseFilter === 'normal' && exp.type !== 'normal') return false;
     if (currentExpenseFilter === 'planned' && exp.type !== 'planned') return false;
     if (currentExpenseSearch) {

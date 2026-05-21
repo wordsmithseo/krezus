@@ -39,6 +39,7 @@ function getFilteredIncomes() {
     return b.date.localeCompare(a.date);
   });
   return sorted.filter(inc => {
+    if (currentIncomeFilter === 'all' && inc.type === 'planned') return false;
     // 'normal' includes corrections (type !== 'planned')
     if (currentIncomeFilter === 'normal' && inc.type === 'planned') return false;
     if (currentIncomeFilter === 'planned' && inc.type !== 'planned') return false;
