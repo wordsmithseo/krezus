@@ -10,6 +10,7 @@ import {
   getMonthExpenses,
   getWeekDateRange,
   getMonthName,
+  calculateSpendingDynamics,
 } from '../modules/budgetCalculator.js';
 
 import { getIncomes, getExpenses, getCategories } from '../modules/dataManager.js';
@@ -234,79 +235,92 @@ export function renderSpendingDynamics() {
   const container = document.getElementById('dynamicsInfo');
   if (!container) return;
 
-  const dailyData = buildLastNDaysData(30);
-  const values = dailyData.map(d => d.value);
-  const total = values.reduce((s, v) => s + v, 0);
+  const d = calculateSpendingDynamics();
 
-  const nonZero = values.filter(v => v > 0);
-  const activeDays = nonZero.length;
-  const avg = activeDays > 0 ? total / activeDays : 0;
-
-  const maxVal = Math.max(...values, 0);
-  const maxIdx = values.findIndex(v => v === maxVal);
-  const maxDate = maxIdx >= 0 && maxVal > 0 ? dailyData[maxIdx].date : null;
-  const maxDateLabel = maxDate
-    ? new Date(maxDate + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }).replace('.', '')
-    : '—';
-
-  // Trend: pierwsza połowa 30 dni vs druga połowa
-  const half = 15;
-  const avgFirst = values.slice(0, half).reduce((s, v) => s + v, 0) / half;
-  const avgLast = values.slice(half).reduce((s, v) => s + v, 0) / half;
-  let trendHtml = '';
-  if (avgFirst > 0) {
-    const pct = ((avgLast - avgFirst) / avgFirst) * 100;
-    const sign = pct >= 0 ? '+' : '';
-    const tone = pct > 0 ? 'up bad' : 'down good';
-    const arrow = pct > 0 ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
-    trendHtml = `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}%</span>`;
+  if (d.status === 'no-date') {
+    container.innerHTML = sanitizeHTML(`
+      <div style="padding:20px 16px;text-align:center;color:var(--ink-3);font-size:13px">${escapeHTML(d.summary)}</div>
+    `);
+    return;
   }
 
-  const chartHtml = dailyChartHTML(dailyData, { height: 140 });
+  const STATUS_TAG = {
+    excellent: 'tag success dot',
+    good:      'tag success dot',
+    moderate:  'tag accent dot',
+    warning:   'tag danger dot',
+    critical:  'tag danger dot',
+  };
+  const tagClass = STATUS_TAG[d.status] || 'tag dot';
 
-  const statsRow = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 14px;border-bottom:1px solid var(--line)">
-      <div style="display:flex;flex-direction:column;gap:2px">
-        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Suma 30d</span>
-        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${Fmt.zl(total)} zł</span>
+  const pct = Math.min(100, Math.round((d.ratio || 0) * 100));
+  const barColor = d.status === 'excellent' || d.status === 'good'
+    ? 'var(--success)'
+    : d.status === 'moderate'
+      ? 'var(--accent)'
+      : d.status === 'warning'
+        ? 'var(--warning)'
+        : 'var(--danger)';
+
+  let timeHtml;
+  if (d.showToday) {
+    timeHtml = 'Dziś';
+  } else if (d.countdownFormat) {
+    timeHtml = `<span class="countdown-timer" data-end-date="${d.periodDate}" data-end-time="${d.periodTime2}">${d.countdownFormat}</span>`;
+  } else {
+    timeHtml = escapeHTML(d.periodTime || '—');
+  }
+
+  const overBudget = d.projectedTotal > d.toSpend && d.toSpend > 0;
+  const projColor = overBudget ? 'var(--danger)' : 'var(--ink-1)';
+
+  const html = `
+    <div style="padding:12px 16px;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px">
+        <span style="font-size:12px;font-weight:600;color:var(--ink-2)">${escapeHTML(d.periodName || 'Okres')}</span>
+        <span class="${tagClass}" style="font-size:10px">${escapeHTML(d.title)}</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
-        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Śr/dzień</span>
-        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${Fmt.zl(avg)} zł</span>
-        <span style="font-size:10px;color:var(--ink-3)">${activeDays}/30 aktywnych</span>
+      <span style="font-size:11px;color:var(--ink-3)">Następny planowany wpływ — horyzont tej analizy</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--line)">
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:3px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Śr/dzień (7d)</span>
+        <span class="num" style="font-size:16px;font-weight:600;color:var(--ink-1)">${Fmt.zl(d.dailyAvg7)} <span style="font-size:11px;color:var(--ink-3)">zł</span></span>
+        <span style="font-size:10px;color:var(--ink-3)">Twoje aktualne tempo</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
-        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Szczyt</span>
-        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${maxVal > 0 ? Fmt.zl(maxVal) + ' zł' : '—'}</span>
-        <span style="font-size:10px;color:var(--ink-3)">${maxDateLabel}</span>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:3px;border-left:1px solid var(--line);border-right:1px solid var(--line)">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Limit/dzień</span>
+        <span class="num" style="font-size:16px;font-weight:600;color:var(--ink-1)">${Fmt.zl(d.targetDaily)} <span style="font-size:11px;color:var(--ink-3)">zł</span></span>
+        <span style="font-size:10px;color:var(--ink-3)">Dostępne ÷ dni do wpływu</span>
       </div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:3px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Do wpływu</span>
+        <span style="font-size:13px;font-weight:500;color:var(--ink-2)">${timeHtml}</span>
+        <span style="font-size:10px;color:var(--ink-3)">Koniec okresu</span>
+      </div>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid var(--line)">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+        <div>
+          <span style="font-size:11px;font-weight:600;color:var(--ink-2)">Tempo vs limit</span>
+          <span style="font-size:10px;color:var(--ink-3)"> · ile z dziennego limitu wydajesz średnio</span>
+        </div>
+        <span class="num" style="font-size:11px;font-weight:600;color:${barColor}">${pct}%</span>
+      </div>
+      <div class="progress" style="height:5px;border-radius:3px;background:var(--surface-2)">
+        <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width 0.4s"></div>
+      </div>
+    </div>
+    <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <span style="font-size:11px;font-weight:600;color:var(--ink-2)">Prognoza do końca okresu</span>
+        <span style="font-size:10px;color:var(--ink-3)"> · jeśli utrzymasz to tempo${overBudget ? ', przekroczysz budżet' : ''}</span>
+      </div>
+      <span class="num" style="font-size:13px;font-weight:600;color:${projColor};white-space:nowrap">${Fmt.zl(d.projectedTotal)} zł${overBudget ? ' ' + icon('AlertTriangle', { size: 12 }) : ''}</span>
     </div>`;
 
-  // Status "teraz": ostatnie 7 dni vs średnia 30-dniowa
-  const last7sum = values.slice(-7).reduce((s, v) => s + v, 0);
-  const avg30daily = total / 30;
-  const last7avg = last7sum / 7;
-  let statusHtml = '';
-  if (avg30daily > 0) {
-    const ratio = last7avg / avg30daily;
-    if (ratio > 1.2) {
-      statusHtml = `<span class="tag danger dot" style="font-size:10px">Powyżej normy</span>`;
-    } else if (ratio < 0.8) {
-      statusHtml = `<span class="tag success dot" style="font-size:10px">Poniżej normy</span>`;
-    } else {
-      statusHtml = `<span class="tag success dot" style="font-size:10px">W normie</span>`;
-    }
-  }
-
-  const trendFooter = (trendHtml || statusHtml) ? `
-    <div style="padding:10px 16px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3);flex-wrap:wrap">
-      ${trendHtml ? `<div style="display:flex;align-items:center;gap:4px">${icon('Chart', { size: 12 })}<span>Trend 1–15 vs 16–30d:</span>${trendHtml}</div>` : '<div></div>'}
-      ${statusHtml ? `<div style="display:flex;align-items:center;gap:4px"><span style="color:var(--ink-3)">Ostatnie 7d:</span>${statusHtml}</div>` : ''}
-    </div>` : '';
-
-  container.innerHTML = sanitizeHTML(
-    `${statsRow}<div style="padding:14px 16px 12px">${chartHtml}</div>${trendFooter}`
-  );
+  container.innerHTML = sanitizeHTML(html);
+  startCountdownTimers(container);
 }
 
 /**

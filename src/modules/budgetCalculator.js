@@ -1137,7 +1137,19 @@ export function calculateSpendingDynamics() {
         title,
         summary,
         details,
-        recommendation
+        recommendation,
+        dailyAvg7,
+        targetDaily,
+        ratio,
+        activeDays,
+        toSpend,
+        projectedTotal: dailyAvg7 * activeDays,
+        periodName: selectedPeriod.name,
+        periodTime: selectedPeriod.timeFormatted,
+        periodDate: selectedPeriod.date,
+        periodTime2: selectedPeriod.time || '',
+        showToday: selectedPeriod.showToday,
+        countdownFormat: selectedPeriod.countdownFormat,
     };
 }
 

@@ -809,6 +809,7 @@ const saveSettings = async (e) => {
     await saveEnvelopePeriod(envelopePeriod);
     await saveDynamicsPeriod(dynamicsPeriod);
     await recalculateEnvelope();
+    renderSummary();
 
     const user = getCurrentUser();
     const displayName = await getDisplayName(user.uid);
