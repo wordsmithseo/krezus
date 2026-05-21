@@ -13,8 +13,171 @@ let currentExpenseFilter = 'normal'; // 'normal' | 'planned'
 let currentExpenseSearch = '';
 let getBudgetUserNameFn = null;
 
+let advancedFilters = { dateFrom: '', dateTo: '', amountMin: '', amountMax: '', categories: [], users: [] };
+let filterPanelOpen = false;
+let getExpCategoriesFn = null;
+let getExpUsersCacheFn = null;
+
 export function setExpenseDeps({ getBudgetUserName }) {
   getBudgetUserNameFn = getBudgetUserName;
+}
+
+export function setExpenseAdvancedDeps({ getCategories: getCatFn, getBudgetUsersCache }) {
+  getExpCategoriesFn = getCatFn;
+  getExpUsersCacheFn = getBudgetUsersCache;
+}
+
+export function toggleExpenseFilterPanel() {
+  filterPanelOpen = !filterPanelOpen;
+  if (filterPanelOpen) _renderExpenseFilterPanel();
+  else _closeExpenseFilterPanel();
+}
+
+export function applyExpenseFilters() {
+  const panel = document.getElementById('expenseFilterPanel');
+  if (!panel) return;
+  advancedFilters = {
+    dateFrom: document.getElementById('expDateFrom')?.value || '',
+    dateTo:   document.getElementById('expDateTo')?.value   || '',
+    amountMin: document.getElementById('expAmountMin')?.value || '',
+    amountMax: document.getElementById('expAmountMax')?.value || '',
+    categories: [...panel.querySelectorAll('#expCatList .active')].map(b => b.dataset.catName),
+    users:      [...panel.querySelectorAll('#expUserList .active')].map(b => b.dataset.userId),
+  };
+  filterPanelOpen = false;
+  _closeExpenseFilterPanel();
+  currentExpensePage = 1;
+  renderExpenses();
+}
+
+export function resetExpenseFilters() {
+  advancedFilters = { dateFrom: '', dateTo: '', amountMin: '', amountMax: '', categories: [], users: [] };
+  filterPanelOpen = false;
+  _closeExpenseFilterPanel();
+  currentExpensePage = 1;
+  renderExpenses();
+}
+
+function _hasActiveExpenseFilters() {
+  const f = advancedFilters;
+  return f.dateFrom || f.dateTo || f.amountMin !== '' || f.amountMax !== '' || f.categories.length > 0 || f.users.length > 0;
+}
+
+function _closeExpenseFilterPanel() {
+  const panel = document.getElementById('expenseFilterPanel');
+  if (panel) panel.style.display = 'none';
+  _syncExpenseFilterBtn();
+}
+
+function _syncExpenseFilterBtn() {
+  const active = _hasActiveExpenseFilters();
+  const btn = document.querySelector('[data-action="toggle-expense-filters"]');
+  if (btn) {
+    btn.style.color = active ? 'var(--accent)' : '';
+    btn.style.borderColor = active ? 'var(--accent)' : '';
+    const txt = btn.querySelector('.filter-label');
+    if (txt) txt.textContent = 'Filtry';
+  }
+  const clearBtn = document.getElementById('expenseClearFilters');
+  if (clearBtn) {
+    clearBtn.style.display = active ? 'inline-flex' : 'none';
+    const lbl = document.getElementById('expenseClearLabel');
+    if (lbl) lbl.textContent = `Wyczyść (${_countActiveExpenseFilters()})`;
+  }
+}
+
+function _countActiveExpenseFilters() {
+  const f = advancedFilters;
+  let n = 0;
+  if (f.dateFrom || f.dateTo) n++;
+  if (f.amountMin !== '' || f.amountMax !== '') n++;
+  if (f.categories.length > 0) n++;
+  if (f.users.length > 0) n++;
+  return n;
+}
+
+function _renderExpenseFilterPanel() {
+  const panel = document.getElementById('expenseFilterPanel');
+  if (!panel) return;
+
+  const cats  = getExpCategoriesFn ? getExpCategoriesFn() : [];
+  const users = getExpUsersCacheFn ? getExpUsersCacheFn() : [];
+  const f = advancedFilters;
+
+  const LABEL = 'font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin-bottom:7px';
+  const INPUT = 'flex:1;font-size:12px;padding:5px 9px;min-width:0';
+  const SEP   = 'color:var(--ink-3);font-size:13px;flex-shrink:0;padding:0 2px';
+
+  panel.innerHTML = `
+    <div style="padding:14px 20px;background:var(--surface-2);border-bottom:1px solid var(--line);animation:slideUp 150ms ease both">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:14px">
+        <div>
+          <div style="${LABEL}">Okres</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="date" id="expDateFrom" class="input" style="${INPUT}">
+            <span style="${SEP}">—</span>
+            <input type="date" id="expDateTo" class="input" style="${INPUT}">
+          </div>
+        </div>
+        <div>
+          <div style="${LABEL}">Kwota (zł)</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" id="expAmountMin" class="input" style="${INPUT}" min="0" placeholder="0">
+            <span style="${SEP}">—</span>
+            <input type="number" id="expAmountMax" class="input" style="${INPUT}" min="0" placeholder="∞">
+          </div>
+        </div>
+      </div>
+      <div id="expCatSection" style="display:none;margin-bottom:14px">
+        <div style="${LABEL}">Kategorie</div>
+        <div id="expCatList" style="display:flex;flex-wrap:wrap;gap:5px;max-height:88px;overflow-y:auto"></div>
+      </div>
+      <div id="expUserSection" style="display:none;margin-bottom:14px">
+        <div style="${LABEL}">Użytkownik</div>
+        <div id="expUserList" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--line)">
+        <button class="btn sm ghost" data-action="reset-expense-filters" style="color:var(--ink-3)">Resetuj</button>
+        <button class="btn sm btn-accent" data-action="apply-expense-filters">Zastosuj filtry</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('expDateFrom').value  = f.dateFrom;
+  document.getElementById('expDateTo').value    = f.dateTo;
+  document.getElementById('expAmountMin').value = f.amountMin;
+  document.getElementById('expAmountMax').value = f.amountMax;
+
+  if (cats.length > 0) {
+    document.getElementById('expCatSection').style.display = 'block';
+    const list = document.getElementById('expCatList');
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'category-quick-btn' + (f.categories.includes(cat.name) ? ' active' : '');
+      btn.textContent = cat.name;
+      btn.dataset.catName = cat.name;
+      btn.type = 'button';
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+      list.appendChild(btn);
+    });
+  }
+
+  if (users.length > 1) {
+    document.getElementById('expUserSection').style.display = 'block';
+    const list = document.getElementById('expUserList');
+    users.forEach(u => {
+      const btn = document.createElement('button');
+      btn.className = 'category-quick-btn' + (f.users.includes(u.id) ? ' active' : '');
+      btn.textContent = u.name || u.id;
+      btn.dataset.userId = u.id;
+      btn.type = 'button';
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+      list.appendChild(btn);
+    });
+  }
+
+  panel.style.display = 'block';
+  _syncExpenseFilterBtn();
 }
 
 export function resetExpensePage() {
@@ -40,15 +203,22 @@ function getFilteredExpenses() {
     if (dateCmp !== 0) return dateCmp;
     return (b.time || '').localeCompare(a.time || '');
   });
+  const f = advancedFilters;
   return sorted.filter(exp => {
     if (currentExpenseFilter === 'all' && exp.type === 'planned') return false;
     if (currentExpenseFilter === 'normal' && exp.type !== 'normal') return false;
     if (currentExpenseFilter === 'planned' && exp.type !== 'planned') return false;
     if (currentExpenseSearch) {
       const q = currentExpenseSearch;
-      return (exp.description || '').toLowerCase().includes(q) ||
-             (exp.category || '').toLowerCase().includes(q);
+      if (!(exp.description || '').toLowerCase().includes(q) &&
+          !(exp.category || '').toLowerCase().includes(q)) return false;
     }
+    if (f.dateFrom && exp.date < f.dateFrom) return false;
+    if (f.dateTo   && exp.date > f.dateTo)   return false;
+    if (f.amountMin !== '' && exp.amount < parseFloat(f.amountMin)) return false;
+    if (f.amountMax !== '' && exp.amount > parseFloat(f.amountMax)) return false;
+    if (f.categories.length > 0 && !f.categories.includes(exp.category || '')) return false;
+    if (f.users.length > 0 && !f.users.includes(exp.userId || '')) return false;
     return true;
   });
 }
@@ -69,6 +239,8 @@ export function renderExpenses() {
   document.querySelectorAll('#expenseFilterSeg button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === currentExpenseFilter);
   });
+
+  _syncExpenseFilterBtn();
 
   if (total === 0) {
     const msg = allExpenses.length === 0

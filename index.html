@@ -510,10 +510,14 @@
                                         </span>
                                         <input class="input" id="expenseSearch" placeholder="Szukaj…" style="padding-left:32px">
                                     </div>
-                                    <div style="margin-left:auto;display:flex;gap:8px">
-                                        <button class="btn sm" title="Wkrótce" disabled>
+                                    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                                        <button class="btn sm" data-action="toggle-expense-filters">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                                            Filtry
+                                            <span class="filter-label">Filtry</span>
+                                        </button>
+                                        <button id="expenseClearFilters" data-action="reset-expense-filters" style="display:none;cursor:pointer;border:none;font:inherit;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 8px 3px 6px;font-size:11px;font-weight:500;align-items:center;gap:4px;line-height:1">
+                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                                            <span id="expenseClearLabel">Wyczyść</span>
                                         </button>
                                         <button class="btn btn-accent btn-sm" data-action="open-add-expense-modal">
                                             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>
@@ -521,6 +525,7 @@
                                         </button>
                                     </div>
                                 </div>
+                                <div id="expenseFilterPanel" style="display:none"></div>
                                 <!-- Table -->
                                 <div style="overflow-x:auto">
                                     <table class="table" style="table-layout:fixed;width:100%;min-width:860px">
@@ -597,10 +602,14 @@
                                         </span>
                                         <input class="input" id="incomeSearch" placeholder="Szukaj…" style="padding-left:32px">
                                     </div>
-                                    <div style="margin-left:auto;display:flex;gap:8px">
-                                        <button class="btn sm" title="Wkrótce" disabled>
+                                    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                                        <button class="btn sm" data-action="toggle-income-filters">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-                                            Filtry
+                                            <span class="filter-label">Filtry</span>
+                                        </button>
+                                        <button id="incomeClearFilters" data-action="reset-income-filters" style="display:none;cursor:pointer;border:none;font:inherit;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:3px 8px 3px 6px;font-size:11px;font-weight:500;align-items:center;gap:4px;line-height:1">
+                                            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
+                                            <span id="incomeClearLabel">Wyczyść</span>
                                         </button>
                                         <button class="btn btn-sm" data-action="open-correction-modal">
                                             <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 13A6 6 0 1 1 8 2a6 6 0 0 1 0 12zm.5-8.5a.5.5 0 0 0-1 0V7H6a.5.5 0 0 0 0 1h1.5v1.5a.5.5 0 0 0 1 0V8H10a.5.5 0 0 0 0-1H8.5V5.5z"/></svg>
@@ -612,6 +621,7 @@
                                         </button>
                                     </div>
                                 </div>
+                                <div id="incomeFilterPanel" style="display:none"></div>
                                 <!-- Table -->
                                 <div style="overflow-x:auto">
                                     <table class="table" style="table-layout:fixed;width:100%;min-width:720px">

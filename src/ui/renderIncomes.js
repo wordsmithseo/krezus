@@ -13,8 +13,148 @@ let currentIncomeFilter = 'normal'; // 'normal' | 'planned'
 let currentIncomeSearch = '';
 let getBudgetUserNameFn = null;
 
+let advancedIncomeFilters = { dateFrom: '', dateTo: '', amountMin: '', amountMax: '', users: [] };
+let incomeFilterPanelOpen = false;
+let getIncUsersCacheFn = null;
+
 export function setIncomeDeps({ getBudgetUserName }) {
   getBudgetUserNameFn = getBudgetUserName;
+}
+
+export function setIncomeAdvancedDeps({ getBudgetUsersCache }) {
+  getIncUsersCacheFn = getBudgetUsersCache;
+}
+
+export function toggleIncomeFilterPanel() {
+  incomeFilterPanelOpen = !incomeFilterPanelOpen;
+  if (incomeFilterPanelOpen) _renderIncomeFilterPanel();
+  else _closeIncomeFilterPanel();
+}
+
+export function applyIncomeFilters() {
+  const panel = document.getElementById('incomeFilterPanel');
+  if (!panel) return;
+  advancedIncomeFilters = {
+    dateFrom:  document.getElementById('incDateFrom')?.value  || '',
+    dateTo:    document.getElementById('incDateTo')?.value    || '',
+    amountMin: document.getElementById('incAmountMin')?.value || '',
+    amountMax: document.getElementById('incAmountMax')?.value || '',
+    users:     [...panel.querySelectorAll('#incUserList .active')].map(b => b.dataset.userId),
+  };
+  incomeFilterPanelOpen = false;
+  _closeIncomeFilterPanel();
+  currentIncomePage = 1;
+  renderSources();
+}
+
+export function resetIncomeFilters() {
+  advancedIncomeFilters = { dateFrom: '', dateTo: '', amountMin: '', amountMax: '', users: [] };
+  incomeFilterPanelOpen = false;
+  _closeIncomeFilterPanel();
+  currentIncomePage = 1;
+  renderSources();
+}
+
+function _hasActiveIncomeFilters() {
+  const f = advancedIncomeFilters;
+  return f.dateFrom || f.dateTo || f.amountMin !== '' || f.amountMax !== '' || f.users.length > 0;
+}
+
+function _closeIncomeFilterPanel() {
+  const panel = document.getElementById('incomeFilterPanel');
+  if (panel) panel.style.display = 'none';
+  _syncIncomeFilterBtn();
+}
+
+function _syncIncomeFilterBtn() {
+  const active = _hasActiveIncomeFilters();
+  const btn = document.querySelector('[data-action="toggle-income-filters"]');
+  if (btn) {
+    btn.style.color = active ? 'var(--accent)' : '';
+    btn.style.borderColor = active ? 'var(--accent)' : '';
+    const txt = btn.querySelector('.filter-label');
+    if (txt) txt.textContent = 'Filtry';
+  }
+  const clearBtn = document.getElementById('incomeClearFilters');
+  if (clearBtn) {
+    clearBtn.style.display = active ? 'inline-flex' : 'none';
+    const lbl = document.getElementById('incomeClearLabel');
+    if (lbl) lbl.textContent = `Wyczyść (${_countActiveIncomeFilters()})`;
+  }
+}
+
+function _countActiveIncomeFilters() {
+  const f = advancedIncomeFilters;
+  let n = 0;
+  if (f.dateFrom || f.dateTo) n++;
+  if (f.amountMin !== '' || f.amountMax !== '') n++;
+  if (f.users.length > 0) n++;
+  return n;
+}
+
+function _renderIncomeFilterPanel() {
+  const panel = document.getElementById('incomeFilterPanel');
+  if (!panel) return;
+
+  const users = getIncUsersCacheFn ? getIncUsersCacheFn() : [];
+  const f = advancedIncomeFilters;
+
+  const LABEL = 'font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin-bottom:7px';
+  const INPUT = 'flex:1;font-size:12px;padding:5px 9px;min-width:0';
+  const SEP   = 'color:var(--ink-3);font-size:13px;flex-shrink:0;padding:0 2px';
+
+  panel.innerHTML = `
+    <div style="padding:14px 20px;background:var(--surface-2);border-bottom:1px solid var(--line);animation:slideUp 150ms ease both">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:14px">
+        <div>
+          <div style="${LABEL}">Okres</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="date" id="incDateFrom" class="input" style="${INPUT}">
+            <span style="${SEP}">—</span>
+            <input type="date" id="incDateTo" class="input" style="${INPUT}">
+          </div>
+        </div>
+        <div>
+          <div style="${LABEL}">Kwota (zł)</div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input type="number" id="incAmountMin" class="input" style="${INPUT}" min="0" placeholder="0">
+            <span style="${SEP}">—</span>
+            <input type="number" id="incAmountMax" class="input" style="${INPUT}" min="0" placeholder="∞">
+          </div>
+        </div>
+      </div>
+      <div id="incUserSection" style="display:none;margin-bottom:14px">
+        <div style="${LABEL}">Użytkownik</div>
+        <div id="incUserList" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--line)">
+        <button class="btn sm ghost" data-action="reset-income-filters" style="color:var(--ink-3)">Resetuj</button>
+        <button class="btn sm btn-accent" data-action="apply-income-filters">Zastosuj filtry</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('incDateFrom').value  = f.dateFrom;
+  document.getElementById('incDateTo').value    = f.dateTo;
+  document.getElementById('incAmountMin').value = f.amountMin;
+  document.getElementById('incAmountMax').value = f.amountMax;
+
+  if (users.length > 1) {
+    document.getElementById('incUserSection').style.display = 'block';
+    const list = document.getElementById('incUserList');
+    users.forEach(u => {
+      const btn = document.createElement('button');
+      btn.className = 'category-quick-btn' + (f.users.includes(u.id) ? ' active' : '');
+      btn.textContent = u.name || u.id;
+      btn.dataset.userId = u.id;
+      btn.type = 'button';
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+      list.appendChild(btn);
+    });
+  }
+
+  panel.style.display = 'block';
+  _syncIncomeFilterBtn();
 }
 
 export function resetIncomePage() {
@@ -41,6 +181,7 @@ function getFilteredIncomes() {
     return (b.time || '').localeCompare(a.time || '');
   });
   const isCorrection = inc => inc.source === 'KOREKTA';
+  const f = advancedIncomeFilters;
   return sorted.filter(inc => {
     if (currentIncomeFilter === 'all' && inc.type === 'planned') return false;
     if (currentIncomeFilter === 'normal' && (inc.type === 'planned' || isCorrection(inc))) return false;
@@ -48,9 +189,14 @@ function getFilteredIncomes() {
     if (currentIncomeFilter === 'corrections' && !isCorrection(inc)) return false;
     if (currentIncomeSearch) {
       const q = currentIncomeSearch;
-      return (inc.source || '').toLowerCase().includes(q) ||
-             (inc.description || '').toLowerCase().includes(q);
+      if (!(inc.source || '').toLowerCase().includes(q) &&
+          !(inc.description || '').toLowerCase().includes(q)) return false;
     }
+    if (f.dateFrom && inc.date < f.dateFrom) return false;
+    if (f.dateTo   && inc.date > f.dateTo)   return false;
+    if (f.amountMin !== '' && Math.abs(inc.amount) < parseFloat(f.amountMin)) return false;
+    if (f.amountMax !== '' && Math.abs(inc.amount) > parseFloat(f.amountMax)) return false;
+    if (f.users.length > 0 && !f.users.includes(inc.userId || '')) return false;
     return true;
   });
 }
@@ -71,6 +217,8 @@ export function renderSources() {
   document.querySelectorAll('#incomeFilterSeg button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.filter === currentIncomeFilter);
   });
+
+  _syncIncomeFilterBtn();
 
   if (total === 0) {
     const msg = allIncomes.length === 0

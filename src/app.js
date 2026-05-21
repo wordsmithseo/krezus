@@ -110,8 +110,8 @@ import { initClickDelegation, getDataAttributes } from './handlers/clickDelegati
 // Import funkcji renderowania UI
 import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
 import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
-import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch } from './ui/renderExpenses.js';
-import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch } from './ui/renderIncomes.js';
+import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch, setExpenseAdvancedDeps, toggleExpenseFilterPanel, applyExpenseFilters, resetExpenseFilters } from './ui/renderExpenses.js';
+import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch, setIncomeAdvancedDeps, toggleIncomeFilterPanel, applyIncomeFilters, resetIncomeFilters } from './ui/renderIncomes.js';
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
@@ -1231,7 +1231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dependency injection dla wydzielonych modułów
   setExpenseDeps({ getBudgetUserName });
+  setExpenseAdvancedDeps({ getCategories, getBudgetUsersCache: () => budgetUsersCache });
   setIncomeDeps({ getBudgetUserName });
+  setIncomeAdvancedDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setCategoryHandlerDeps({ renderCategories, renderExpenses });
   setSummaryDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setSavingsDeps({ getBudgetUsersCache: () => budgetUsersCache });
@@ -1366,9 +1368,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Filtry wydatków
     'filter-expenses': (el) => setExpenseFilter(el.dataset.filter),
+    'toggle-expense-filters': () => toggleExpenseFilterPanel(),
+    'apply-expense-filters':  () => applyExpenseFilters(),
+    'reset-expense-filters':  () => resetExpenseFilters(),
 
     // Filtry przychodów
     'filter-incomes': (el) => setIncomeFilter(el.dataset.filter),
+    'toggle-income-filters': () => toggleIncomeFilterPanel(),
+    'apply-income-filters':  () => applyIncomeFilters(),
+    'reset-income-filters':  () => resetIncomeFilters(),
 
     // Oszczędności
     'open-savings-modal': () => showSavingsModal(budgetUsersCache),
