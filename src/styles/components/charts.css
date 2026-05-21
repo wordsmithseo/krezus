@@ -12,8 +12,16 @@
 .bar-chart-label { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-chart-amount { font-family: var(--font-mono); font-size: 12px; flex-shrink: 0; font-feature-settings: "tnum" 1; }
 .bar-chart-meta { font-size: 11px; color: var(--ink-3); margin-top: 3px; }
+@keyframes bar-grow { from { width: 0 } to { width: var(--bar-w) } }
+@keyframes bar-rise { from { height: 0 } to { height: var(--bar-h) } }
+@keyframes sparkline-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes sparkline-area-in { from { opacity: 0; } to { opacity: 0.08; } }
 .bar-chart-track { height: 4px; background: var(--surface-sunken); border-radius: 999px; overflow: hidden; }
-.bar-chart-fill { height: 100%; border-radius: inherit; transition: width 400ms ease; }
+.bar-chart-fill { height: 100%; border-radius: inherit; animation: bar-grow 400ms ease both; }
+
+/* ===== SPARKLINE ===== */
+.sparkline-path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: sparkline-draw 600ms ease both; }
+.sparkline-area { animation: sparkline-area-in 600ms ease both; }
 
 /* ===== DAILY CHART ===== */
 .daily-chart { display: flex; align-items: flex-end; gap: 3px; }
@@ -23,7 +31,8 @@
 }
 .daily-bar-fill {
   border-radius: 3px 3px 2px 2px;
-  transition: height 300ms ease, opacity 80ms;
+  animation: bar-rise 300ms ease both;
+  transition: opacity 80ms;
   background: color-mix(in srgb, var(--accent) 22%, transparent);
   min-height: 0;
 }

@@ -69,10 +69,8 @@ describe('ringGaugeHTML', () => {
 
   it('handles zero max gracefully (pct = 0)', () => {
     const html = ringGaugeHTML(10, 0);
-    // pct=0 → offset = full circumference (nothing drawn)
-    const r = 91; // cx(100) - stroke/2(7) - 2
-    const circ = (2 * Math.PI * r).toFixed(2);
-    expect(html).toContain(`stroke-dashoffset: ${circ}`);
+    // pct=0 → offset = 1.0000 (pathLength="1" approach, full dashoffset = nothing drawn)
+    expect(html).toContain('stroke-dashoffset: 1.0000');
   });
 
   it('clamps value > max to 100%', () => {
@@ -208,7 +206,7 @@ describe('dailyChartHTML', () => {
   it('zero-value bars get height 0', () => {
     const data = [{ date: '2026-01-05', value: 0 }];
     const html = dailyChartHTML(data);
-    expect(html).toContain('height:0px');
+    expect(html).toContain('--bar-h:0px');
   });
 
   it('respects custom height option', () => {

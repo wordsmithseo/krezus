@@ -36,9 +36,8 @@ export function ringGaugeHTML(value, max, opts = {}) {
   const cx      = size / 2;
   const cy      = size / 2;
   const r       = cx - stroke / 2 - 2;
-  const circ    = 2 * Math.PI * r;
   const pct     = max > 0 ? Math.min(value / max, 1) : 0;
-  const offset  = (circ * (1 - pct)).toFixed(2);
+  const offset  = (1 - pct).toFixed(4);
   const color   = opts.color ?? gaugeColor(pct);
   const fillId  = opts.id ?? '';
   const idAttr  = fillId ? ` id="${fillId}"` : '';
@@ -62,8 +61,8 @@ export function ringGaugeHTML(value, max, opts = {}) {
   <circle class="gauge-fill-svg"${idAttr}
     cx="${cx}" cy="${cy}" r="${r}"
     fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
-    stroke-dasharray="${circ.toFixed(2)}"
-    style="stroke-dashoffset: ${offset}; --gauge-circ: ${circ.toFixed(2)};"
+    pathLength="1" stroke-dasharray="1"
+    style="stroke-dashoffset: ${offset};"
     transform="rotate(-90 ${cx} ${cy})"/>
   ${labelEl}
   ${sublabelEl}
@@ -81,10 +80,8 @@ export function ringGaugeHTML(value, max, opts = {}) {
  */
 export function updateRingGauge(circleEl, value, max, colorOverride) {
   if (!circleEl) return;
-  const r     = parseFloat(circleEl.getAttribute('r')) || 86;
-  const circ  = 2 * Math.PI * r;
-  const pct   = max > 0 ? Math.min(value / max, 1) : 0;
-  circleEl.style.strokeDashoffset = `${(circ * (1 - pct)).toFixed(2)}`;
+  const pct = max > 0 ? Math.min(value / max, 1) : 0;
+  circleEl.style.strokeDashoffset = `${(1 - pct).toFixed(4)}`;
   circleEl.style.stroke = colorOverride ?? gaugeColor(pct);
 }
 
@@ -119,8 +116,8 @@ export function sparklineHTML(data, opts = {}) {
   const areaPath = `${linePath} L${w},${h} L0,${h} Z`;
 
   return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-  <path d="${areaPath}" fill="${color}" opacity="0.08"/>
-  <path d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+  <path class="sparkline-area" d="${areaPath}" fill="${color}"/>
+  <path class="sparkline-path" d="${linePath}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" pathLength="1"/>
 </svg>`;
 }
 
@@ -154,7 +151,7 @@ export function barChartHTML(items, total) {
       <span class="bar-chart-label">${escapeHTML(it.label)}</span>
       <span class="bar-chart-amount">${amount} zł</span>
     </div>
-    <div class="bar-chart-track"><div class="bar-chart-fill" style="width:${pct}%;background:${color}"></div></div>
+    <div class="bar-chart-track"><div class="bar-chart-fill" style="--bar-w:${pct}%;background:${color};animation-delay:${i * 50}ms"></div></div>
     <div class="bar-chart-meta">${share}% wydatków</div>
   </div>
 </div>`;
@@ -186,7 +183,7 @@ export function dailyChartHTML(data, opts = {}) {
     const weekendCls = isWeekend ? ' weekend' : '';
 
     return `<div class="daily-bar" data-tip="${escapeHTML(tip)}">
-  <div class="daily-bar-fill${weekendCls}" style="height:${barH}px"></div>
+  <div class="daily-bar-fill${weekendCls}" style="--bar-h:${barH}px"></div>
 </div>`;
   }).join('');
 

@@ -98,10 +98,8 @@ function renderDayProgress(spent, total) {
 function updateEnvelopeGaugeSvg(fillId, remainingId, spent, total) {
   const fill = document.getElementById(fillId);
   if (!fill) return;
-  const r = parseFloat(fill.getAttribute('r')) || 86;
-  const c = 2 * Math.PI * r;
   const pct = total > 0 ? Math.min(spent / total, 1) : 0;
-  fill.style.strokeDasharray = `${c * pct} ${c}`;
+  fill.style.strokeDashoffset = `${(1 - pct).toFixed(4)}`;
   fill.style.stroke = pct > 0.85 ? 'var(--danger)' : pct > 0.6 ? 'oklch(0.65 0.15 50)' : 'var(--accent)';
   const rem = document.getElementById(remainingId);
   if (rem) rem.textContent = Fmt.zl(total - spent);

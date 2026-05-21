@@ -252,9 +252,9 @@
   to   { transform: scaleX(1); }
 }
 
-/* Ring gauge entrance: stroke-dashoffset from full circumference */
+/* Ring gauge entrance: pathLength="1" — wartość 1 = pełen obwód, bez var() */
 @keyframes gaugeReveal {
-  from { stroke-dashoffset: var(--gauge-circ); }
+  from { stroke-dashoffset: 1; }
 }
 
 /* Reduced motion: disable all entrance animations */
@@ -262,6 +262,11 @@
   .section.active { animation: none; }
   .progress-fill, .gauge-fill, .progress > div { animation: none; }
   .gauge-fill-svg { animation: none; }
+  .sparkline-path { animation: none; stroke-dashoffset: 0; }
+  .sparkline-area { animation: none; opacity: 0.08; }
+  .bar-chart-fill { animation: none; width: var(--bar-w); }
+  .daily-bar-fill { animation: none; height: var(--bar-h); }
+  .analytics-progress-fill { animation: none; width: var(--w); }
 }
 
 /* === HOVER EFFECTS === */

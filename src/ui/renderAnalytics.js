@@ -405,7 +405,7 @@ export function renderAnalytics() {
           </div>
           <div class="num" style="font-weight:500;flex-shrink:0">${Fmt.zl(user.amount)} zł</div>
         </div>
-        <div class="progress"><div style="width:${Math.min(user.percentage, 100)}%;height:100%;background:${user.color};border-radius:inherit;transition:width 400ms ease"></div></div>
+        <div class="progress"><div class="analytics-progress-fill" style="--w:${Math.min(user.percentage, 100)}%;background:${user.color}"></div></div>
         <div class="text-mute text-sm" style="margin-top:4px;text-align:right">${user.percentage.toFixed(1).replace('.', ',')}%</div>
       </div>
     `).join('') + top3HTML;
