@@ -235,9 +235,78 @@ export function renderSpendingDynamics() {
   if (!container) return;
 
   const dailyData = buildLastNDaysData(30);
-  const chartHtml = dailyChartHTML(dailyData, { height: 180 });
+  const values = dailyData.map(d => d.value);
+  const total = values.reduce((s, v) => s + v, 0);
 
-  container.innerHTML = sanitizeHTML(chartHtml);
+  const nonZero = values.filter(v => v > 0);
+  const activeDays = nonZero.length;
+  const avg = activeDays > 0 ? total / activeDays : 0;
+
+  const maxVal = Math.max(...values, 0);
+  const maxIdx = values.findIndex(v => v === maxVal);
+  const maxDate = maxIdx >= 0 && maxVal > 0 ? dailyData[maxIdx].date : null;
+  const maxDateLabel = maxDate
+    ? new Date(maxDate + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }).replace('.', '')
+    : '—';
+
+  // Trend: pierwsza połowa 30 dni vs druga połowa
+  const half = 15;
+  const avgFirst = values.slice(0, half).reduce((s, v) => s + v, 0) / half;
+  const avgLast = values.slice(half).reduce((s, v) => s + v, 0) / half;
+  let trendHtml = '';
+  if (avgFirst > 0) {
+    const pct = ((avgLast - avgFirst) / avgFirst) * 100;
+    const sign = pct >= 0 ? '+' : '';
+    const tone = pct > 0 ? 'up bad' : 'down good';
+    const arrow = pct > 0 ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
+    trendHtml = `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}%</span>`;
+  }
+
+  const chartHtml = dailyChartHTML(dailyData, { height: 140 });
+
+  const statsRow = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px 16px 14px;border-bottom:1px solid var(--line)">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Suma 30d</span>
+        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${Fmt.zl(total)} zł</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;align-items:center">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Śr/dzień</span>
+        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${Fmt.zl(avg)} zł</span>
+        <span style="font-size:10px;color:var(--ink-3)">${activeDays}/30 aktywnych</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Szczyt</span>
+        <span class="num" style="font-size:14px;font-weight:600;color:var(--ink-1)">${maxVal > 0 ? Fmt.zl(maxVal) + ' zł' : '—'}</span>
+        <span style="font-size:10px;color:var(--ink-3)">${maxDateLabel}</span>
+      </div>
+    </div>`;
+
+  // Status "teraz": ostatnie 7 dni vs średnia 30-dniowa
+  const last7sum = values.slice(-7).reduce((s, v) => s + v, 0);
+  const avg30daily = total / 30;
+  const last7avg = last7sum / 7;
+  let statusHtml = '';
+  if (avg30daily > 0) {
+    const ratio = last7avg / avg30daily;
+    if (ratio > 1.2) {
+      statusHtml = `<span class="tag danger dot" style="font-size:10px">Powyżej normy</span>`;
+    } else if (ratio < 0.8) {
+      statusHtml = `<span class="tag success dot" style="font-size:10px">Poniżej normy</span>`;
+    } else {
+      statusHtml = `<span class="tag success dot" style="font-size:10px">W normie</span>`;
+    }
+  }
+
+  const trendFooter = (trendHtml || statusHtml) ? `
+    <div style="padding:10px 16px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3);flex-wrap:wrap">
+      ${trendHtml ? `<div style="display:flex;align-items:center;gap:4px">${icon('Chart', { size: 12 })}<span>Trend 1–15 vs 16–30d:</span>${trendHtml}</div>` : '<div></div>'}
+      ${statusHtml ? `<div style="display:flex;align-items:center;gap:4px"><span style="color:var(--ink-3)">Ostatnie 7d:</span>${statusHtml}</div>` : ''}
+    </div>` : '';
+
+  container.innerHTML = sanitizeHTML(
+    `${statsRow}<div style="padding:14px 16px 12px">${chartHtml}</div>${trendFooter}`
+  );
 }
 
 /**
