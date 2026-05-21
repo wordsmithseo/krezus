@@ -229,7 +229,7 @@
 }
 
 /* ===== MOBILE MENU (DRAWER) ===== */
-.topbar .mobile-menu-btn { display: none; }
+.topbar .mobile-menu-btn { display: none; flex-shrink: 0; }
 
 .sidebar-backdrop {
   display: none;
@@ -270,7 +270,7 @@
   body[data-drawer-open="true"] { overflow: hidden; }
 
   .topbar .presence-chip { display: none; }
-  .topbar .logout-text { display: none; }
+  .topbar [data-action="handle-logout"] { display: none; }
 }
 
 /* ===== HIDE OLD HEADER/NAV ===== */

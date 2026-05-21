@@ -8,7 +8,8 @@ import {
   updateBudgetUser,
   deleteBudgetUser,
   subscribeToBudgetUsers,
-  loginUser
+  loginUser,
+  sendPasswordReset
 } from '../modules/auth.js';
 
 import {
@@ -58,7 +59,15 @@ export async function showProfileModal() {
     return;
   }
 
-  document.getElementById('profileEmail').textContent = user.email;
+  const resetBtn = document.getElementById('sendPasswordResetBtn');
+  resetBtn.onclick = async () => {
+    try {
+      await sendPasswordReset(user.email);
+      showSuccessMessage(`Link do zmiany hasła wysłany na ${user.email}`);
+    } catch {
+      showErrorMessage('Nie udało się wysłać linku do zmiany hasła');
+    }
+  };
 
   await loadBudgetUsers(user.uid);
 
@@ -76,9 +85,9 @@ function createProfileModal() {
         <button class="btn ghost icon-only" onclick="window.closeModal('profileModal')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body" style="display:flex;flex-direction:column;gap:20px">
-        <div class="field">
-          <label>Adres email</label>
-          <p id="profileEmail" style="font-size:13px;color:var(--ink-2);margin:0"></p>
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px">Bezpieczeństwo</div>
+          <button type="button" class="btn sm" id="sendPasswordResetBtn">Wyślij link do zmiany hasła</button>
         </div>
         <hr class="divider" style="margin:0">
         <div>

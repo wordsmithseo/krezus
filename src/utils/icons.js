@@ -8,7 +8,7 @@ import {
   createElement as lucideCreateElement,
   LayoutDashboard, Mail, ArrowDown, ArrowUp, Tag, Gem, LineChart, Target, Settings,
   Plus, Search, Filter, Pencil, Trash2, MoreHorizontal, Check, X,
-  Calendar, Clock, TrendingUp, TrendingDown, Wallet, Sparkles, Users,
+  Calendar, Clock, TrendingUp, TrendingDown, Wallet, Sparkles, Users, User,
   Bell, Download, Lock, LogOut, Eye, Info, Shield, Banknote, ChevronRight,
   ChevronLeft, ChevronDown, AlertTriangle, Loader, RefreshCw, Copy, Menu,
 } from 'lucide';
@@ -39,6 +39,7 @@ export const ICONS = {
   Wallet,
   Sparkles,
   Users,
+  User,
   Bell,
   Download,
   Lock,
