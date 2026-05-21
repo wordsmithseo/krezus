@@ -221,7 +221,7 @@ export function renderDailyEnvelope() {
         // Gdy >= 1 dzień
         timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
       }
-      const periodText = `📅 Okres: ${envelope.period.name} (${timeText}) | 🕐 Wyliczono: ${formattedDate}`;
+      const periodText = `${icon('Calendar', {size:11})} Okres: ${envelope.period.name} (${timeText}) | ${icon('Clock', {size:11})} Wyliczono: ${formattedDate}`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
       if (envelopePeriodInfoFullEl) envelopePeriodInfoFullEl.innerHTML = sanitizeHTML(periodText);
     } else if (envelope.period) {
@@ -237,7 +237,7 @@ export function renderDailyEnvelope() {
         // Gdy >= 1 dzień
         timeText = envelope.period.timeFormatted || `${envelope.period.daysLeft} dni`;
       }
-      const periodText = `📅 Okres: ${envelope.period.name} (${timeText})`;
+      const periodText = `${icon('Calendar', {size:11})} Okres: ${envelope.period.name} (${timeText})`;
       envelopePeriodInfoEl.innerHTML = sanitizeHTML(periodText);
       if (envelopePeriodInfoFullEl) envelopePeriodInfoFullEl.innerHTML = sanitizeHTML(periodText);
     } else {
@@ -277,7 +277,7 @@ export function renderDailyEnvelope() {
     if (spent > total) {
       const overAmount = Fmt.zl(spent - total);
       overLimitDiv.innerHTML = sanitizeHTML(
-        `<div style="background:var(--danger-soft);color:var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:500;margin-top:6px">⚠️ Przekroczono kopertę o ${escapeHTML(overAmount)} zł</div>`
+        `<div style="background:var(--danger-soft);color:var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:500;margin-top:6px;display:flex;align-items:center;gap:6px">${icon('AlertTriangle', {size:13})} Przekroczono kopertę o ${escapeHTML(overAmount)} zł</div>`
       );
       overLimitDiv.style.display = 'block';
     } else {

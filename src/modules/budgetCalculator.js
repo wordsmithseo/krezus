@@ -1045,7 +1045,7 @@ export function calculateSpendingDynamics() {
     if (last7.length === 0) {
         return {
             status: 'excellent',
-            title: '🎉 Doskonała sytuacja!',
+            title: 'Doskonała sytuacja!',
             summary: 'W ostatnich 7 dniach nie było żadnych wydatków. Twój budżet jest w świetnym stanie.',
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
@@ -1062,7 +1062,7 @@ export function calculateSpendingDynamics() {
     if (targetDaily <= 0) {
         return {
             status: 'critical',
-            title: '🚨 Sytuacja krytyczna!',
+            title: 'Sytuacja krytyczna!',
             summary: 'Przekroczyłeś dostępny budżet. Środki do wydania są ujemne.',
             details: [
                 `Dostępne środki: ${toSpend.toFixed(2)} zł`,
@@ -1080,7 +1080,7 @@ export function calculateSpendingDynamics() {
     
     if (ratio <= 0.5) {
         status = 'excellent';
-        title = '🌟 Doskonała kontrola wydatków!';
+        title = 'Doskonała kontrola wydatków!';
         summary = `Twoje średnie dzienne wydatki (${dailyAvg7.toFixed(2)} zł) stanowią zaledwie ${percentageOfLimit}% limitu dziennego. Budżet jest w bardzo dobrej kondycji.`;
         recommendation = 'Świetna robota! Masz dużo przestrzeni w budżecie. Możesz kontynuować obecny styl życia lub rozważyć zwiększenie oszczędności.';
     } else if (ratio <= 0.8) {
@@ -1100,7 +1100,7 @@ export function calculateSpendingDynamics() {
         recommendation = 'Czas na większą ostrożność! Ogranicz niepotrzebne wydatki i skup się na priorytetach. Jeśli tak dalej pójdzie, możesz nie zmieścić się w budżecie do końca okresu.';
     } else {
         status = 'critical';
-        title = '🚨 Znaczne przekroczenie limitu!';
+        title = 'Znaczne przekroczenie limitu!';
         summary = `Alarm! Średnie wydatki dzienne (${dailyAvg7.toFixed(2)} zł) przekraczają limit (${targetDaily.toFixed(2)} zł) o ${((ratio - 1) * 100).toFixed(0)}%! To ${(dailyAvg7 - targetDaily).toFixed(2)} zł dziennie ponad budżet.`;
         recommendation = 'Sytuacja wymaga natychmiastowej reakcji! Wstrzymaj wszystkie niepotrzebne wydatki. Przeanalizuj ostatnie zakupy i zidentyfikuj, co można było ograniczyć. Rozważ przesunięcie planowanych wydatków na później.';
     }

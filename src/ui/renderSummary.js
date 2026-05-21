@@ -318,12 +318,12 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
         </div>
         <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)">
           <div style="padding:10px 12px;display:flex;align-items:center;gap:8px">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3);white-space:nowrap">💰 Realny</span>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3);white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${icon('Wallet', {size:10})} Realny</span>
             <span style="font-size:11px;color:var(--ink-3)">· bez wpływu</span>
             <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:${realColor};white-space:nowrap">${Fmt.zl(realLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
           </div>
           <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);background:color-mix(in srgb, var(--accent) 6%, transparent)">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--accent);white-space:nowrap">✨ Planowany</span>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--accent);white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${icon('Sparkles', {size:10})} Planowany</span>
             <span style="font-size:11px;color:var(--ink-3)">· po wpływie</span>
             <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:var(--accent);white-space:nowrap">${Fmt.zl(plannedLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
           </div>
