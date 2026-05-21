@@ -6,6 +6,7 @@
     <title>Krezus - Inteligentny Budżet Osobisty</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
     <link rel="stylesheet" href="src/styles/main.css">
+    <script>(function(){var t=localStorage.getItem('krezus_theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');else if(t==='light')document.documentElement.setAttribute('data-theme','light');})()</script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -830,6 +831,31 @@
                     <!-- ==================== USTAWIENIA ==================== -->
                     <section id="settingsSection" class="section">
                         <div style="display:flex;flex-direction:column;gap:20px">
+
+                            <!-- Appearance -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Wygląd</h3>
+                                    <span class="card-sub">Motyw interfejsu</span>
+                                </div>
+                                <div class="theme-selector">
+                                    <button class="theme-option" data-theme-value="light">
+                                        <div class="theme-preview theme-preview--light"></div>
+                                        <span>Jasny</span>
+                                        <div class="theme-check"></div>
+                                    </button>
+                                    <button class="theme-option" data-theme-value="dark">
+                                        <div class="theme-preview theme-preview--dark"></div>
+                                        <span>Ciemny</span>
+                                        <div class="theme-check"></div>
+                                    </button>
+                                    <button class="theme-option" data-theme-value="auto">
+                                        <div class="theme-preview theme-preview--auto"></div>
+                                        <span>Systemowy</span>
+                                        <div class="theme-check"></div>
+                                    </button>
+                                </div>
+                            </div>
 
                             <!-- Profile card -->
                             <div class="card">

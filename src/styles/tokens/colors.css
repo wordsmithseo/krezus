@@ -35,25 +35,62 @@
 
 /* ==================== DARK THEME ==================== */
 
+:root {
+  color-scheme: light;
+}
+
 [data-theme="dark"] {
-  --bg: #131110;
-  --surface: #1C1A17;
-  --surface-2: #232017;
-  --surface-sunken: #0E0D0B;
-  --ink-1: #F2EDE3;
-  --ink-2: #B7AE9F;
-  --ink-3: #7A7264;
-  --line: #2A2620;
-  --line-strong: #3A342B;
-  --accent: oklch(0.74 0.13 70);
-  --accent-ink: #1A1611;
-  --accent-soft: oklch(0.32 0.05 70);
-  --success-soft: oklch(0.3 0.05 155);
-  --danger-soft: oklch(0.3 0.06 25);
-  --info-soft: oklch(0.3 0.04 245);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow: 0 4px 16px -8px rgba(0,0,0,0.5);
-  --shadow-lg: 0 12px 40px -16px rgba(0,0,0,0.6);
+  color-scheme: dark;
+  --bg: #0F0E0D;
+  --surface: #181614;
+  --surface-2: #201E1B;
+  --surface-sunken: #0B0A09;
+  --ink-1: #F0EAE0;
+  --ink-2: #B5ADA0;
+  --ink-3: #786E63;
+  --line: #272320;
+  --line-strong: #38322C;
+  --accent: oklch(0.76 0.14 68);
+  --accent-ink: #18140E;
+  --accent-soft: oklch(0.28 0.06 68);
+  --success: oklch(0.68 0.15 155);
+  --success-soft: oklch(0.26 0.06 155);
+  --danger: oklch(0.70 0.19 25);
+  --danger-soft: oklch(0.26 0.07 25);
+  --info: oklch(0.72 0.12 245);
+  --info-soft: oklch(0.26 0.05 245);
+  --warning: oklch(0.78 0.17 52);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.2);
+  --shadow: 0 4px 20px -6px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-lg: 0 16px 48px -16px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #0F0E0D;
+    --surface: #181614;
+    --surface-2: #201E1B;
+    --surface-sunken: #0B0A09;
+    --ink-1: #F0EAE0;
+    --ink-2: #B5ADA0;
+    --ink-3: #786E63;
+    --line: #272320;
+    --line-strong: #38322C;
+    --accent: oklch(0.76 0.14 68);
+    --accent-ink: #18140E;
+    --accent-soft: oklch(0.28 0.06 68);
+    --success: oklch(0.68 0.15 155);
+    --success-soft: oklch(0.26 0.06 155);
+    --danger: oklch(0.70 0.19 25);
+    --danger-soft: oklch(0.26 0.07 25);
+    --info: oklch(0.72 0.12 245);
+    --info-soft: oklch(0.26 0.05 245);
+    --warning: oklch(0.78 0.17 52);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 1px rgba(0,0,0,0.2);
+    --shadow: 0 4px 20px -6px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-lg: 0 16px 48px -16px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.3);
+  }
 }
 
 /* ==================== COMPACT DENSITY ==================== */

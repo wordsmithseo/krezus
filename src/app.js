@@ -98,6 +98,7 @@ import {
 } from './utils/dateHelpers.js';
 
 import { PAGINATION } from './utils/constants.js';
+import { initTheme, initThemeSelector } from './utils/theme.js';
 
 import { log } from './modules/logger.js';
 
@@ -1195,6 +1196,8 @@ onAuthChange(async (user) => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initThemeSelector();
   initNavIcons();
   initMobileDrawer();
 
