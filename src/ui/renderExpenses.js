@@ -9,7 +9,7 @@ import { Fmt } from '../utils/fmt.js';
 import { CAT_COLORS } from './renderCategories.js';
 
 let currentExpensePage = 1;
-let currentExpenseFilter = 'all'; // 'all' | 'normal' | 'planned'
+let currentExpenseFilter = 'normal'; // 'normal' | 'planned'
 let currentExpenseSearch = '';
 let getBudgetUserNameFn = null;
 

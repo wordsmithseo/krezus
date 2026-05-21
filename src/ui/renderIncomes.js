@@ -9,7 +9,7 @@ import { userChipHTML } from './chips.js';
 import { Fmt } from '../utils/fmt.js';
 
 let currentIncomePage = 1;
-let currentIncomeFilter = 'all'; // 'all' | 'normal' | 'planned'
+let currentIncomeFilter = 'normal'; // 'normal' | 'planned'
 let currentIncomeSearch = '';
 let getBudgetUserNameFn = null;
 
