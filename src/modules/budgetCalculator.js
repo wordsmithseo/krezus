@@ -416,8 +416,8 @@ export function computeSourcesRemaining() {
 export function getGlobalMedian30d() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    
-    const d30 = new Date();
+
+    const d30 = parseDateStr(today);
     d30.setDate(d30.getDate() - 30);
     const date30str = getWarsawDateString(d30);
     
@@ -872,8 +872,8 @@ export function calculateSpendingGauge() {
 export function getTopCategories(limit = 5) {
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    
-    const d30 = new Date();
+
+    const d30 = parseDateStr(today);
     d30.setDate(d30.getDate() - 30);
     const date30str = getWarsawDateString(d30);
     
@@ -958,12 +958,12 @@ export function getTopSources(limit = 5) {
 export function computeComparisons() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
-    
-    const d7 = new Date();
+
+    const d7 = parseDateStr(today);
     d7.setDate(d7.getDate() - 7);
     const date7str = getWarsawDateString(d7);
-    
-    const d14 = new Date();
+
+    const d14 = parseDateStr(today);
     d14.setDate(d14.getDate() - 14);
     const date14str = getWarsawDateString(d14);
     
