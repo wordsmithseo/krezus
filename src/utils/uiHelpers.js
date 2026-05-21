@@ -6,6 +6,7 @@ import { sanitizeHTML, escapeHTML } from './sanitizer.js';
  * Bezpiecznie pobiera nazwę użytkownika budżetu
  */
 export function getBudgetUserName(userId, budgetUsersCache) {
+  if (userId === 'system') return 'System';
   const user = budgetUsersCache.find(u => u.id === userId);
   return user ? escapeHTML(user.name) : 'Nieznany';
 }

@@ -433,6 +433,7 @@ function updateBudgetUserToggles() {
 }
 
 function getBudgetUserName(userId) {
+  if (userId === 'system') return 'System';
   const user = budgetUsersCache.find(u => u.id === userId);
   return user ? user.name : 'Nieznany';
 }
