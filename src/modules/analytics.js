@@ -2,7 +2,7 @@
 import { getExpenses, getIncomes } from './dataManager.js';
 import { getWarsawDateString, formatDateLabel } from '../utils/dateHelpers.js';
 
-let currentPeriod = 'all'; // Domyślnie "Wszystko"
+let currentPeriod = 30;
 let customDateFrom = null;
 let customDateTo = null;
 let budgetUsersCache = [];
