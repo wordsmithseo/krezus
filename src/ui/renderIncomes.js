@@ -40,11 +40,12 @@ function getFilteredIncomes() {
     if (dateCmp !== 0) return dateCmp;
     return (b.time || '').localeCompare(a.time || '');
   });
+  const isCorrection = inc => inc.source === 'KOREKTA';
   return sorted.filter(inc => {
     if (currentIncomeFilter === 'all' && inc.type === 'planned') return false;
-    // 'normal' includes corrections (type !== 'planned')
-    if (currentIncomeFilter === 'normal' && inc.type === 'planned') return false;
+    if (currentIncomeFilter === 'normal' && (inc.type === 'planned' || isCorrection(inc))) return false;
     if (currentIncomeFilter === 'planned' && inc.type !== 'planned') return false;
+    if (currentIncomeFilter === 'corrections' && !isCorrection(inc)) return false;
     if (currentIncomeSearch) {
       const q = currentIncomeSearch;
       return (inc.source || '').toLowerCase().includes(q) ||
