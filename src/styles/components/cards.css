@@ -1,0 +1,128 @@
+/* ===== CARDS ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--density-pad);
+}
+.card:hover { transform: none; }
+.card.flush { padding: 0; overflow: hidden; }
+
+.card-header, .card-hd {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.card-header h3, .card-header .card-title,
+.card-hd h3 {
+  margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; flex: 1;
+}
+.card-header .card-sub, .card-hd .sub { font-size: 12px; color: var(--ink-3); }
+.card-hd-actions { margin-left: auto; display: flex; gap: 6px; }
+
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.section-card:hover { transform: none; box-shadow: var(--shadow-sm); }
+.section-card h2 {
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  margin: 0 0 20px; color: var(--ink-1);
+  border-bottom: none; padding-bottom: 0;
+}
+.section-card h3 {
+  font-size: 13px; font-weight: 600; margin: 20px 0 10px; color: var(--ink-2);
+}
+.section-header-inline {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.section-header-inline h2 { margin: 0; }
+
+/* ===== STAT TILES ===== */
+.stat-grid, .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px; margin-bottom: 20px;
+}
+
+.stat .label {
+  font-size: 12px; color: var(--ink-3); font-weight: 500;
+  margin-bottom: 6px;
+}
+.stat .value {
+  font-family: var(--font-mono); font-size: 26px;
+  font-weight: 500; letter-spacing: -0.02em; line-height: 1.1;
+  font-feature-settings: "tnum" 1;
+}
+.stat .value .unit {
+  font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 2px;
+}
+.stat .sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.stat .delta {
+  font-size: 12px; margin-top: 4px;
+  display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3);
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  color: var(--ink-1);
+  box-shadow: var(--shadow-sm);
+}
+.stat-card:hover { transform: none; box-shadow: var(--shadow-sm); }
+.stat-card.beige { background: var(--surface-2); border-color: var(--line); }
+.stat-card.success { background: var(--success-soft); border-color: transparent; }
+.stat-card.danger  { background: var(--danger-soft);  border-color: transparent; }
+.stat-card.warning { background: oklch(0.95 0.04 90);  border-color: transparent; }
+
+.stat-card .stat-label {
+  font-size: 11px; color: var(--ink-3); font-weight: 500;
+  margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.stat-card.beige .stat-label {
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  text-transform: none; letter-spacing: normal;
+}
+.stat-card .stat-value {
+  font-family: var(--font-mono); font-size: 24px;
+  font-weight: 500; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink-1);
+  display: flex; align-items: baseline; gap: 3px;
+}
+.stat-card.beige .stat-value { font-size: 32px; }
+.stat-card.success .stat-value { color: var(--success); }
+.stat-card.danger  .stat-value { color: var(--danger); }
+.stat-card.warning .stat-value { color: var(--warning); }
+.stat-card .stat-value-white { color: inherit; }
+.stat-card .stat-unit { font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 2px; }
+
+/* ===== METRIC TILE ===== */
+.metric {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric .metric-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
+}
+.metric .metric-value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink-1);
+}
+.metric.success .metric-value { color: var(--success); }
+.metric.danger  .metric-value { color: var(--danger); }
+.metric.accent  .metric-value { color: var(--accent); }

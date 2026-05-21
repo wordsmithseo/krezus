@@ -1,0 +1,52 @@
+/* ===== BADGES ===== */
+.badge, .tag, .status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  background: var(--surface-sunken); color: var(--ink-2);
+  border: 1px solid var(--line); white-space: nowrap;
+}
+.badge-normal   { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.badge-planned  { background: var(--accent-soft);  color: var(--accent);  border-color: transparent; }
+.badge-success, .tag-success { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.badge-danger,  .tag-danger  { background: var(--danger-soft);  color: var(--danger);  border-color: transparent; }
+.badge-info,    .tag-info    { background: var(--info-soft);    color: var(--info);    border-color: transparent; }
+.badge-accent,  .tag-accent  { background: var(--accent-soft);  color: var(--accent);  border-color: transparent; }
+.status-completed { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.status-paused    { background: oklch(0.96 0.04 90); color: oklch(0.5 0.1 90); border-color: transparent; }
+.status-normal    { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.status-planned   { background: var(--accent-soft);  color: var(--accent);  border-color: transparent; }
+.presence-badge   { font-size: 11px; }
+
+/* Tag modifier classes */
+.tag.success { background: var(--success-soft); color: var(--success); border-color: transparent; }
+.tag.danger  { background: var(--danger-soft);  color: var(--danger);  border-color: transparent; }
+.tag.info    { background: var(--info-soft);    color: var(--info);    border-color: transparent; }
+.tag.accent  { background: var(--accent-soft);  color: var(--accent);  border-color: transparent; }
+.tag.dot::before { content: ""; width: 5px; height: 5px; background: currentColor; border-radius: 50%; flex-shrink: 0; }
+
+/* Delta indicators */
+.delta { font-size: 12px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); }
+.delta.up   { color: var(--danger); }
+.delta.down { color: var(--success); }
+.delta.up.good  { color: var(--success); }
+.delta.down.bad { color: var(--danger); }
+
+/* Avatar */
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--accent) 0%, oklch(0.55 0.13 30) 100%); color: var(--accent-ink); display: grid; place-items: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+.avatar.sm { width: 22px; height: 22px; font-size: 10px; }
+
+/* UserChip */
+.user-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-2); }
+
+/* CatBadge */
+.cat-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px 2px 5px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; white-space: nowrap;
+  background: var(--cat-bg, var(--surface-sunken));
+  color: var(--cat-color, var(--ink-2));
+}
+.cat-badge.sm { font-size: 11px; padding: 1px 6px 1px 4px; }
+.cat-badge .cat-emoji { font-size: 14px; line-height: 1; }
+.cat-badge.sm .cat-emoji { font-size: 12px; }

@@ -1,0 +1,62 @@
+/* ===== SAVINGS GOALS ===== */
+.savings-goals-section { padding: 0; }
+.savings-goals-list { display: flex; flex-direction: column; gap: 8px; }
+.savings-empty-state { text-align: center; padding: 40px 20px; color: var(--ink-3); }
+.savings-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.goals-list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+.savings-goal-card {
+  background: var(--surface);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.savings-goal-card:hover { background: var(--surface); box-shadow: none; transform: none; }
+.savings-goal-card.completed { border-left-color: var(--success); opacity: 0.9; }
+.savings-goal-card.paused { border-left-color: var(--line-strong); opacity: 0.85; }
+
+.savings-goal-card.collapsed .goal-collapsed-info { display: flex; }
+.savings-goal-card:not(.collapsed) .goal-collapsed-info { display: none; }
+.savings-goal-card.collapsed .goal-actions-bar { display: none; }
+.savings-goal-card.collapsed .goal-expandable-content { display: none; }
+
+.goal-header-collapsible { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; }
+.goal-header-collapsible:hover { background: var(--surface-2); }
+.goal-collapse-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.goal-icon { font-size: 18px; flex-shrink: 0; }
+.goal-name { font-size: 13px; font-weight: 500; color: var(--ink-1); margin: 0; }
+.goal-collapsed-info { display: flex; align-items: center; gap: 12px; margin-left: auto; padding-left: 8px; }
+.collapsed-amounts { display: flex; align-items: baseline; gap: 4px; font-size: 12px; }
+.collapsed-current { color: var(--success); font-weight: 600; }
+.collapsed-separator { color: var(--ink-3); }
+.collapsed-target { color: var(--ink-1); font-weight: 500; }
+.collapsed-progress { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 999px; min-width: 40px; text-align: center; }
+.collapsed-stat { font-size: 11px; color: var(--ink-2); }
+
+.goal-actions-bar { display: flex; gap: 6px; padding: 0 14px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.goal-expandable-content { padding: 16px; }
+.goal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.goal-title-section { display: flex; align-items: center; gap: 10px; flex: 1; }
+.goal-actions { display: flex; gap: 6px; }
+.goal-description { margin-bottom: 16px; padding: 10px; background: var(--surface-2); border-radius: var(--radius-sm); color: var(--ink-2); font-size: 12px; }
+.goal-deadline { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 16px; font-size: 12px; }
+.goal-deadline.deadline-normal { background: var(--info-soft); color: var(--info); }
+.goal-deadline.deadline-soon { background: oklch(0.96 0.04 90); color: oklch(0.5 0.1 90); }
+.goal-deadline.deadline-urgent { background: var(--danger-soft); color: var(--danger); }
+.deadline-icon { font-size: 16px; }
+.goal-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.goal-info-item { display: flex; flex-direction: column; gap: 3px; }
+.goal-info-item .label { font-size: 10px; color: var(--ink-3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+.goal-info-item .value { font-size: 14px; color: var(--ink-1); font-weight: 600; }
+.goal-progress { margin-bottom: 16px; }
+.goal-progress-mini { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
+.goal-details { flex: 1; min-width: 0; }
+.goal-info-mini { display: flex; align-items: center; gap: 8px; }
+
+.contributions-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.contribution-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: var(--surface-2); border-radius: var(--radius-sm); }
+.contribution-info { display: flex; align-items: center; gap: 8px; }
+.contribution-type { font-size: 16px; }
+.contribution-date { font-size: 11px; color: var(--ink-3); }
+.contribution-right { display: flex; align-items: center; gap: 8px; }
+.contribution-amount { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--ink-1); }
+.contributions-summary { font-size: 12px; color: var(--ink-3); margin-top: 8px; text-align: right; }

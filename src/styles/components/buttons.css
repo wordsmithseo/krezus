@@ -1,0 +1,150 @@
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface); color: var(--ink-1);
+  font: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; text-decoration: none;
+  transition: background 80ms, border-color 80ms;
+}
+.btn:hover { background: var(--surface-sunken); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled, .btn[disabled] { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* primary */
+.btn.btn-primary, .btn-primary {
+  background: var(--ink-1); color: var(--bg); border-color: var(--ink-1);
+}
+.btn.btn-primary:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink-1) 85%, var(--bg));
+  transform: none; box-shadow: none;
+}
+/* accent */
+.btn.btn-accent, .btn-accent {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+}
+.btn.btn-accent:hover:not(:disabled), .btn-accent:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 90%, #000); transform: none; box-shadow: none;
+}
+/* success */
+.btn.btn-success, .btn-success {
+  background: var(--success); color: #fff; border-color: var(--success);
+}
+.btn.btn-success:hover:not(:disabled), .btn-success:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--success) 90%, #000); transform: none; box-shadow: none;
+}
+/* warning */
+.btn.btn-warning, .btn-warning {
+  background: var(--warning); color: #fff; border-color: var(--warning);
+}
+/* secondary */
+.btn.btn-secondary, .btn-secondary {
+  background: var(--surface-2); color: var(--ink-2); border-color: var(--line-strong);
+}
+.btn.btn-secondary:hover:not(:disabled), .btn-secondary:hover:not(:disabled) {
+  background: var(--surface-sunken); transform: none; box-shadow: none;
+}
+/* ghost */
+.btn.btn-ghost, .btn--ghost {
+  background: transparent; border-color: transparent; color: var(--ink-2);
+}
+.btn.btn-ghost:hover, .btn--ghost:hover { background: var(--surface-sunken); color: var(--ink-1); }
+/* danger */
+.btn.btn-danger, .btn-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, var(--line));
+  background: var(--surface);
+}
+.btn.btn-danger:hover:not(:disabled), .btn-danger:hover:not(:disabled) {
+  background: var(--danger-soft); transform: none; box-shadow: none;
+}
+/* sizes */
+.btn.btn-sm, .btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn.btn--lg, .btn--lg { padding: 10px 20px; font-size: 14px; }
+.btn.btn--block, .btn--block { width: 100%; }
+
+/* icon button */
+.btn-icon {
+  padding: 6px; border: none; background: transparent;
+  color: var(--ink-3); cursor: pointer; border-radius: 6px;
+  display: grid; place-items: center; line-height: 1;
+}
+.btn-icon:hover { background: var(--surface-sunken); color: var(--ink-1); }
+.btn-icon:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* link */
+.btn-link {
+  background: none; border: none; color: var(--accent); cursor: pointer;
+  font: inherit; font-size: 13px; padding: 0;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.btn-link:hover { opacity: 0.8; }
+
+/* close */
+.btn-close, .modal-close {
+  background: transparent; border: none;
+  font-size: 20px; cursor: pointer; color: var(--ink-3);
+  padding: 4px; border-radius: 4px;
+  line-height: 1; display: grid; place-items: center;
+}
+.btn-close:hover, .modal-close:hover { color: var(--danger); background: var(--danger-soft); }
+
+/* small danger */
+.btn-danger-small {
+  padding: 3px 8px; font-size: 11px; font-weight: 500;
+  background: var(--danger-soft); color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 20%, var(--line));
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; font: inherit;
+}
+.btn-danger-small:hover { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+
+/* savings close */
+.savings-btn-close {
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 50%;
+  width: 36px; height: 36px; display: grid; place-items: center;
+  cursor: pointer; color: var(--ink-3); font-size: 18px;
+}
+.savings-btn-close:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* profile/logout */
+.btn-profile, .btn-logout {
+  background: var(--surface-sunken); border: 1px solid var(--line);
+  color: var(--ink-2); padding: 6px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 500;
+}
+.btn-profile:hover, .btn-logout:hover { background: var(--surface); color: var(--ink-1); }
+
+/* view history */
+.view-history-btn {
+  width: 100%; padding: 10px; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); color: var(--accent);
+  font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.view-history-btn:hover { background: var(--surface-sunken); }
+
+/* collapse */
+.collapse-toggle {
+  background: none; border: none; cursor: pointer;
+  padding: 6px; display: grid; place-items: center;
+  color: var(--ink-3); border-radius: 4px;
+}
+.collapse-toggle:hover { background: var(--surface-sunken); }
+.collapse-icon { font-size: 14px; transition: transform 200ms; display: inline-block; }
+.savings-goal-card:not(.collapsed) .collapse-icon { transform: rotate(90deg); }
+.goals-collapse-controls { display: flex; gap: 6px; }
+
+/* short-form aliases */
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: var(--surface-sunken); color: var(--ink-1); }
+.btn.accent { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.accent:hover { background: color-mix(in srgb, var(--accent) 90%, #000); }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, var(--line)); }
+.btn.icon-only { padding: 6px; }
+.btn.primary { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
+.btn.primary:hover { background: color-mix(in srgb, var(--ink-1) 90%, var(--bg)); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }

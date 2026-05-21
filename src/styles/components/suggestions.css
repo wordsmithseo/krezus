@@ -1,0 +1,32 @@
+/* ===== SUGGESTIONS / AUTOCOMPLETE ===== */
+.suggestion-item { padding: 8px 12px; cursor: pointer; font-size: 13px; color: var(--ink-1); }
+.suggestion-item:hover { background: var(--surface-2); }
+.suggestion-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); padding: 6px 12px 2px; }
+.suggestion-detail { font-size: 11px; color: var(--ink-3); }
+
+.suggestion-box { padding: 16px; background: var(--surface-2); border-radius: var(--radius-sm); margin-bottom: 12px; }
+.suggestion-amount { font-family: var(--font-mono); font-size: 20px; font-weight: 500; color: var(--accent); }
+.suggestion-available { font-size: 11px; color: var(--success); }
+.suggestion-unavailable { font-size: 11px; color: var(--danger); }
+
+.suggestion-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+.suggestion-card-header { padding: 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.suggestion-card-body { padding: 16px; }
+.suggestion-card-actions { display: flex; gap: 8px; justify-content: center; padding-top: 12px; }
+.suggestion-card-actions .btn { flex: 1; max-width: 200px; }
+
+.suggestion-icon { font-size: 24px; margin-bottom: 8px; }
+.suggestion-title { font-size: 14px; font-weight: 600; color: var(--ink-1); }
+.suggestion-reason { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.suggestion-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 12px; }
+.suggestions-list { display: flex; flex-direction: column; gap: 12px; }
+.suggestion-details { font-size: 12px; color: var(--ink-3); }
+
+.suggestion-amount-box { background: var(--success-soft); color: var(--success); padding: 20px; border-radius: var(--radius-sm); text-align: center; margin-bottom: 16px; }
+.suggestion-label { font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+.suggestion-amount-large { font-family: var(--font-mono); font-size: 32px; font-weight: 500; }
+.suggestion-reason-box { background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--line); }
+.suggestion-reason-label { font-size: 10px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.suggestion-reason-text { font-size: 13px; font-weight: 600; color: var(--ink-1); margin-bottom: 4px; }
+.suggestion-details-list { margin-top: 6px; }
+.suggestion-detail-item { font-size: 12px; color: var(--ink-3); line-height: 1.5; padding: 1px 0; }

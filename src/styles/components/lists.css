@@ -1,0 +1,44 @@
+/* ===== CATEGORIES ===== */
+.category-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.category-item:last-child { border-bottom: none; }
+.category-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
+.category-count { font-size: 12px; color: var(--ink-3); }
+.category-breakdown-item { margin-bottom: 12px; }
+.category-breakdown-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
+.category-breakdown-bar { height: 4px; background: var(--surface-sunken); border-radius: 999px; overflow: hidden; }
+.category-breakdown-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+.top-category-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.top-category-item:last-child { border-bottom: none; }
+
+.categories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.cat-menu-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; text-align: left;
+  padding: 8px 12px;
+  border: none; background: transparent;
+  font: inherit; font-size: 13px; cursor: pointer;
+  border-radius: 6px; color: var(--ink-1);
+}
+.cat-menu-item:hover { background: var(--surface-2); }
+.cat-menu-item.danger { color: var(--danger); }
+.cat-menu-item.danger:hover { background: var(--danger-soft); }
+
+/* ===== LOGS ===== */
+.logs-info { font-size: 12px; color: var(--ink-3); margin-bottom: 12px; }
+.logs-list { display: flex; flex-direction: column; gap: 6px; }
+.log-entry { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 14px; }
+.log-entry:hover { background: var(--surface-2); transform: none; }
+.log-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.log-timestamp { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.log-user { font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.log-action { font-size: 12px; font-weight: 600; color: var(--ink-1); }
+.log-number { font-family: var(--font-mono); font-size: 10px; color: var(--ink-3); margin-left: auto; }
+.log-details { margin-top: 4px; }
+.log-detail-item { font-size: 11px; color: var(--ink-3); }
+
+/* ===== EMPTY STATE ===== */
+.empty-state { text-align: center; padding: 40px 24px; color: var(--ink-3); }
+.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 15px; font-weight: 600; color: var(--ink-2); margin: 0 0 6px; }
+.empty-state .hint { font-size: 13px; color: var(--ink-3); margin: 0 0 20px; max-width: 40ch; margin-inline: auto; }
+.empty-state p { font-size: 14px; }
