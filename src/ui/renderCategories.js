@@ -39,7 +39,7 @@ export function renderCategories() {
   const iconTrash    = icon('Trash',         { size: 13, strokeWidth: 1.5 });
   const iconEdit     = icon('Edit',          { size: 13, strokeWidth: 1.5 });
   const iconSparkles = icon('Sparkles',      { size: 13, strokeWidth: 1.5 });
-  const iconMore     = icon('MoreHorizontal', { size: 15, strokeWidth: 1.5 });
+  const iconMore     = icon('More', { size: 15, strokeWidth: 1.5 });
   const iconX        = icon('X',             { size: 13, strokeWidth: 2 });
 
   let headerHtml = '';

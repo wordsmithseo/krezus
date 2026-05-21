@@ -59,6 +59,16 @@ export const ICONS = {
 
 const DEFAULTS = { size: 16, strokeWidth: 1.5 };
 
+function normalizeLucideAttrs(attrs) {
+  const out = {};
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'size') { out.width = v; out.height = v; }
+    else if (k === 'strokeWidth') out['stroke-width'] = v;
+    else out[k] = v;
+  }
+  return out;
+}
+
 /**
  * Zwraca SVG jako string (dla innerHTML).
  * @param {string|Function} nameOrFn - nazwa z ICONS lub bezpośrednio funkcja Lucide
@@ -70,7 +80,7 @@ export function icon(nameOrFn, attrs = {}) {
     console.warn(`[icons] nieznana ikona: ${nameOrFn}`);
     return '';
   }
-  const el = lucideCreateElement(fn, { ...DEFAULTS, ...attrs });
+  const el = lucideCreateElement(fn, normalizeLucideAttrs({ ...DEFAULTS, ...attrs }));
   return el.outerHTML;
 }
 
@@ -83,7 +93,7 @@ export function iconEl(nameOrFn, attrs = {}) {
     console.warn(`[icons] nieznana ikona: ${nameOrFn}`);
     return document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   }
-  return lucideCreateElement(fn, { ...DEFAULTS, ...attrs });
+  return lucideCreateElement(fn, normalizeLucideAttrs({ ...DEFAULTS, ...attrs }));
 }
 
 /**
