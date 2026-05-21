@@ -310,8 +310,6 @@ async function loadAllData() {
       return;
     }
 
-    console.log('📥 Ładowanie danych dla użytkownika:', userId);
-
     await clearCache();
     await fetchAllData(userId);
 
@@ -1015,8 +1013,7 @@ const handleLogin = async (e) => {
   submitBtn.textContent = 'Logowanie...';
   
   try {
-    const user = await loginUser(email, password);
-    console.log('✅ loginUser zakończone, użytkownik:', user);
+    await loginUser(email, password);
   } catch (error) {
     console.error('❌ Błąd w loginUser:', error);
     showErrorMessage(error.message || 'Nie udało się zalogować');
@@ -1051,8 +1048,7 @@ const handleRegister = async (e) => {
   submitBtn.textContent = 'Rejestracja...';
   
   try {
-    const user = await registerUser(email, password, displayName);
-    console.log('✅ registerUser zakończone, użytkownik:', user);
+    await registerUser(email, password, displayName);
   } catch (error) {
     console.error('❌ Błąd w registerUser:', error);
     showErrorMessage(error.message || 'Nie udało się zarejestrować');
@@ -1099,8 +1095,6 @@ const handleLogout = async () => {
 };
 
 onAuthChange(async (user) => {
-  console.log('🔄 onAuthChange wywołane, user:', user ? user.email : 'null');
-  
   const authSection = document.getElementById('authSection');
   const appSection = document.getElementById('appSection');
   const appVersionSpan = document.getElementById('appVersion');
@@ -1125,9 +1119,6 @@ onAuthChange(async (user) => {
   }
 
   if (user) {
-    console.log('✅ Użytkownik zalogowany:', user.displayName || user.email);
-    console.log('🔑 User ID:', user.uid);
-
     authSection.classList.add('hidden');
     appSection.classList.remove('hidden');
 

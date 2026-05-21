@@ -21,8 +21,6 @@ let currentUser = null;
  */
 export async function registerUser(email, password, displayName) {
   try {
-    console.log('📝 Rejestracja użytkownika:', email);
-    
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
@@ -37,7 +35,7 @@ export async function registerUser(email, password, displayName) {
     
     // Utwórz pierwszego użytkownika budżetu (właściciel konta)
     const firstBudgetUser = {
-      id: `user_${Date.now()}`,
+      id: `user_${crypto.randomUUID()}`,
       name: displayName,
       isOwner: true,
       createdAt: new Date().toISOString()
@@ -45,7 +43,6 @@ export async function registerUser(email, password, displayName) {
     
     await set(ref(db, `users/${user.uid}/budget/budgetUsers/${firstBudgetUser.id}`), firstBudgetUser);
     
-    console.log('✅ Użytkownik zarejestrowany:', displayName);
     return user;
   } catch (error) {
     console.error('❌ Błąd rejestracji:', error);
@@ -58,11 +55,7 @@ export async function registerUser(email, password, displayName) {
  */
 export async function loginUser(email, password) {
   try {
-    console.log('🔐 Logowanie użytkownika:', email);
-    
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log('✅ Użytkownik zalogowany:', userCredential.user.displayName || email);
-    
     return userCredential.user;
   } catch (error) {
     console.error('❌ Błąd logowania:', error);
@@ -82,10 +75,8 @@ export async function sendPasswordReset(email) {
  */
 export async function logoutUser() {
   try {
-    console.log('👋 Wylogowywanie użytkownika');
     await signOut(auth);
     currentUser = null;
-    console.log('✅ Użytkownik wylogowany');
   } catch (error) {
     console.error('❌ Błąd wylogowania:', error);
     throw error;
@@ -148,8 +139,6 @@ export async function getDisplayName(uid) {
  */
 export async function updateDisplayName(uid, newDisplayName) {
   try {
-    console.log('📝 Aktualizacja nazwy użytkownika:', newDisplayName);
-    
     const user = getCurrentUser();
     
     if (!user || user.uid !== uid) {
@@ -162,8 +151,6 @@ export async function updateDisplayName(uid, newDisplayName) {
       displayName: newDisplayName,
       updatedAt: new Date().toISOString()
     });
-    
-    console.log('✅ Nazwa użytkownika zaktualizowana');
     
     if (window.onDisplayNameUpdate) {
       window.onDisplayNameUpdate(newDisplayName);
@@ -215,10 +202,8 @@ export async function getBudgetUsers(uid) {
  */
 export async function addBudgetUser(uid, userName) {
   try {
-    console.log('➕ Dodawanie użytkownika budżetu:', userName);
-    
     const newUser = {
-      id: `user_${Date.now()}`,
+      id: `user_${crypto.randomUUID()}`,
       name: userName.trim(),
       isOwner: false,
       createdAt: new Date().toISOString()
@@ -226,7 +211,6 @@ export async function addBudgetUser(uid, userName) {
     
     await set(ref(db, `users/${uid}/budget/budgetUsers/${newUser.id}`), newUser);
     
-    console.log('✅ Użytkownik budżetu dodany:', userName);
     return newUser;
     
   } catch (error) {
@@ -240,14 +224,11 @@ export async function addBudgetUser(uid, userName) {
  */
 export async function updateBudgetUser(uid, userId, updates) {
   try {
-    console.log('📝 Aktualizacja użytkownika budżetu:', userId);
-    
     await update(ref(db, `users/${uid}/budget/budgetUsers/${userId}`), {
       ...updates,
       updatedAt: new Date().toISOString()
     });
     
-    console.log('✅ Użytkownik budżetu zaktualizowany');
     return true;
     
   } catch (error) {
@@ -261,8 +242,6 @@ export async function updateBudgetUser(uid, userId, updates) {
  */
 export async function deleteBudgetUser(uid, userId) {
   try {
-    console.log('🗑️ Usuwanie użytkownika budżetu:', userId);
-    
     // Sprawdź czy to nie właściciel
     const userRef = ref(db, `users/${uid}/budget/budgetUsers/${userId}`);
     const snapshot = await get(userRef);
@@ -273,7 +252,6 @@ export async function deleteBudgetUser(uid, userId) {
     
     await set(userRef, null);
     
-    console.log('✅ Użytkownik budżetu usunięty');
     return true;
     
   } catch (error) {

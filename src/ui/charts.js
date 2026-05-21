@@ -38,7 +38,7 @@ export function ringGaugeHTML(value, max, opts = {}) {
   const r       = cx - stroke / 2 - 2;
   const circ    = 2 * Math.PI * r;
   const pct     = max > 0 ? Math.min(value / max, 1) : 0;
-  const filled  = circ * pct;
+  const offset  = (circ * (1 - pct)).toFixed(2);
   const color   = opts.color ?? gaugeColor(pct);
   const fillId  = opts.id ?? '';
   const idAttr  = fillId ? ` id="${fillId}"` : '';
@@ -62,8 +62,8 @@ export function ringGaugeHTML(value, max, opts = {}) {
   <circle class="gauge-fill-svg"${idAttr}
     cx="${cx}" cy="${cy}" r="${r}"
     fill="none" stroke="${color}" stroke-width="${stroke}" stroke-linecap="round"
-    stroke-dasharray="${filled.toFixed(2)} ${circ.toFixed(2)}"
-    style="transition: stroke-dasharray 600ms cubic-bezier(.2,.8,.2,1), stroke 300ms ease;"
+    stroke-dasharray="${circ.toFixed(2)}"
+    style="stroke-dashoffset: ${offset}; --gauge-circ: ${circ.toFixed(2)};"
     transform="rotate(-90 ${cx} ${cy})"/>
   ${labelEl}
   ${sublabelEl}
@@ -84,7 +84,7 @@ export function updateRingGauge(circleEl, value, max, colorOverride) {
   const r     = parseFloat(circleEl.getAttribute('r')) || 86;
   const circ  = 2 * Math.PI * r;
   const pct   = max > 0 ? Math.min(value / max, 1) : 0;
-  circleEl.style.strokeDasharray = `${(circ * pct).toFixed(2)} ${circ.toFixed(2)}`;
+  circleEl.style.strokeDashoffset = `${(circ * (1 - pct)).toFixed(2)}`;
   circleEl.style.stroke = colorOverride ?? gaugeColor(pct);
 }
 

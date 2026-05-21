@@ -69,15 +69,18 @@ describe('ringGaugeHTML', () => {
 
   it('handles zero max gracefully (pct = 0)', () => {
     const html = ringGaugeHTML(10, 0);
-    expect(html).toContain('stroke-dasharray="0.00');
+    // pct=0 → offset = full circumference (nothing drawn)
+    const r = 91; // cx(100) - stroke/2(7) - 2
+    const circ = (2 * Math.PI * r).toFixed(2);
+    expect(html).toContain(`stroke-dashoffset: ${circ}`);
   });
 
   it('clamps value > max to 100%', () => {
     const htmlFull  = ringGaugeHTML(100, 100);
     const htmlOver  = ringGaugeHTML(200, 100);
-    // Both should produce same dasharray (full circle)
-    const extract = h => h.match(/stroke-dasharray="([^"]+)"/)?.[1];
-    expect(extract(htmlOver)).toBe(extract(htmlFull));
+    // Both should produce offset=0 (full circle drawn)
+    const extractOffset = h => h.match(/stroke-dashoffset:\s*([\d.]+)/)?.[1];
+    expect(extractOffset(htmlOver)).toBe(extractOffset(htmlFull));
   });
 });
 

@@ -18,6 +18,11 @@ let dynamicsPeriodCache = 0; // Indeks okresu dla dynamiki wydatków
 
 let activeListeners = {};
 let currentCachedUserId = null;
+let autoRealisingInProgress = false;
+
+let categoriesDebounceTimeout = null;
+let expensesDebounceTimeout = null;
+let incomesDebounceTimeout = null;
 
 /**
  * Migruj starą strukturę (realised) na nową (type)
@@ -33,7 +38,6 @@ function migrateTransaction(transaction) {
     transaction.type = transaction.realised ? 'normal' : 'planned';
     delete transaction.realised;
     delete transaction.planned;
-    console.log('🔄 Migracja transakcji:', transaction.id, '→ type:', transaction.type);
   } else {
     // Domyślnie normal
     transaction.type = 'normal';
@@ -90,9 +94,8 @@ export async function loadCategories() {
 
       // MIGRACJA: dodaj ID jeśli kategoria go nie ma
       if (!cat.id) {
-        cat.id = `cat_${cat.name.replace(/\s+/g, '_')}_${Date.now()}`;
+        cat.id = `cat_${crypto.randomUUID()}`;
         needsMigration = true;
-        console.log(`🔄 Dodano ID do kategorii: ${cat.name} -> ${cat.id}`);
       }
 
       // MIGRACJA: odśwież ikonę na podstawie nazwy (zawsze)
@@ -101,7 +104,6 @@ export async function loadCategories() {
       if (!cat.icon || cat.icon !== smartIcon) {
         cat.icon = smartIcon;
         needsMigration = true;
-        console.log(`🎨 Zaktualizowano ikonę kategorii: ${cat.name} -> ${cat.icon}`);
       }
 
       // Unikalne kategorie - sprawdzaj zarówno ID jak i nazwę
@@ -116,11 +118,9 @@ export async function loadCategories() {
 
     // Zapisz zmigrowane dane
     if (needsMigration) {
-      console.log('💾 Zapisywanie zmigrowanych kategorii...');
-      await saveCategories(categoriesCache);
+  await saveCategories(categoriesCache);
     }
 
-    console.log('✅ Załadowano kategorie:', categoriesCache.length);
     return categoriesCache;
   } catch (error) {
     console.error('❌ Błąd ładowania kategorii:', error);
@@ -133,16 +133,11 @@ export async function loadCategories() {
  */
 export async function loadExpenses() {
   try {
-    const userId = getUserId();
     const path = getUserBudgetPath('expenses');
-    
-    console.log('📥 Ładowanie wydatków dla użytkownika:', userId);
-    
     const snapshot = await get(ref(db, path));
     const data = snapshot.val() || {};
     const newExpenses = Object.values(data);
     
-    console.log('📊 Pobrano z Firebase:', newExpenses.length, 'wydatków');
     
     const uniqueExpenses = [];
     const seenIds = new Set();
@@ -166,11 +161,9 @@ export async function loadExpenses() {
     
     // Zapisz zmigrowane dane
     if (needsMigration) {
-      console.log('💾 Zapisywanie zmigrowanych wydatków...');
-      await saveExpenses(expensesCache);
+  await saveExpenses(expensesCache);
     }
     
-    console.log('✅ Załadowano unikalne wydatki:', expensesCache.length);
     return expensesCache;
   } catch (error) {
     console.error('❌ Błąd ładowania wydatków:', error);
@@ -183,16 +176,11 @@ export async function loadExpenses() {
  */
 export async function loadIncomes() {
   try {
-    const userId = getUserId();
     const path = getUserBudgetPath('incomes');
-    
-    console.log('📥 Ładowanie przychodów dla użytkownika:', userId);
-    
     const snapshot = await get(ref(db, path));
     const data = snapshot.val() || {};
     const newIncomes = Object.values(data);
     
-    console.log('📊 Pobrano z Firebase:', newIncomes.length, 'przychodów');
     
     const uniqueIncomes = [];
     const seenIds = new Set();
@@ -216,11 +204,9 @@ export async function loadIncomes() {
     
     // Zapisz zmigrowane dane
     if (needsMigration) {
-      console.log('💾 Zapisywanie zmigrowanych przychodów...');
-      await saveIncomes(incomesCache);
+  await saveIncomes(incomesCache);
     }
     
-    console.log('✅ Załadowano unikalne przychody:', incomesCache.length);
     return incomesCache;
   } catch (error) {
     console.error('❌ Błąd ładowania przychodów:', error);
@@ -324,7 +310,6 @@ export async function loadPurposeBudgets() {
     });
 
     purposeBudgetsCache = uniqueBudgets;
-    console.log('✅ Załadowano budżety celowe:', purposeBudgetsCache.length);
     return purposeBudgetsCache;
   } catch (error) {
     console.error('❌ Błąd ładowania budżetów celowych:', error);
@@ -362,7 +347,6 @@ export async function saveCategories(categories) {
   try {
     await set(ref(db, getUserBudgetPath('categories')), obj);
     categoriesCache = Object.values(obj);
-    console.log('✅ Zapisano kategorie:', categoriesCache.length);
   } catch (error) {
     console.error('❌ Błąd zapisywania kategorii:', error);
     throw error;
@@ -373,13 +357,9 @@ export async function saveCategories(categories) {
  * Zapisz wydatki
  */
 export async function saveExpenses(expenses) {
-  const userId = getUserId();
   const obj = {};
   const seenIds = new Set();
-  
-  console.log('💾 Zapisywanie wydatków dla użytkownika:', userId);
-  console.log('📊 Liczba wydatków do zapisu:', expenses.length);
-  
+
   expenses.forEach(exp => {
     if (exp && exp.id && !seenIds.has(exp.id)) {
       seenIds.add(exp.id);
@@ -391,7 +371,6 @@ export async function saveExpenses(expenses) {
     const path = getUserBudgetPath('expenses');
     await set(ref(db, path), obj);
     expensesCache = Object.values(obj);
-    console.log('✅ Zapisano unikalne wydatki:', expensesCache.length);
   } catch (error) {
     console.error('❌ Błąd zapisywania wydatków:', error);
     throw error;
@@ -402,13 +381,9 @@ export async function saveExpenses(expenses) {
  * Zapisz przychody
  */
 export async function saveIncomes(incomes) {
-  const userId = getUserId();
   const obj = {};
   const seenIds = new Set();
-  
-  console.log('💾 Zapisywanie przychodów dla użytkownika:', userId);
-  console.log('📊 Liczba przychodów do zapisu:', incomes.length);
-  
+
   incomes.forEach(inc => {
     if (inc && inc.id && !seenIds.has(inc.id)) {
       seenIds.add(inc.id);
@@ -420,7 +395,6 @@ export async function saveIncomes(incomes) {
     const path = getUserBudgetPath('incomes');
     await set(ref(db, path), obj);
     incomesCache = Object.values(obj);
-    console.log('✅ Zapisano unikalne przychody:', incomesCache.length);
   } catch (error) {
     console.error('❌ Błąd zapisywania przychodów:', error);
     throw error;
@@ -512,7 +486,6 @@ export async function savePurposeBudgets(budgets) {
   try {
     await set(ref(db, getUserBudgetPath('purposeBudgets')), obj);
     purposeBudgetsCache = Object.values(obj);
-    console.log('✅ Zapisano budżety celowe:', purposeBudgetsCache.length);
   } catch (error) {
     console.error('❌ Błąd zapisywania budżetów celowych:', error);
     throw error;
@@ -539,9 +512,6 @@ export async function saveDailyEnvelope(dateStr, envelope) {
  */
 export async function fetchAllData() {
   try {
-    const userId = getUserId();
-    console.log('📥 Ładowanie wszystkich danych dla użytkownika:', userId);
-
     const [categories, expenses, incomes, endDates, savings, envelopePeriod, dynamicsPeriod] = await Promise.all([
       loadCategories(),
       loadExpenses(),
@@ -554,13 +524,6 @@ export async function fetchAllData() {
 
     const todayStr = getWarsawDateString();
     dailyEnvelopeCache = await loadDailyEnvelope(todayStr);
-
-    console.log('✅ Załadowano wszystkie dane:', {
-      categories: categories.length,
-      expenses: expenses.length,
-      incomes: incomes.length,
-      userId
-    });
 
     return {
       categories,
@@ -580,21 +543,21 @@ export async function fetchAllData() {
  * Automatycznie realizuj planowane transakcje z przeszłości
  */
 export async function autoRealiseDueTransactions() {
+  if (autoRealisingInProgress) return { incomesUpdated: false, expensesUpdated: false };
+  autoRealisingInProgress = true;
+
   let incomesUpdated = false;
   let expensesUpdated = false;
 
+  try {
   incomesCache.forEach(inc => {
     if (shouldBeRealisedNow(inc)) {
       inc.type = 'normal';
       inc.wasPlanned = true;
-
-      // Jeśli transakcja nie miała czasu, ustaw aktualny czas Warsaw
       if (!inc.time || inc.time.trim() === '') {
         inc.time = getWarsawTimeString();
       }
-
       incomesUpdated = true;
-      console.log('🔄 Auto-realizacja przychodu:', inc.id, `(${inc.date} ${inc.time})`);
     }
   });
 
@@ -602,14 +565,10 @@ export async function autoRealiseDueTransactions() {
     if (shouldBeRealisedNow(exp)) {
       exp.type = 'normal';
       exp.wasPlanned = true;
-
-      // Jeśli transakcja nie miała czasu, ustaw aktualny czas Warsaw
       if (!exp.time || exp.time.trim() === '') {
         exp.time = getWarsawTimeString();
       }
-
       expensesUpdated = true;
-      console.log('🔄 Auto-realizacja wydatku:', exp.id, `(${exp.date} ${exp.time})`);
     }
   });
 
@@ -622,27 +581,33 @@ export async function autoRealiseDueTransactions() {
   }
 
   return { incomesUpdated, expensesUpdated };
+  } finally {
+    autoRealisingInProgress = false;
+  }
 }
 
 /**
  * Wyczyść wszystkie listenery
  */
 export function clearAllListeners() {
-  console.log('🧹 Czyszczenie listenerów Firebase...');
-  
+  clearTimeout(categoriesDebounceTimeout);
+  clearTimeout(expensesDebounceTimeout);
+  clearTimeout(incomesDebounceTimeout);
+  categoriesDebounceTimeout = null;
+  expensesDebounceTimeout = null;
+  incomesDebounceTimeout = null;
+
   Object.entries(activeListeners).forEach(([key, unsubscribe]) => {
     if (typeof unsubscribe === 'function') {
       try {
         unsubscribe();
-        console.log('✅ Usunięto listener:', key);
       } catch (error) {
         console.error('❌ Błąd usuwania listenera:', key, error);
       }
     }
   });
-  
+
   activeListeners = {};
-  console.log('✅ Wszystkie listenery wyczyszczone');
 }
 
 /**
@@ -656,17 +621,11 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
     return;
   }
   
-  console.log('🔔 Konfigurowanie listenerów Real-time dla użytkownika:', userId);
-  
-  let categoriesTimeout = null;
-  let expensesTimeout = null;
-  let incomesTimeout = null;
-  
   // Categories
   const categoriesRef = ref(db, getUserBudgetPath('categories'));
   activeListeners.categories = onValue(categoriesRef, (snapshot) => {
-    clearTimeout(categoriesTimeout);
-    categoriesTimeout = setTimeout(() => {
+    clearTimeout(categoriesDebounceTimeout);
+    categoriesDebounceTimeout = setTimeout(() => {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
@@ -681,7 +640,6 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
       
       if (JSON.stringify(categoriesCache) !== JSON.stringify(uniqueData)) {
         categoriesCache = uniqueData;
-        console.log('🔄 Kategorie zaktualizowane:', categoriesCache.length);
         if (callbacks.onCategoriesChange) {
           callbacks.onCategoriesChange(categoriesCache);
         }
@@ -692,8 +650,8 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
   // Expenses
   const expensesRef = ref(db, getUserBudgetPath('expenses'));
   activeListeners.expenses = onValue(expensesRef, (snapshot) => {
-    clearTimeout(expensesTimeout);
-    expensesTimeout = setTimeout(() => {
+    clearTimeout(expensesDebounceTimeout);
+    expensesDebounceTimeout = setTimeout(() => {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
@@ -708,7 +666,6 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
       
       if (JSON.stringify(expensesCache) !== JSON.stringify(uniqueData)) {
         expensesCache = uniqueData;
-        console.log('🔄 Wydatki zaktualizowane:', expensesCache.length);
         if (callbacks.onExpensesChange) {
           callbacks.onExpensesChange(expensesCache);
         }
@@ -719,8 +676,8 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
   // Incomes
   const incomesRef = ref(db, getUserBudgetPath('incomes'));
   activeListeners.incomes = onValue(incomesRef, (snapshot) => {
-    clearTimeout(incomesTimeout);
-    incomesTimeout = setTimeout(() => {
+    clearTimeout(incomesDebounceTimeout);
+    incomesDebounceTimeout = setTimeout(() => {
       const data = snapshot.val() || {};
       const newData = Object.values(data);
       
@@ -735,7 +692,6 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
       
       if (JSON.stringify(incomesCache) !== JSON.stringify(uniqueData)) {
         incomesCache = uniqueData;
-        console.log('🔄 Przychody zaktualizowane:', incomesCache.length);
         if (callbacks.onIncomesChange) {
           callbacks.onIncomesChange(incomesCache);
         }
@@ -796,16 +752,13 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
     }
   });
   
-  console.log('✅ Wszystkie listenery skonfigurowane:', Object.keys(activeListeners));
 }
 
 /**
  * Wyczyść cache
  */
 export function clearCache() {
-  console.log('🧹 Czyszczenie cache danych...');
   clearCacheInternal();
-  console.log('✅ Cache wyczyszczony');
 }
 
 /**

@@ -6,7 +6,10 @@
 .progress-fill, .gauge-fill,
 .progress > div {
   height: 100%; border-radius: inherit;
-  transition: width 400ms ease; background: var(--accent);
+  background: var(--accent);
+  transform-origin: left center;
+  animation: progressFillIn 700ms var(--ease-out) both;
+  transition: width 400ms ease, background-color 300ms ease;
 }
 .progress > div.success, .progress-fill.success { background: var(--success); }
 .progress > div.danger,  .progress-fill.danger  { background: var(--danger); }
@@ -17,7 +20,11 @@
 .gauge-ring-wrap { position: relative; display: inline-flex; }
 .gauge-ring-center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
 .gauge-track { stroke: var(--surface-sunken); }
-.gauge-fill-svg { stroke: var(--accent); transition: stroke-dashoffset 600ms cubic-bezier(.2,.8,.2,1), stroke 300ms; }
+.gauge-fill-svg {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 600ms cubic-bezier(.2,.8,.2,1), stroke 300ms ease;
+  animation: gaugeReveal 900ms cubic-bezier(.2,.8,.2,1) both;
+}
 
 /* ===== ENVELOPE ===== */
 .envelope-container {

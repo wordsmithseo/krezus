@@ -241,9 +241,9 @@ function renderCategoriesChart(breakdown) {
   document.body.appendChild(chartTooltip);
 
   function buildTooltip(slice, x, y) {
-    let html = `<div style="font-weight:bold;font-size:16px;margin-bottom:8px;color:${slice.color}">${slice.category}</div>`;
+    let html = `<div style="font-weight:bold;font-size:16px;margin-bottom:8px;color:${slice.color}">${escapeHTML(slice.category)}</div>`;
     if (slice.category === 'Inne' && slice.categories) {
-      html += `<div style="font-size:12px;color:#ccc;margin-bottom:6px;font-style:italic">${slice.categories}</div>`;
+      html += `<div style="font-size:12px;color:#ccc;margin-bottom:6px;font-style:italic">${escapeHTML(slice.categories)}</div>`;
     }
     html += `<div style="display:flex;gap:12px;margin-top:4px">
       <div><div style="font-size:11px;color:#999;text-transform:uppercase">Kwota</div><div style="font-size:15px;font-weight:bold">${Fmt.zl(slice.amount)} zł</div></div>

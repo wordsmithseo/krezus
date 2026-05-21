@@ -246,6 +246,24 @@
   animation: zoomIn var(--duration-normal) var(--ease-out);
 }
 
+/* Progress bar entrance: scaleX 0→1 from left */
+@keyframes progressFillIn {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Ring gauge entrance: stroke-dashoffset from full circumference */
+@keyframes gaugeReveal {
+  from { stroke-dashoffset: var(--gauge-circ); }
+}
+
+/* Reduced motion: disable all entrance animations */
+@media (prefers-reduced-motion: reduce) {
+  .section.active { animation: none; }
+  .progress-fill, .gauge-fill, .progress > div { animation: none; }
+  .gauge-fill-svg { animation: none; }
+}
+
 /* === HOVER EFFECTS === */
 
 .hover-lift {

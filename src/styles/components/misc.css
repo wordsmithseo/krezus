@@ -21,7 +21,10 @@ input:focus, select:focus, textarea:focus {
 
 /* ===== UTILITIES ===== */
 .section { display: none; }
-.section.active { display: block; }
+.section.active {
+  display: block;
+  animation: slideUp 260ms var(--ease-out) both;
+}
 .mt-10 { margin-top: 10px; }
 .mt-20 { margin-top: 20px; }
 .text-muted { color: var(--ink-3); font-size: 13px; }
@@ -124,4 +127,5 @@ hr.divider { height: 1px; background: var(--line); margin: 24px 0; border: none;
   .savings-stats { flex-direction: column; }
   .goal-info { grid-template-columns: 1fr 1fr; }
   .period-buttons { gap: 4px; }
+  .form-grid { grid-template-columns: 1fr; }
 }
