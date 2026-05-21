@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))\"); echo \"$cmd\" | grep -qE 'npm[[:space:]]+(install|i)([[:space:]]|$)|[^a-z]npx[[:space:]]|^npx[[:space:]]' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"ZABLOKOWANE: npm install/npx wymaga jawnej zgody uzytkownika. Zapytaj najpierw.\"}}' || true",
+            "statusMessage": "Sprawdzam komende..."
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(python3 -c \"import sys,json; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))\"); BLOCKED=0; if echo \"$cmd\" | grep -qE '\\bgrep\\b' && echo \"$cmd\" | grep -qE -- '-[a-zA-Z]*r[a-zA-Z]*' && ! echo \"$cmd\" | grep -q 'src/'; then BLOCKED=1; fi; if echo \"$cmd\" | grep -qE '\\bfind\\b[[:space:]]+\\.' && ! echo \"$cmd\" | grep -q 'src/'; then BLOCKED=1; fi; if [ \"$BLOCKED\" = \"1\" ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"ZABLOKOWANE: grep/find poza src/ - zatrzymaj sie i uzasadnij uzytkownikowi dlaczego to absolutnie konieczne.\"}}'; fi",
+            "statusMessage": "Sprawdzam sciezke grep/find..."
+          }
+        ]
+      }
+    ]
+  }
+}
