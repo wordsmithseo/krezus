@@ -36,11 +36,14 @@ function renderEnvelope14Days(total) {
   const thresholdTopPx = total > 0 ? Math.round((1 - total / maxVal) * chartH) : -1;
   const totalFmt = Fmt.zl(total);
 
-  const barsHtml = days.map(d => {
+  const barsHtml = days.map((d, i) => {
     const barH = d.value > 0 ? Math.max(Math.round((d.value / maxVal) * chartH), 2) : 0;
     const isOver = total > 0 && d.value > total;
     const color = isOver ? 'var(--danger)' : 'var(--accent)';
-    return `<div style="flex:1;height:${barH}px;background:${color};border-radius:3px 3px 2px 2px;opacity:0.8;min-width:0"></div>`;
+    const dateObj = new Date(d.dateStr + 'T12:00:00');
+    const dateFmt = dateObj.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    const tip = `${dateFmt}: ${Fmt.zl(d.value)} zł`;
+    return `<div class="daily-bar" data-tip="${escapeHTML(tip)}"><div style="height:${barH}px;--bar-h:${barH}px;background:${color};border-radius:3px 3px 2px 2px;opacity:0.8;animation:bar-rise 350ms ease both;animation-delay:${i * 25}ms"></div></div>`;
   }).join('');
 
   const dayLabels = days.map(d => `<div style="flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--ink-3)">${d.day}</div>`).join('');
@@ -51,7 +54,7 @@ function renderEnvelope14Days(total) {
 
   const html = `
     <div style="position:relative">
-      <div style="display:flex;align-items:flex-end;gap:3px;height:${chartH}px">${barsHtml}</div>
+      <div style="display:flex;gap:3px;height:${chartH}px">${barsHtml}</div>
       ${thresholdLineHtml}
     </div>
     <div style="display:flex;gap:3px;margin-top:4px">${dayLabels}</div>
