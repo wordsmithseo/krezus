@@ -46,9 +46,9 @@ function comparisonCell(label, curr, prev, unit, lowerIsBetter) {
   return `
     <div style="padding:14px;background:var(--surface-2);border-radius:10px">
       <div class="text-mute text-sm" style="margin-bottom:6px">${label}</div>
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <div class="num" style="font-size:20px;font-weight:500">${fmt(curr)}${unit ? `<span class="text-mute" style="font-size:12px;margin-left:2px">${unit}</span>` : ''}</div>
-        <span class="${deltaClass}" style="font-size:11px;display:inline-flex;align-items:center;gap:2px">${arrowIcon} ${Math.abs(delta).toFixed(1).replace('.', ',')}%</span>
+      <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px">
+        <div class="num" style="font-size:20px;font-weight:500;min-width:0;word-break:break-all">${fmt(curr)}${unit ? `<span class="text-mute" style="font-size:12px;margin-left:2px">${unit}</span>` : ''}</div>
+        <span class="${deltaClass}" style="font-size:11px;display:inline-flex;align-items:center;gap:2px;flex-shrink:0">${arrowIcon} ${Math.abs(delta).toFixed(1).replace('.', ',')}%</span>
       </div>
       <div class="text-mute" style="font-size:11px;margin-top:4px">Poprzednio: <span class="num">${fmt(prev)}${unit ? ' ' + unit : ''}</span></div>
     </div>`;
