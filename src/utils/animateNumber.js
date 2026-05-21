@@ -1,17 +1,21 @@
 // src/utils/animateNumber.js - Animacja liczb w stylu kasyna
 
-/**
- * Animuje liczbę od wartości początkowej do końcowej w stylu maszyny do gier
- * @param {HTMLElement} element - Element, w którym wyświetlana jest liczba
- * @param {number} targetValue - Docelowa wartość
- * @param {number} duration - Czas trwania animacji w milisekundach (domyślnie 1500ms)
- * @param {number} decimals - Liczba miejsc po przecinku (domyślnie 2)
- * @param {number} startValue - Wartość początkowa (domyślnie 0)
- */
+let _initialLoadDone = false;
+
+export function setInitialLoadDone() {
+  _initialLoadDone = true;
+}
+
 export function animateNumber(element, targetValue, duration = 1500, decimals = 2, startValue = 0, formatter = null) {
   if (!element) return;
 
   const fmt = formatter ?? (v => v.toFixed(decimals));
+
+  // Przy pierwszym ładowaniu — ustaw wartość natychmiast, bez animacji
+  if (!_initialLoadDone) {
+    element.textContent = fmt(targetValue);
+    return;
+  }
 
   // Parse current value handling PL format (space thousands, comma decimal)
   const currentText = element.textContent.replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '');

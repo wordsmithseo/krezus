@@ -131,6 +131,7 @@ import { initializePresence, cleanupPresence, recordActivity, setPresenceBudgetU
 // Import automatycznej wersji aplikacji
 import { initVersion } from './utils/version.js';
 import { Fmt } from './utils/fmt.js';
+import { setInitialLoadDone } from './utils/animateNumber.js';
 
 let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
@@ -191,6 +192,8 @@ function hideLoader() {
     loader.style.pointerEvents = 'none';
     setTimeout(() => {
       loader.style.display = 'none';
+      document.body.classList.remove('app-loading');
+      setInitialLoadDone();
     }, 450);
   }
 }

@@ -257,6 +257,18 @@
   from { stroke-dashoffset: 1; }
 }
 
+/* Pause entrance animations until loader is hidden */
+.app-loading .bar-chart-fill,
+.app-loading .sparkline-path,
+.app-loading .sparkline-area,
+.app-loading .daily-bar-fill,
+.app-loading .progress-fill,
+.app-loading .gauge-fill-svg,
+.app-loading .gauge-fill,
+.app-loading .analytics-progress-fill {
+  animation-play-state: paused;
+}
+
 /* Reduced motion: disable all entrance animations */
 @media (prefers-reduced-motion: reduce) {
   .section.active { animation: none; }
