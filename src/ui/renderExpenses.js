@@ -295,9 +295,9 @@ export function renderExpenses() {
 
   tbody.innerHTML = html;
 
-  // tfoot — suma widoczna (wszystkie przefiltrowane, nie tylko strona)
+  // tfoot — suma widoczna (tylko bieżąca strona)
   if (tfoot) {
-    const sum = filtered.reduce((acc, e) => acc + e.amount, 0);
+    const sum = paginatedExpenses.reduce((acc, e) => acc + e.amount, 0);
     tfoot.innerHTML = `<tr>
       <td colspan="5" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
       <td class="amount" style="font-weight:600;color:var(--danger)">−${Fmt.zl(sum)}</td>

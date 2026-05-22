@@ -229,7 +229,8 @@ function updateDisplayNameInUI(displayName) {
 function updateSectionStats() {
   const expenses = getExpenses();
   const incomes = getIncomes();
-  const now = getWarsawDateString().slice(0, 7); // YYYY-MM
+  const today = getWarsawDateString();
+  const now = today.slice(0, 7); // YYYY-MM
 
   const [yr, mo] = now.split('-').map(Number);
   const prevDate = new Date(yr, mo - 2, 1);
@@ -238,6 +239,7 @@ function updateSectionStats() {
   const expNow  = expenses.filter(e => e.type === 'normal' && e.date?.startsWith(now));
   const expPrev = expenses.filter(e => e.type === 'normal' && e.date?.startsWith(prev));
   const expPlanned = expenses.filter(e => e.type === 'planned');
+  const expToday = expenses.filter(e => e.type === 'normal' && e.date === today);
 
   const incNow  = incomes.filter(i => i.type === 'normal' && i.date?.startsWith(now));
   const incPrev = incomes.filter(i => i.type === 'normal' && i.date?.startsWith(prev));
@@ -249,6 +251,7 @@ function updateSectionStats() {
   const expPrevTotal    = sum(expPrev);
   const expAvg          = expNow.length > 0 ? expMonthTotal / expNow.length : 0;
   const expPlannedTotal = sum(expPlanned);
+  const expTodayTotal   = sum(expToday);
 
   const incMonthTotal   = sum(incNow);
   const incPrevTotal    = sum(incPrev);
@@ -258,6 +261,7 @@ function updateSectionStats() {
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
   set('expensesMonthTotal',  Fmt.zl(expMonthTotal));
+  set('expensesTodayTotal',  Fmt.zl(expTodayTotal));
   set('expensesAvg',         Fmt.zl(expAvg));
   set('expensesPlannedTotal', Fmt.zl(expPlannedTotal));
   set('expensesPlannedCount', `${expPlanned.length} transakcji`);

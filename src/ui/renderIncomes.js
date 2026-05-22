@@ -274,9 +274,9 @@ export function renderSources() {
 
   tbody.innerHTML = html;
 
-  // tfoot — suma widoczna (wszystkie przefiltrowane)
+  // tfoot — suma widoczna (tylko bieżąca strona)
   if (tfoot) {
-    const sum = filtered.reduce((acc, i) => acc + i.amount, 0);
+    const sum = paginatedIncomes.reduce((acc, i) => acc + i.amount, 0);
     const sign = sum >= 0 ? '+' : '';
     tfoot.innerHTML = `<tr>
       <td colspan="4" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
