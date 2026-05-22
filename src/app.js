@@ -19,15 +19,11 @@ import {
   getExpenses,
   getIncomes,
   getEndDates,
-  getEnvelopePeriod,
-  getDynamicsPeriod,
   getDailyEnvelope,
   saveCategories,
   saveExpenses,
   saveIncomes,
   saveEndDates,
-  saveEnvelopePeriod,
-  saveDynamicsPeriod,
   autoRealiseDueTransactions,
   subscribeToRealtimeUpdates,
   clearAllListeners,
@@ -758,57 +754,12 @@ const selectSource = (source) => {
 
 // window.addIncome, window.addCorrection -> src/handlers/incomeHandlers.js
 
-/**
- * Odświeża listy rozwijane okresów w ustawieniach
- * Powinna być wywołana po każdej zmianie przychodów planowanych
- */
-function refreshPeriodSelectors() {
-  const envelopePeriod = getEnvelopePeriod();
-  const dynamicsPeriod = getDynamicsPeriod();
-
-  const envelopePeriodSelect = document.getElementById('settingsEnvelopePeriod');
-  const dynamicsPeriodSelect = document.getElementById('settingsDynamicsPeriod');
-
-  // Wypełnij dropdowny okresami
-  const { periods } = calculateSpendingPeriods();
-
-  if (envelopePeriodSelect) {
-    envelopePeriodSelect.innerHTML = '';
-    periods.forEach((period, index) => {
-      const option = document.createElement('option');
-      option.value = index;
-      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
-      if (index === envelopePeriod) option.selected = true;
-      envelopePeriodSelect.appendChild(option);
-    });
-  }
-
-  if (dynamicsPeriodSelect) {
-    dynamicsPeriodSelect.innerHTML = '';
-    periods.forEach((period, index) => {
-      const option = document.createElement('option');
-      option.value = index;
-      option.textContent = `${period.name} (${period.date}) - ${period.daysLeft} dni`;
-      if (index === dynamicsPeriod) option.selected = true;
-      dynamicsPeriodSelect.appendChild(option);
-    });
-  }
-}
-
-function loadSettings() {
-  refreshPeriodSelectors();
-}
+function loadSettings() {}
 
 const saveSettings = async (e) => {
   e.preventDefault();
 
-  const form = e.target;
-  const envelopePeriod = parseInt(form.envelopePeriod.value) || 0;
-  const dynamicsPeriod = parseInt(form.dynamicsPeriod.value) || 0;
-
   try {
-    await saveEnvelopePeriod(envelopePeriod);
-    await saveDynamicsPeriod(dynamicsPeriod);
     await recalculateEnvelope();
     renderSummary();
 
@@ -816,10 +767,8 @@ const saveSettings = async (e) => {
     const displayName = await getDisplayName(user.uid);
 
     await log('SETTINGS_UPDATE', {
-      envelopePeriod,
-      dynamicsPeriod,
       budgetUser: displayName,
-      note: 'Ustawienia okresu koperty i dynamiki zapisane'
+      note: 'Ustawienia zapisane'
     });
 
     showSuccessMessage('Ustawienia zapisane');
@@ -1263,7 +1212,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderSummary();
       renderDailyEnvelope();
     },
-    refreshPeriodSelectors,
     setupIncomeTypeToggle
   });
 

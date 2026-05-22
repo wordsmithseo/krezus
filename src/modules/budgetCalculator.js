@@ -1,6 +1,6 @@
 // src/modules/budgetCalculator.js
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised, calculateRemainingTime } from '../utils/dateHelpers.js';
-import { getIncomes, getExpenses, getEndDates, getSavingGoal, getEnvelopePeriod, getDynamicsPeriod, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
+import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 
 // === CACHE LIMITÓW DZIENNYCH ===
 const LIMITS_CACHE_KEY = 'krezus_daily_limits_cache';
@@ -570,8 +570,7 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
 
     // 2. Pobierz okres budżetowy
     const { periods } = calculateSpendingPeriods();
-    const envelopePeriodIndex = getEnvelopePeriod();
-    const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
+    const selectedPeriod = periods[0];
 
     let smartLimit = 0;
     let algorithmMode = 'none';
@@ -737,8 +736,7 @@ export async function recalculateEnvelope() {
 export function getEnvelopeCalculationInfo() {
     const envelope = getDailyEnvelope();
     const { periods } = calculateSpendingPeriods();
-    const envelopePeriodIndex = getEnvelopePeriod();
-    const selectedPeriod = periods[envelopePeriodIndex] || periods[0];
+    const selectedPeriod = periods[0];
 
     if (!envelope) {
         if (!selectedPeriod || selectedPeriod.calendarDays < 0) {
@@ -998,8 +996,7 @@ export function calculateSpendingDynamics() {
     const expenses = getExpenses();
     const today = getWarsawDateString();
     const { periods } = calculateSpendingPeriods();
-    const dynamicsPeriodIndex = getDynamicsPeriod();
-    const selectedPeriod = periods[dynamicsPeriodIndex] || periods[0];
+    const selectedPeriod = periods[0];
     const { available } = calculateAvailableFunds();
     const toSpend = available;
     const limitsData = calculateCurrentLimits();
@@ -1022,7 +1019,7 @@ export function calculateSpendingDynamics() {
     const daysForLimitCalculation = Math.max(1, selectedPeriod.calendarDays);
 
     // Znajdź limit dla wybranego okresu dynamiki
-    const selectedLimit = limitsData.limits[dynamicsPeriodIndex] || limitsData.limits[0];
+    const selectedLimit = limitsData.limits[0];
 
     // Użyj realnego limitu dziennego - dynamika bazuje na rzeczywistych możliwościach
     let targetDaily = selectedLimit?.realLimit || 0;

@@ -6,8 +6,6 @@ import {
     getExpenses,
     getIncomes,
     getEndDates,
-    getEnvelopePeriod,
-    getDynamicsPeriod,
     getDailyEnvelope
 } from '../modules/dataManager.js';
 
@@ -40,9 +38,6 @@ function collectCompleteBudgetData() {
     const incomes = getIncomes();
     const endDates = getEndDates();
     const envelope = getDailyEnvelope();
-    const envelopePeriodIndex = getEnvelopePeriod();
-    const dynamicsPeriodIndex = getDynamicsPeriod();
-
     // 2. OBLICZENIA FINANSOWE
     const availableFunds = calculateAvailableFunds();
     const spendingPeriods = calculateSpendingPeriods();
@@ -229,8 +224,7 @@ function collectCompleteBudgetData() {
                 name: p.name,
                 endDate: p.date,
                 daysLeft: p.daysLeft,
-                isSelectedForEnvelope: idx === envelopePeriodIndex,
-                isSelectedForDynamics: idx === dynamicsPeriodIndex
+                isActivePeriod: idx === 0
             })),
             endDates: endDates
         },

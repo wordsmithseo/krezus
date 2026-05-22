@@ -23,14 +23,12 @@ let editingIncomeId = null;
 let getBudgetUserNameFn = null;
 let getBudgetUsersCacheFn = null;
 let renderAfterChangeFn = null;
-let refreshPeriodSelectorsFn = null;
 let setupIncomeTypeToggleFn = null;
 
-export function setIncomeHandlerDeps({ getBudgetUserName, getBudgetUsersCache, renderAfterChange, refreshPeriodSelectors, setupIncomeTypeToggle }) {
+export function setIncomeHandlerDeps({ getBudgetUserName, getBudgetUsersCache, renderAfterChange, setupIncomeTypeToggle }) {
   getBudgetUserNameFn = getBudgetUserName;
   getBudgetUsersCacheFn = getBudgetUsersCache;
   renderAfterChangeFn = renderAfterChange;
-  refreshPeriodSelectorsFn = refreshPeriodSelectors;
   setupIncomeTypeToggleFn = setupIncomeTypeToggle;
 }
 
@@ -95,7 +93,6 @@ export async function addIncome(e) {
   try {
     await saveIncomes(updated);
     clearLimitsCache();
-    if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
 
     if (type === 'normal' && date <= getWarsawDateString()) {
       await updateDailyEnvelope();
@@ -143,8 +140,7 @@ export function editIncome(incomeId) {
     try {
       await saveIncomes(updated);
       clearLimitsCache();
-      if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
-
+  
       if (updatedIncome.type === 'normal' && updatedIncome.date <= getWarsawDateString()) {
         await updateDailyEnvelope();
       }
@@ -182,7 +178,6 @@ export async function deleteIncome(incomeId) {
   try {
     await saveIncomes(updated);
     clearLimitsCache();
-    if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
 
     await loadIncomes();
 
@@ -197,7 +192,6 @@ export async function deleteIncome(incomeId) {
       budgetUser: budgetUserName
     });
 
-    if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
     if (renderAfterChangeFn) renderAfterChangeFn('income');
     showSuccessMessage('Przychód usunięty');
   } catch (error) {
@@ -220,7 +214,6 @@ export async function realiseIncome(incomeId) {
   try {
     await saveIncomes(incomes);
     clearLimitsCache();
-    if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
     await updateDailyEnvelope();
 
     const budgetUserName = getBudgetUserNameFn(income.userId);
@@ -293,7 +286,6 @@ export async function addCorrection(e) {
   try {
     await saveIncomes(updated);
     clearLimitsCache();
-    if (refreshPeriodSelectorsFn) refreshPeriodSelectorsFn();
     await updateDailyEnvelope();
 
     await log('CORRECTION_ADD', {
