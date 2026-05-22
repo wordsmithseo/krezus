@@ -78,7 +78,9 @@ function showUpdateModal(newVersion) {
   document.body.appendChild(modal);
 
   modal.querySelector('#versionUpdateRefresh').addEventListener('click', () => {
-    window.location.reload();
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now());
+    window.location.href = url.toString();
   });
 
   modal.querySelector('#versionUpdateDismiss').addEventListener('click', () => {
@@ -97,16 +99,30 @@ export function startVersionPolling() {
   if (import.meta.env.DEV) return;
 
   const currentVersion = getAppVersion();
+  let checking = false;
 
   const check = async () => {
-    const remote = await fetchRemoteVersion();
-    if (remote && remote !== currentVersion) {
-      stopVersionPolling();
-      showUpdateModal(remote);
+    if (checking) return;
+    checking = true;
+    try {
+      const remote = await fetchRemoteVersion();
+      if (remote && remote !== currentVersion) {
+        stopVersionPolling();
+        document.removeEventListener('visibilitychange', onVisible);
+        showUpdateModal(remote);
+      }
+    } finally {
+      checking = false;
     }
   };
 
-  setTimeout(check, 60_000);
+  const onVisible = () => {
+    if (!document.hidden) check();
+  };
+
+  document.addEventListener('visibilitychange', onVisible);
+
+  setTimeout(check, 10_000);
   pollTimer = setInterval(check, POLL_INTERVAL);
 }
 
