@@ -582,7 +582,8 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
         smartLimit = 0;
         algorithmMode = 'no-funds';
     } else {
-        const daysForCalculation = Math.max(1, selectedPeriod.calendarDays);
+        // Min. 7 dni w mianowniku zapobiega eksplozji koperty gdy zbliża się data wpływu
+        const daysForCalculation = Math.max(7, selectedPeriod.calendarDays);
 
         // 3. Bazowy limit dzienny = dostępne / dni
         const baseDailyLimit = totalAvailable / daysForCalculation;
@@ -639,8 +640,8 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
                 // Historyczne wydatki powyżej limitu - tryb ostrożny
                 proposed = adjustedDailyLimit * 0.9;
             } else if (dailyMedian < adjustedDailyLimit * 0.4) {
-                // Historyczne wydatki znacznie poniżej limitu - tryb zbliżony do limitu
-                proposed = adjustedDailyLimit * 0.85;
+                // Historyczne wydatki znacznie poniżej limitu — zakotwicz w medianie, nie limitcie
+                proposed = Math.min(adjustedDailyLimit * 0.85, dailyMedian * 1.5);
             } else {
                 // Zbalansowany: 35% mediana dzienna + 65% limit budżetowy
                 proposed = (dailyMedian * 0.35 + adjustedDailyLimit * 0.65);
@@ -665,7 +666,7 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
             if (median > adjustedDailyLimit * 1.5) {
                 proposed = adjustedDailyLimit * 0.85;
             } else if (median < adjustedDailyLimit * 0.3) {
-                proposed = adjustedDailyLimit * 0.75;
+                proposed = Math.min(adjustedDailyLimit * 0.75, median * 1.5);
             } else {
                 proposed = (median * 0.3 + adjustedDailyLimit * 0.7);
             }
