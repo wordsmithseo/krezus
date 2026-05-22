@@ -128,7 +128,7 @@ import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMe
 import { initializePresence, cleanupPresence, recordActivity, setPresenceBudgetUsers } from './modules/presence.js';
 
 // Import automatycznej wersji aplikacji
-import { initVersion } from './utils/version.js';
+import { initVersion, checkForUpdate } from './utils/version.js';
 import { Fmt } from './utils/fmt.js';
 import { setInitialLoadDone } from './utils/animateNumber.js';
 
@@ -1115,6 +1115,7 @@ onAuthChange(async (user) => {
 
     // Wyświetl wersję aplikacji w nagłówku
     initVersion();
+    checkForUpdate();
 
     // Oznacz otwarcie strony jako aktywność
     recordActivity();

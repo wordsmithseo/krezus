@@ -1,34 +1,35 @@
-/**
- * Automatic Version Management
- * Reads version from package.json and displays it in the app header
- */
-
 import packageJson from '../../package.json';
+import { showConfirmModal } from '../components/confirmModal.js';
 
-/**
- * Get version from package.json
- * @returns {string} Version string
- */
+const VERSION_STORAGE_KEY = 'krezus_last_version';
+
 function getAppVersion() {
   return packageJson.version || '1.0.0';
 }
 
-/**
- * Display version in the app header
- */
 export function displayAppVersion() {
   const version = getAppVersion();
   const versionElement = document.getElementById('appVersion');
-
   if (versionElement) {
     versionElement.textContent = `v${version}`;
   }
 }
 
-/**
- * Initialize version display
- */
+export function checkForUpdate() {
+  const currentVersion = getAppVersion();
+  const lastVersion = localStorage.getItem(VERSION_STORAGE_KEY);
+
+  if (lastVersion && lastVersion !== currentVersion) {
+    showConfirmModal(
+      'Krezus zaktualizowany',
+      `Aplikacja została zaktualizowana do wersji ${currentVersion}.`,
+      { confirmText: 'OK', cancelText: 'Zamknij', type: 'info' }
+    );
+  }
+
+  localStorage.setItem(VERSION_STORAGE_KEY, currentVersion);
+}
+
 export function initVersion() {
-  // Display version immediately when app loads
   displayAppVersion();
 }
