@@ -1,5 +1,5 @@
 import packageJson from '../../package.json';
-import { showConfirmModal } from '../components/confirmModal.js';
+import { showSuccessMessage } from './errorHandler.js';
 import { icon } from './icons.js';
 import { escapeHTML } from './sanitizer.js';
 
@@ -25,11 +25,7 @@ export function checkForUpdate() {
   const lastVersion = localStorage.getItem(VERSION_STORAGE_KEY);
 
   if (lastVersion && lastVersion !== currentVersion) {
-    showConfirmModal(
-      'Krezus zaktualizowany',
-      `Aplikacja została zaktualizowana do wersji ${currentVersion}.`,
-      { confirmText: 'OK', cancelText: 'Zamknij', type: 'info' }
-    );
+    showSuccessMessage(`Zaktualizowano do v${currentVersion}`);
   }
 
   localStorage.setItem(VERSION_STORAGE_KEY, currentVersion);
