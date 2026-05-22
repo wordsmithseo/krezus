@@ -330,7 +330,7 @@ async function loadAllData() {
       },
       onExpensesChange: async () => {
         clearLimitsCache();
-        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie wydatków
+        await updateDailyEnvelope(); // Aktualizuje tylko spent, nie zmienia limitu
         renderExpenses();
         renderCategories();
         renderSummary();
@@ -340,8 +340,6 @@ async function loadAllData() {
       },
       onIncomesChange: async () => {
         clearLimitsCache();
-        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie przychodów
-
         renderSources();
         renderSummary();
         renderDailyEnvelope();
@@ -350,15 +348,11 @@ async function loadAllData() {
       },
       onEndDatesChange: async () => {
         clearLimitsCache();
-        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie dat
-
         renderSummary();
         renderDailyEnvelope();
       },
       onSavingGoalChange: async () => {
         clearLimitsCache();
-        await recalculateEnvelope(); // Awaryjne przeliczenie koperty przy zmianie oszczędności
-
         renderSummary();
         renderDailyEnvelope();
         renderSavingsSection();
@@ -761,7 +755,6 @@ const saveSettings = async (e) => {
   e.preventDefault();
 
   try {
-    await recalculateEnvelope();
     renderSummary();
 
     const user = getCurrentUser();
