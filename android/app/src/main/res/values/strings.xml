@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Krezus</string>
+    <string name="title_activity_main">Krezus</string>
+    <string name="package_name">pl.krezus.app</string>
+    <string name="custom_url_scheme">pl.krezus.app</string>
+</resources>

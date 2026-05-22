@@ -40,3 +40,7 @@ coverage/
 # Misc
 *.bak
 *.tmp
+
+# Android build artifacts
+*.apk
+*.aab
