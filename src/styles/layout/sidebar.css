@@ -117,8 +117,29 @@
   color: var(--accent);
 }
 
-.sidebar-footer {
+.sidebar-copyright {
   margin-top: auto;
+  padding: 16px 4px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar-copyright span {
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.sidebar-copyright span:first-child {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.sidebar-footer {
   border-top: 1px solid var(--line);
   padding-top: 14px;
   display: flex;
