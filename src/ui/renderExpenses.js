@@ -270,7 +270,7 @@ export function renderExpenses() {
     const isToday = exp.date === todayStr;
 
     return `
-      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${isToday ? ' today' : ''}">
+      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${isToday ? ' today' : ''}" data-action="view-expense" data-id="${exp.id}" style="cursor:pointer">
         <td class="row-num">${startIdx + index + 1}</td>
         <td>
           <div style="font-weight:500">${formatDateLabel(exp.date)}</div>

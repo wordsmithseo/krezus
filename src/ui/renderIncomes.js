@@ -247,7 +247,7 @@ export function renderSources() {
       : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
     return `
-    <tr class="${rowClass}${isToday ? ' today' : ''}">
+    <tr class="${rowClass}${isToday ? ' today' : ''}" data-action="view-income" data-id="${inc.id}" style="cursor:pointer">
       <td class="row-num">${startIdx + index + 1}</td>
       <td>
         <div style="font-weight:500">${formatDateLabel(inc.date)}</div>

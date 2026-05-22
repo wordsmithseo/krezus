@@ -44,7 +44,10 @@ import {
 
 import { sanitizeHTML, escapeHTML } from '../utils/sanitizer.js';
 import { showConfirmModal, showPromptModal } from './confirmModal.js';
-import { getCategoryIcon } from '../utils/iconMapper.js';
+import { getCategoryIcon, getSourceIcon } from '../utils/iconMapper.js';
+import { icon } from '../utils/icons.js';
+import { Fmt } from '../utils/fmt.js';
+import { userChipHTML } from '../ui/chips.js';
 
 let budgetUsersUnsubscribe = null;
 
@@ -829,6 +832,224 @@ export function showAddCategoryModal() {
   }
   modal.classList.add('active');
   setTimeout(() => document.getElementById('newCategoryNameModal')?.focus(), 50);
+}
+
+// ==================== MODAL SZCZEGÓŁÓW WYDATKU ====================
+
+export function showExpenseDetailsModal(expense, { getBudgetUserName, onEdit } = {}) {
+  const modalId = 'expenseDetailsModal';
+  let modal = document.getElementById(modalId);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
+  }
+
+  const cat = getCategories().find(c => c.name === expense.category) || null;
+  const catIcon = cat?.icon || getCategoryIcon(expense.category || '');
+  const userName = getBudgetUserName ? getBudgetUserName(expense.userId) : (expense.userId || '—');
+
+  const iconCal   = icon('Calendar', { size: 15, strokeWidth: 1.75 });
+  const iconTag   = icon('Tag',      { size: 15, strokeWidth: 1.75 });
+  const iconText  = icon('Edit',     { size: 15, strokeWidth: 1.75 });
+  const iconUser  = icon('User',     { size: 15, strokeWidth: 1.75 });
+
+  const ICON_COL  = 'width:28px;flex-shrink:0;color:var(--ink-3);display:flex;align-items:center;justify-content:center;padding-top:1px';
+  const ROW_STYLE = 'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)';
+  const LABEL     = 'font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:500;margin-bottom:2px';
+
+  const statusTag = expense.type === 'planned'
+    ? '<span class="tag info dot">Planowany</span>'
+    : '<span class="tag success dot">Zrealizowany</span>';
+
+  const wasPlannedTag = expense.wasPlanned
+    ? '<span class="tag" style="margin-left:6px;background:color-mix(in srgb,var(--info,#6c9) 12%,var(--surface));color:var(--ink-2)">Było planowane</span>'
+    : '';
+
+  const catHtml = cat
+    ? `<span style="display:inline-flex;align-items:center;gap:5px">${catIcon ? `<span>${escapeHTML(catIcon)}</span>` : ''}${escapeHTML(cat.name)}</span>`
+    : (expense.category ? escapeHTML(expense.category) : '<span style="color:var(--ink-3)">—</span>');
+
+  const userHtml = expense.userId && userName
+    ? userChipHTML({ id: expense.userId, name: userName })
+    : '<span style="color:var(--ink-3)">—</span>';
+
+  const timeStr = expense.time ? `<span style="color:var(--ink-3);margin-left:8px">${escapeHTML(expense.time)}</span>` : '';
+
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width:440px">
+      <div class="modal-header">
+        <h3>Szczegóły wydatku</h3>
+        <button class="btn ghost icon-only" onclick="window.closeModal('expenseDetailsModal')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--surface-2);border-radius:10px;padding:18px 20px;text-align:center;margin-bottom:20px">
+          <div style="font-size:30px;font-weight:700;letter-spacing:-.02em;color:var(--danger)">−${Fmt.zl(expense.amount)}</div>
+          <div style="margin-top:10px">${statusTag}${wasPlannedTag}</div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconCal}</div>
+            <div>
+              <div style="${LABEL}">Data</div>
+              <div style="font-size:14px">${escapeHTML(Fmt.dateLong(expense.date))}${timeStr}</div>
+            </div>
+          </div>
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconTag}</div>
+            <div>
+              <div style="${LABEL}">Kategoria</div>
+              <div style="font-size:14px">${catHtml}</div>
+            </div>
+          </div>
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconText}</div>
+            <div>
+              <div style="${LABEL}">Opis</div>
+              <div style="font-size:14px">${expense.description ? escapeHTML(expense.description) : '<span style="color:var(--ink-3)">—</span>'}</div>
+            </div>
+          </div>
+          <div style="${ROW_STYLE};border-bottom:none">
+            <div style="${ICON_COL}">${iconUser}</div>
+            <div>
+              <div style="${LABEL}">Użytkownik</div>
+              <div style="font-size:14px">${userHtml}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        ${onEdit ? `<button type="button" class="btn" id="_detailExpenseEditBtn">Edytuj</button>` : ''}
+        <button type="button" class="btn accent" onclick="window.closeModal('expenseDetailsModal')">Zamknij</button>
+      </div>
+    </div>
+  `;
+
+  if (onEdit) {
+    modal.querySelector('#_detailExpenseEditBtn').onclick = () => {
+      modal.classList.remove('active');
+      onEdit(expense.id);
+    };
+  }
+
+  modal.classList.add('active');
+}
+
+// ==================== MODAL SZCZEGÓŁÓW PRZYCHODU ====================
+
+export function showIncomeDetailsModal(income, { getBudgetUserName, onEdit } = {}) {
+  const modalId = 'incomeDetailsModal';
+  let modal = document.getElementById(modalId);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'modal';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
+  }
+
+  const isCorrection = income.source === 'KOREKTA';
+  const userName = getBudgetUserName ? getBudgetUserName(income.userId) : (income.userId || '—');
+  const srcIcon  = !isCorrection && income.source ? getSourceIcon(income.source) : '';
+
+  const iconCal  = icon('Calendar', { size: 15, strokeWidth: 1.75 });
+  const iconWal  = icon('Wallet',   { size: 15, strokeWidth: 1.75 });
+  const iconText = icon('Edit',     { size: 15, strokeWidth: 1.75 });
+  const iconUser = icon('User',     { size: 15, strokeWidth: 1.75 });
+
+  const ICON_COL  = 'width:28px;flex-shrink:0;color:var(--ink-3);display:flex;align-items:center;justify-content:center;padding-top:1px';
+  const ROW_STYLE = 'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)';
+  const LABEL     = 'font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);font-weight:500;margin-bottom:2px';
+
+  const statusTag = isCorrection
+    ? '<span class="tag info dot">Korekta</span>'
+    : income.type === 'planned'
+      ? '<span class="tag info dot">Planowany</span>'
+      : '<span class="tag success dot">Zrealizowany</span>';
+
+  const wasPlannedTag = income.wasPlanned
+    ? '<span class="tag" style="margin-left:6px;background:color-mix(in srgb,var(--info,#6c9) 12%,var(--surface));color:var(--ink-2)">Było planowane</span>'
+    : '';
+
+  const amountSign = income.amount >= 0 ? '+' : '';
+  const amountColor = income.amount >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  const sourceLabel = isCorrection ? 'Korekta' : 'Źródło';
+  const sourceHtml = isCorrection
+    ? `<span style="font-weight:600">KOREKTA</span>${income.correctionReason ? `<br><span style="color:var(--ink-3);font-size:12px">${escapeHTML(income.correctionReason)}</span>` : ''}`
+    : (income.source ? escapeHTML(`${srcIcon ? srcIcon + ' ' : ''}${income.source}`) : '<span style="color:var(--ink-3)">—</span>');
+
+  const userHtml = income.userId && userName
+    ? userChipHTML({ id: income.userId, name: userName })
+    : '<span style="color:var(--ink-3)">—</span>';
+
+  const timeStr = income.time ? `<span style="color:var(--ink-3);margin-left:8px">${escapeHTML(income.time)}</span>` : '';
+
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width:440px">
+      <div class="modal-header">
+        <h3>Szczegóły przychodu</h3>
+        <button class="btn ghost icon-only" onclick="window.closeModal('incomeDetailsModal')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="background:var(--surface-2);border-radius:10px;padding:18px 20px;text-align:center;margin-bottom:20px">
+          <div style="font-size:30px;font-weight:700;letter-spacing:-.02em;color:${amountColor}">${amountSign}${Fmt.zl(Math.abs(income.amount))}</div>
+          <div style="margin-top:10px">${statusTag}${wasPlannedTag}</div>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconCal}</div>
+            <div>
+              <div style="${LABEL}">Data</div>
+              <div style="font-size:14px">${escapeHTML(Fmt.dateLong(income.date))}${timeStr}</div>
+            </div>
+          </div>
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconWal}</div>
+            <div>
+              <div style="${LABEL}">${sourceLabel}</div>
+              <div style="font-size:14px">${sourceHtml}</div>
+            </div>
+          </div>
+          ${income.description ? `
+          <div style="${ROW_STYLE}">
+            <div style="${ICON_COL}">${iconText}</div>
+            <div>
+              <div style="${LABEL}">Opis</div>
+              <div style="font-size:14px">${escapeHTML(income.description)}</div>
+            </div>
+          </div>
+          ` : ''}
+          <div style="${ROW_STYLE};border-bottom:none">
+            <div style="${ICON_COL}">${iconUser}</div>
+            <div>
+              <div style="${LABEL}">Użytkownik</div>
+              <div style="font-size:14px">${userHtml}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        ${onEdit && !isCorrection ? `<button type="button" class="btn" id="_detailIncomeEditBtn">Edytuj</button>` : ''}
+        <button type="button" class="btn accent" onclick="window.closeModal('incomeDetailsModal')">Zamknij</button>
+      </div>
+    </div>
+  `;
+
+  if (onEdit && !isCorrection) {
+    modal.querySelector('#_detailIncomeEditBtn').onclick = () => {
+      modal.classList.remove('active');
+      onEdit(income.id);
+    };
+  }
+
+  modal.classList.add('active');
 }
 
 // ==================== ZAMYKANIE MODALI ====================

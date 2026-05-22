@@ -72,7 +72,9 @@ import {
   showAddCategoryModal,
   showEditCategoryModal,
   showEditExpenseModal,
-  showEditIncomeModal
+  showEditIncomeModal,
+  showExpenseDetailsModal,
+  showIncomeDetailsModal
 } from './components/modals.js';
 
 import {
@@ -1235,6 +1237,16 @@ document.addEventListener('DOMContentLoaded', () => {
     'select-category': (el) => selectCategory(getDataAttributes(el).name),
 
     // Wydatki - akcje
+    'view-expense': (el, e) => {
+      if (e.target.closest('[data-action]:not([data-action="view-expense"])')) return;
+      const id = el.dataset.id;
+      const expense = getExpenses().find(exp => exp.id === id);
+      if (!expense) return;
+      showExpenseDetailsModal(expense, {
+        getBudgetUserName,
+        onEdit: (expId) => editExpense(expId),
+      });
+    },
     'realise-expense': (el) => realiseExpense(getDataAttributes(el).id),
     'edit-expense': (el) => editExpense(getDataAttributes(el).id),
     'delete-expense': (el) => deleteExpense(getDataAttributes(el).id),
@@ -1244,6 +1256,16 @@ document.addEventListener('DOMContentLoaded', () => {
     'select-source': (el) => selectSource(getDataAttributes(el).source),
 
     // Przychody - akcje
+    'view-income': (el, e) => {
+      if (e.target.closest('[data-action]:not([data-action="view-income"])')) return;
+      const id = el.dataset.id;
+      const income = getIncomes().find(inc => inc.id === id);
+      if (!income) return;
+      showIncomeDetailsModal(income, {
+        getBudgetUserName,
+        onEdit: (incId) => editIncome(incId),
+      });
+    },
     'realise-income': (el) => realiseIncome(getDataAttributes(el).id),
     'edit-income': (el) => editIncome(getDataAttributes(el).id),
     'delete-income': (el) => deleteIncome(getDataAttributes(el).id),
