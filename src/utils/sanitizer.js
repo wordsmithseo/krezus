@@ -17,7 +17,7 @@ export function sanitizeHTML(html) {
       'class', 'style', 'data-value', 'data-budget-id', 'data-budget-name', 'data-action',
       'data-id', 'data-name', 'data-category-id', 'data-expense-id', 'data-income-id',
       'data-page', 'data-end-date', 'data-end-time', 'data-cat-id', 'data-tip',
-      'xmlns', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
+      'xmlns', 'viewBox', 'preserveAspectRatio', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray',
       'width', 'height', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'd', 'points',
       'transform', 'aria-hidden', 'aria-label', 'aria-pressed', 'role', 'tabindex',
     ],

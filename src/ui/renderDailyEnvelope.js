@@ -1,5 +1,5 @@
 // src/ui/renderDailyEnvelope.js
-import { getDailyEnvelope, getExpenses } from '../modules/dataManager.js';
+import { getDailyEnvelope, getExpenses, loadDailyEnvelope } from '../modules/dataManager.js';
 import {
   calculateSpendingGauge,
   getGlobalMedian30d,
@@ -13,15 +13,32 @@ import { getWarsawDateString, getWarsawTimeString } from '../utils/dateHelpers.j
 import { icon } from '../utils/icons.js';
 import { Fmt } from '../utils/fmt.js';
 
-function renderEnvelope14Days(total) {
+async function renderEnvelope14Days(total) {
   const container = document.getElementById('envelopeChart14');
   if (!container) return;
 
   const expenses = getExpenses();
   const chartH = 140;
+  const now = new Date();
+
+  // Fetch historical envelope values (days 1–13 ago); today comes from cache
+  const historyMap = {};
+  const todayStr = getWarsawDateString();
+  const todayEnv = getDailyEnvelope();
+  historyMap[todayStr] = todayEnv?.totalAmount ?? total;
+
+  await Promise.all(
+    Array.from({ length: 13 }, (_, idx) => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (13 - idx));
+      const dateStr = getWarsawDateString(d);
+      return loadDailyEnvelope(dateStr).then(env => {
+        historyMap[dateStr] = env?.totalAmount ?? null;
+      });
+    })
+  );
 
   const days = [];
-  const now = new Date();
   for (let i = 13; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
@@ -29,42 +46,70 @@ function renderEnvelope14Days(total) {
     const value = expenses
       .filter(e => e.type === 'normal' && e.date === dateStr)
       .reduce((sum, e) => sum + (e.amount || 0), 0);
-    days.push({ dateStr, value, day: d.getDate() });
+    const envelopeVal = historyMap[dateStr] ?? total;
+    days.push({ dateStr, value, day: d.getDate(), envelopeVal });
   }
 
+  // maxVal based on expenses + today's total only — historical envelope values may vary wildly
   const maxVal = Math.max(...days.map(d => d.value), total, 1);
-  const thresholdTopPx = total > 0 ? Math.round((1 - total / maxVal) * chartH) : -1;
-  const totalFmt = Fmt.zl(total);
 
   const barsHtml = days.map((d, i) => {
     const barH = d.value > 0 ? Math.max(Math.round((d.value / maxVal) * chartH), 2) : 0;
-    const isOver = total > 0 && d.value > total;
+    const isOver = d.envelopeVal > 0 && d.value > d.envelopeVal;
     const color = isOver ? 'var(--danger)' : 'var(--accent)';
     const dateObj = new Date(d.dateStr + 'T12:00:00');
     const dateFmt = dateObj.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
-    const tip = `${dateFmt}: ${Fmt.zl(d.value)} zł`;
+    const tip = `${dateFmt}: ${Fmt.zl(d.value)} zł (koperta: ${Fmt.zl(d.envelopeVal)} zł)`;
     return `<div class="daily-bar" data-tip="${escapeHTML(tip)}"><div style="height:${barH}px;--bar-h:${barH}px;background:${color};border-radius:3px 3px 2px 2px;opacity:0.8;animation:bar-rise 350ms ease both;animation-delay:${i * 25}ms"></div></div>`;
   }).join('');
 
   const dayLabels = days.map(d => `<div style="flex:1;text-align:center;font-family:var(--font-mono);font-size:10px;color:var(--ink-3)">${d.day}</div>`).join('');
 
-  const thresholdLineHtml = thresholdTopPx >= 0
-    ? `<div style="position:absolute;top:${thresholdTopPx}px;left:0;right:0;border-top:1px dashed var(--ink-3);pointer-events:none"></div>`
-    : '';
-
   const html = `
-    <div style="position:relative">
-      <div style="display:flex;gap:3px;height:${chartH}px">${barsHtml}</div>
-      ${thresholdLineHtml}
-    </div>
+    <div data-envelope-bars style="position:relative;display:flex;gap:3px;height:${chartH}px">${barsHtml}</div>
     <div style="display:flex;gap:3px;margin-top:4px">${dayLabels}</div>
     <div style="display:flex;align-items:center;gap:16px;font-size:12px;color:var(--ink-3);margin-top:14px;flex-wrap:wrap">
       <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;background:var(--accent);border-radius:2px;flex-shrink:0;opacity:0.8"></span>Wydatki w normie</span>
       <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;background:var(--danger);border-radius:2px;flex-shrink:0;opacity:0.8"></span>Przekroczenie</span>
-      ${total > 0 ? `<span style="display:flex;align-items:center;gap:6px"><span style="width:18px;border-top:1px dashed var(--ink-3);display:inline-block"></span>Koperta dnia (${escapeHTML(totalFmt)} zł)</span>` : ''}
+      ${total > 0 ? `<span style="display:flex;align-items:center;gap:6px"><span style="width:18px;border-top:1px dashed var(--ink-3);display:inline-block"></span>Koperta dnia</span>` : ''}
     </div>
   `;
   container.innerHTML = sanitizeHTML(html);
+
+  // Draw the envelope line as SVG after DOM insertion so we can read actual pixel widths.
+  // Built programmatically to avoid DOMPurify attribute restrictions and scaling distortion.
+  if (total > 0) {
+    const drawLine = () => {
+      const barsEl = container.querySelector('[data-envelope-bars]');
+      if (!barsEl) return;
+      const W = barsEl.clientWidth;
+      // Retry once if section was hidden during first rAF (clientWidth = 0)
+      if (!W) { requestAnimationFrame(drawLine); return; }
+      // Remove any previously drawn line before redrawing
+      barsEl.querySelector('svg')?.remove();
+
+      const barW = (W - 13 * 3) / 14; // 14 flex:1 bars, 13 gaps of 3px
+      const pathPoints = days.map((d, i) => {
+        const cx = (i * (barW + 3) + barW / 2).toFixed(1);
+        const clamped = Math.min(d.envelopeVal, maxVal);
+        const cy = ((1 - clamped / maxVal) * chartH).toFixed(1);
+        return `${cx},${cy}`;
+      });
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.style.cssText = `position:absolute;top:0;left:0;width:${W}px;height:${chartH}px;pointer-events:none;overflow:visible`;
+      svg.setAttribute('aria-hidden', 'true');
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${pathPoints.join(' L ')}`);
+      // CSS variables only work via style, not SVG presentation attributes
+      path.style.cssText = 'fill:none;stroke:var(--ink-3);stroke-width:2;stroke-dasharray:5 4';
+
+      svg.appendChild(path);
+      barsEl.appendChild(svg);
+    };
+    requestAnimationFrame(drawLine);
+  }
 }
 
 function renderDayProgress(spent, total) {
