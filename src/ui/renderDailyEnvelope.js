@@ -351,7 +351,7 @@ export function renderDailyEnvelope() {
         ? icon('RefreshCw', { size: 11 })
         : icon('Clock', { size: 11 });
       recalcInfoEl.innerHTML = sanitizeHTML(
-        `<span class="tag success dot" style="font-size:11px;gap:5px">${icon('Check', { size: 11 })} Koperta na dzień ${escapeHTML(targetDateFmt)} przeliczona ${escapeHTML(dateFmt)} o ${escapeHTML(timeFmt)} · ${triggerIcon} ${escapeHTML(triggerText)}</span>`
+        `<span class="tag success dot" style="font-size:11px;gap:5px;white-space:normal;text-align:center;line-height:1.5">${icon('Check', { size: 11 })} Koperta na dzień ${escapeHTML(targetDateFmt)} przeliczona ${escapeHTML(dateFmt)} o ${escapeHTML(timeFmt)} · ${triggerIcon} ${escapeHTML(triggerText)}</span>`
       );
     } else {
       recalcInfoEl.innerHTML = '';
