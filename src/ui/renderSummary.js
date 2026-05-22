@@ -114,7 +114,7 @@ function renderPeriodDeltas(todayExp, weekExp, monthExp) {
   const last30 = buildLastNDaysData(30);
   const avg30 = last30.reduce((s, d) => s + d.value, 0) / 30;
   const todayEl = document.getElementById('todayExpensesDelta');
-  if (todayEl) todayEl.innerHTML = sanitizeHTML(deltaHTML(todayExp, avg30, true) || '<span style="color:var(--ink-3);font-size:12px">vs średnia</span>');
+  if (todayEl) todayEl.innerHTML = sanitizeHTML(deltaHTML(todayExp, avg30, true));
 
   // Tydzień vs poprzedni tydzień (ostatnie 7 dni vs 7 dni wcześniej)
   const w1End = getWarsawDateString(now);
