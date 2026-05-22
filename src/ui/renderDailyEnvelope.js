@@ -327,4 +327,34 @@ export function renderDailyEnvelope() {
       overLimitDiv.style.display = 'none';
     }
   }
+
+  const recalcInfoEl = document.getElementById('envelopeRecalcInfo');
+  if (recalcInfoEl) {
+    if (envelope.calculatedAt) {
+      const calcDate = new Date(envelope.calculatedAt);
+      const dateFmt = calcDate.toLocaleDateString('pl-PL', {
+        day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Warsaw'
+      });
+      const timeFmt = calcDate.toLocaleTimeString('pl-PL', {
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Warsaw'
+      });
+      const targetDateFmt = new Date(envelope.date + 'T12:00:00').toLocaleDateString('pl-PL', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+      const triggerLabels = {
+        midnight: 'automatycznie (północ)',
+        manual:   'ręcznie (przycisk)',
+        initial:  'przy starcie aplikacji',
+      };
+      const triggerText = triggerLabels[envelope.recalcTrigger] || 'automatycznie';
+      const triggerIcon = envelope.recalcTrigger === 'manual'
+        ? icon('RefreshCw', { size: 11 })
+        : icon('Clock', { size: 11 });
+      recalcInfoEl.innerHTML = sanitizeHTML(
+        `<span class="tag success dot" style="font-size:11px;gap:5px">${icon('Check', { size: 11 })} Koperta na dzień ${escapeHTML(targetDateFmt)} przeliczona ${escapeHTML(dateFmt)} o ${escapeHTML(timeFmt)} · ${triggerIcon} ${escapeHTML(triggerText)}</span>`
+      );
+    } else {
+      recalcInfoEl.innerHTML = '';
+    }
+  }
 }

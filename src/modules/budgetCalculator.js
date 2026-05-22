@@ -515,7 +515,7 @@ function getDayOfWeekPattern(expenses, targetDate) {
  *
  * forceRecalc=true wymusza pełne przeliczenie (np. po synchronizacji, nowym przychodzie)
  */
-export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
+export async function updateDailyEnvelope(forDate = null, forceRecalc = false, trigger = 'initial') {
     const targetDate = forDate || getWarsawDateString();
 
     const expenses = getExpenses();
@@ -718,7 +718,8 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
         period: periodInfo,
         algorithmMode,
         calculatedDate: targetDate,
-        calculatedAt: calculatedAtTimestamp
+        calculatedAt: calculatedAtTimestamp,
+        recalcTrigger: trigger
     };
 
     await saveDailyEnvelope(targetDate, envelope);
@@ -730,8 +731,8 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false) {
  * Awaryjne przeliczenie koperty (po synchronizacji, nowym przychodzie, etc.)
  * Wymusza pełne przeliczenie bez resetowania daty
  */
-export async function recalculateEnvelope() {
-    return updateDailyEnvelope(null, true);
+export async function recalculateEnvelope(trigger = 'manual') {
+    return updateDailyEnvelope(null, true, trigger);
 }
 
 export function getEnvelopeCalculationInfo() {

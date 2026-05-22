@@ -170,7 +170,7 @@ function startMidnightChecker() {
 
       // Przelicz kopertę dnia
       try {
-        await updateDailyEnvelope();
+        await updateDailyEnvelope(null, false, 'midnight');
         console.log('📩 Przeliczono kopertę dnia dla nowego dnia');
 
         // Odśwież interfejs
