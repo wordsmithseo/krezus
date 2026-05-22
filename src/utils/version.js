@@ -55,15 +55,21 @@ function showUpdateModal(newVersion) {
   modal.style.zIndex = '10002';
 
   modal.innerHTML = `
-    <div class="modal-content" style="max-width: 420px;">
+    <div class="modal-content" style="max-width:400px">
       <div class="modal-header">
-        ${icon('RefreshCw', { size: 18 })}
-        <h2>Dostępna aktualizacja</h2>
+        <div style="
+          width:36px;height:36px;border-radius:var(--radius-sm);
+          background:var(--accent-soft);color:var(--accent);
+          display:flex;align-items:center;justify-content:center;flex-shrink:0;
+        ">${icon('RefreshCw', { size: 18 })}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:600;color:var(--ink-1)">Dostępna aktualizacja</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-top:2px">wersja <strong style="color:var(--accent)">${escapeHTML(newVersion)}</strong></div>
+        </div>
       </div>
       <div class="modal-body">
-        <p style="margin:0; line-height:1.6;">
-          Wdrożono nową wersję aplikacji <strong>v${escapeHTML(newVersion)}</strong>.
-          Odśwież stronę, żeby załadować aktualizację.
+        <p style="margin:0;line-height:1.6;color:var(--ink-2);font-size:14px">
+          Wdrożono nową wersję Krezusa. Odśwież stronę, żeby załadować aktualizację — zajmie to tylko chwilę.
         </p>
       </div>
       <div class="modal-footer">
@@ -77,15 +83,20 @@ function showUpdateModal(newVersion) {
 
   document.body.appendChild(modal);
 
+  const dismiss = () => modal.remove();
+
   modal.querySelector('#versionUpdateRefresh').addEventListener('click', () => {
     const url = new URL(window.location.href);
     url.searchParams.set('_r', Date.now());
     window.location.href = url.toString();
   });
 
-  modal.querySelector('#versionUpdateDismiss').addEventListener('click', () => {
-    modal.remove();
-  });
+  modal.querySelector('#versionUpdateDismiss').addEventListener('click', dismiss);
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) dismiss(); });
+
+  const onEsc = (e) => { if (e.key === 'Escape') { dismiss(); document.removeEventListener('keydown', onEsc); } };
+  document.addEventListener('keydown', onEsc);
 }
 
 export function stopVersionPolling() {
