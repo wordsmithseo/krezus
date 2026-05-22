@@ -148,7 +148,7 @@ function updateEnvelopeGaugeSvg(fillId, remainingId, spent, total) {
   fill.style.strokeDashoffset = `${(1 - pct).toFixed(4)}`;
   fill.style.stroke = pct > 0.85 ? 'var(--danger)' : pct > 0.6 ? 'oklch(0.65 0.15 50)' : 'var(--accent)';
   const rem = document.getElementById(remainingId);
-  if (rem) rem.textContent = Fmt.zl(total - spent);
+  if (rem) rem.textContent = Fmt.zl(spent);
 }
 
 function getMiniDateLabel() {
