@@ -50,8 +50,7 @@ async function renderEnvelope14Days(total) {
     days.push({ dateStr, value, day: d.getDate(), envelopeVal });
   }
 
-  // maxVal based on expenses + today's total only — historical envelope values may vary wildly
-  const maxVal = Math.max(...days.map(d => d.value), total, 1);
+  const maxVal = Math.max(...days.map(d => d.value), ...days.map(d => d.envelopeVal), 1);
 
   const barsHtml = days.map((d, i) => {
     const barH = d.value > 0 ? Math.max(Math.round((d.value / maxVal) * chartH), 2) : 0;
@@ -91,8 +90,7 @@ async function renderEnvelope14Days(total) {
       const barW = (W - 13 * 3) / 14; // 14 flex:1 bars, 13 gaps of 3px
       const pathPoints = days.map((d, i) => {
         const cx = (i * (barW + 3) + barW / 2).toFixed(1);
-        const clamped = Math.min(d.envelopeVal, maxVal);
-        const cy = ((1 - clamped / maxVal) * chartH).toFixed(1);
+        const cy = ((1 - d.envelopeVal / maxVal) * chartH).toFixed(1);
         return `${cx},${cy}`;
       });
 
