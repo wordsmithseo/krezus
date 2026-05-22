@@ -1,7 +1,7 @@
 // src/ui/renderExpenses.js
 import { getExpenses, getCategories } from '../modules/dataManager.js';
 import { PAGINATION } from '../utils/constants.js';
-import { formatDateLabel } from '../utils/dateHelpers.js';
+import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
 import { userChipHTML, catBadgeHTML } from './chips.js';
@@ -260,15 +260,17 @@ export function renderExpenses() {
 
   const categories = getCategories().map((cat, idx) => ({ ...cat, color: CAT_COLORS[idx % CAT_COLORS.length] }));
   const catByName = name => categories.find(c => c.name === name) || null;
+  const todayStr = getWarsawDateString();
 
   const html = paginatedExpenses.map(exp => {
     const cat = exp.category ? catByName(exp.category) : null;
     const catHtml = cat
       ? catBadgeHTML(cat, true)
       : '<span class="text-mute text-sm">—</span>';
+    const isToday = exp.date === todayStr;
 
     return `
-      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}">
+      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${isToday ? ' today' : ''}">
         <td>
           <div style="font-weight:500">${formatDateLabel(exp.date)}</div>
           <div class="text-mute text-sm">${exp.time || ''}</div>

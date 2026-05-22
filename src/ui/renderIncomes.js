@@ -1,7 +1,7 @@
 // src/ui/renderIncomes.js
 import { getIncomes } from '../modules/dataManager.js';
 import { PAGINATION } from '../utils/constants.js';
-import { formatDateLabel } from '../utils/dateHelpers.js';
+import { formatDateLabel, getWarsawDateString } from '../utils/dateHelpers.js';
 import { getSourceIcon } from '../utils/iconMapper.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 import { icon } from '../utils/icons.js';
@@ -236,8 +236,10 @@ export function renderSources() {
   const iconTrash = icon('Trash', { size: 14, strokeWidth: 1.5 });
   const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
 
+  const todayStr = getWarsawDateString();
   const html = paginatedIncomes.map(inc => {
     const isCorrection = inc.source === 'KOREKTA';
+    const isToday = inc.date === todayStr;
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
     const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
     const sourceHtml = isCorrection
@@ -245,7 +247,7 @@ export function renderSources() {
       : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
     return `
-    <tr class="${rowClass}">
+    <tr class="${rowClass}${isToday ? ' today' : ''}">
       <td>
         <div style="font-weight:500">${formatDateLabel(inc.date)}</div>
         <div class="text-mute text-sm">${inc.time || ''}</div>

@@ -21,6 +21,10 @@ tbody tr:hover { background: var(--surface-2); }
 tr.planned { background: oklch(0.97 0.02 90 / 0.5); }
 tr.planned:hover, tr.correction:hover { filter: brightness(0.97); }
 
+tr.today { background: var(--accent-soft); }
+tr.today:hover { background: color-mix(in oklch, var(--accent-soft) 85%, var(--accent) 15%); }
+tr.today td { border-bottom-color: color-mix(in srgb, var(--accent) 20%, var(--line)); }
+
 .actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
 td.actions { width: 1%; white-space: nowrap; }
 .no-actions { visibility: hidden; opacity: 0; }
