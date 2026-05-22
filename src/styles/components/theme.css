@@ -136,9 +136,14 @@
 
 @media (max-width: 480px) {
   .theme-selector {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
   .theme-preview {
-    height: 40px;
+    height: 36px;
+  }
+  .theme-option {
+    padding: 8px 6px 10px;
+    font-size: 11px;
+    gap: 7px;
   }
 }
