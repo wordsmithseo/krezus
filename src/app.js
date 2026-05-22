@@ -136,7 +136,6 @@ let budgetUsersCache = [];
 let budgetUsersUnsubscribe = null;
 let isLoadingData = false;
 
-const APP_VERSION = '1.9.9';
 
 console.log('🚀 Aplikacja Krezus uruchomiona');
 initGlobalErrorHandler();
@@ -1055,8 +1054,6 @@ const handleLogout = async () => {
 onAuthChange(async (user) => {
   const authSection = document.getElementById('authSection');
   const appSection = document.getElementById('appSection');
-  const appVersionSpan = document.getElementById('appVersion');
-  
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   
@@ -1086,14 +1083,6 @@ onAuthChange(async (user) => {
     // Fill sidebar email
     const sidebarEmail = document.getElementById('sidebarUserEmail');
     if (sidebarEmail) sidebarEmail.textContent = user.email || '';
-
-    if (appVersionSpan) {
-      appVersionSpan.textContent = `v${APP_VERSION}`;
-    }
-
-    // Sidebar version
-    const appVersion2Span = document.getElementById('appVersion2');
-    if (appVersion2Span) appVersion2Span.textContent = `v${APP_VERSION}`;
 
     // Settings profile email
     const profileEmailInput = document.getElementById('profileEmail');

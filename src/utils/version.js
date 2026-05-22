@@ -9,10 +9,11 @@ function getAppVersion() {
 
 export function displayAppVersion() {
   const version = getAppVersion();
-  const versionElement = document.getElementById('appVersion');
-  if (versionElement) {
-    versionElement.textContent = `v${version}`;
-  }
+  const text = `v${version}`;
+  ['appVersion', 'appVersion2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  });
 }
 
 export function checkForUpdate() {
