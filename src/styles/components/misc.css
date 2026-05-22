@@ -203,6 +203,43 @@ hr.divider { height: 1px; background: var(--line); margin: 24px 0; border: none;
   .suggestion-amount-large { font-size: 24px; }
 }
 
+/* ===== PULL TO REFRESH ===== */
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 200;
+  height: 60px;
+  pointer-events: none;
+}
+.ptr-icon {
+  width: 40px;
+  height: 40px;
+  margin-top: 10px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--ink-1) 18%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  transform: translateY(-60px);
+  opacity: 0;
+}
+.ptr-indicator.ptr-ready .ptr-icon {
+  background: var(--accent-soft);
+}
+.ptr-indicator.ptr-loading .ptr-icon svg {
+  animation: ptrSpin 0.8s linear infinite;
+}
+@keyframes ptrSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 480px) {
   .stat-grid, .stats-grid { grid-template-columns: 1fr; }
   .savings-stats { flex-direction: column; }

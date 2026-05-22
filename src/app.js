@@ -1406,9 +1406,70 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('incomeForm')?.addEventListener('submit', addIncome);
   document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);
   document.getElementById('settingsForm')?.addEventListener('submit', saveSettings);
+
+  initPullToRefresh();
 });
 
 // Oznacz aktywność przy zamknięciu strony
 window.addEventListener('beforeunload', () => {
   recordActivity();
 });
+
+function initPullToRefresh() {
+  const THRESHOLD = 80;
+  const indicator = document.getElementById('ptrIndicator');
+  const iconDiv = document.getElementById('ptrIcon');
+  if (!indicator || !iconDiv) return;
+
+  iconDiv.innerHTML = lucideIcon('RefreshCw', { size: 18 });
+
+  let startY = 0;
+  let pulling = false;
+  let refreshing = false;
+
+  function updateIcon(dy) {
+    const progress = Math.min(dy / THRESHOLD, 1);
+    iconDiv.style.transform = `translateY(${progress * 60 - 60}px)`;
+    iconDiv.style.opacity = String(Math.min(progress * 1.5, 1));
+  }
+
+  function resetIcon() {
+    iconDiv.style.transition = 'transform 0.28s ease, opacity 0.28s ease';
+    iconDiv.style.transform = 'translateY(-60px)';
+    iconDiv.style.opacity = '0';
+    indicator.classList.remove('ptr-loading', 'ptr-ready');
+    setTimeout(() => { iconDiv.style.transition = ''; }, 280);
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    if (refreshing || window.scrollY > 0) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!pulling || refreshing) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { pulling = false; return; }
+    updateIcon(dy);
+    indicator.classList.toggle('ptr-ready', dy >= THRESHOLD);
+  }, { passive: true });
+
+  document.addEventListener('touchend', async (e) => {
+    if (!pulling || refreshing) { pulling = false; return; }
+    const dy = e.changedTouches[0].clientY - startY;
+    pulling = false;
+
+    if (dy >= THRESHOLD && window.scrollY <= 0) {
+      refreshing = true;
+      indicator.classList.add('ptr-loading');
+      indicator.classList.remove('ptr-ready');
+      iconDiv.style.transition = '';
+      iconDiv.style.transform = 'translateY(0)';
+      iconDiv.style.opacity = '1';
+      await loadAllData();
+      refreshing = false;
+    }
+    resetIcon();
+  });
+}
