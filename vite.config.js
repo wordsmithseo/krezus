@@ -1,8 +1,22 @@
 // vite.config.js
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { resolve, join } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
+
+function versionJsonPlugin() {
+  return {
+    name: 'version-json',
+    writeBundle(options) {
+      const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
+      const outDir = options.dir || 'dist';
+      writeFileSync(join(outDir, 'version.json'), JSON.stringify({ version: pkg.version }));
+    }
+  };
+}
 
 export default defineConfig({
+  plugins: [versionJsonPlugin()],
+
   // Base public path
   base: '/',
 
