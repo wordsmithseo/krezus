@@ -1,79 +1,34 @@
-export function showErrorMessage(message, type = 'error') {
-  const existingError = document.querySelector('.error-toast');
-  if (existingError) {
-    existingError.remove();
-  }
-  
-  const colors = {
-    error: '#c0392b',
-    warning: '#f39c12',
-    info: '#3498db'
-  };
-  
+import { icon } from '@utils/icons.js';
+
+const TOAST_TYPES = {
+  error:   { cls: 'toast-error',   ic: 'X',             timeout: 5000 },
+  warning: { cls: 'toast-warning', ic: 'AlertTriangle',  timeout: 5000 },
+  info:    { cls: 'toast-info',    ic: 'Info',           timeout: 3000 },
+  success: { cls: 'toast-success', ic: 'Check',          timeout: 3000 },
+};
+
+function showToast(message, type) {
+  const cfg = TOAST_TYPES[type] ?? TOAST_TYPES.error;
+  document.querySelector(`.toast[data-type="${type}"]`)?.remove();
+
   const toast = document.createElement('div');
-  toast.className = 'error-toast';
-  toast.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    background: ${colors[type] || colors.error};
-    color: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 10000;
-    max-width: 400px;
-    animation: slideIn 0.3s ease-out;
-  `;
-  
-  toast.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span>${message}</span>
-    </div>
-  `;
-  
+  toast.className = `toast ${cfg.cls}`;
+  toast.dataset.type = type;
+  toast.innerHTML = `<span class="toast-icon">${icon(cfg.ic, { size: 16, strokeWidth: 2 })}</span><span>${message}</span>`;
   document.body.appendChild(toast);
-  
+
   setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease-out';
+    toast.classList.add('toast-out');
     setTimeout(() => toast.remove(), 300);
-  }, 5000);
+  }, cfg.timeout);
+}
+
+export function showErrorMessage(message, type = 'error') {
+  showToast(message, type);
 }
 
 export function showSuccessMessage(message) {
-  const existingSuccess = document.querySelector('.success-toast');
-  if (existingSuccess) {
-    existingSuccess.remove();
-  }
-  
-  const toast = document.createElement('div');
-  toast.className = 'success-toast';
-  toast.style.cssText = `
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    background: #27ae60;
-    color: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    z-index: 10000;
-    max-width: 400px;
-    animation: slideIn 0.3s ease-out;
-  `;
-  
-  toast.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span>${message}</span>
-    </div>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  setTimeout(() => {
-    toast.style.animation = 'slideOut 0.3s ease-out';
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  showToast(message, 'success');
 }
 
 export function initGlobalErrorHandler() {
