@@ -422,7 +422,12 @@
                                         </div>
                                     </div>
                                     <div style="width:100%" class="progress"><div id="spendingGaugeFull" style="height:100%;background:var(--accent);border-radius:inherit;transition:width 400ms ease;width:0%"></div></div>
-                                    <div id="envelopePeriodInfoFull" class="text-mute text-sm" style="text-align:center"></div>
+                                    <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+                                        <div id="envelopePeriodInfoFull" class="text-mute text-sm" style="text-align:center"></div>
+                                        <button class="btn ghost icon-only" id="forceRecalcBtn" data-action="force-recalc-envelope" title="Wymuś przeliczenie koperty (1×/dobę)" style="width:22px;height:22px;min-width:22px;padding:0;flex-shrink:0;opacity:0.55;font-size:0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Karta B: Info + metrics -->

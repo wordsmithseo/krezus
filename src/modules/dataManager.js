@@ -738,3 +738,16 @@ export function getDailyEnvelope() {
 export function getPurposeBudgets() {
   return [...purposeBudgetsCache];
 }
+
+export async function getForceRecalcDate() {
+  const userId = getUserId();
+  if (!userId) return null;
+  const snap = await get(ref(db, `users/${userId}/settings/forceRecalcDate`));
+  return snap.exists() ? snap.val() : null;
+}
+
+export async function setForceRecalcDate(dateStr) {
+  const userId = getUserId();
+  if (!userId) return;
+  await set(ref(db, `users/${userId}/settings/forceRecalcDate`), dateStr);
+}

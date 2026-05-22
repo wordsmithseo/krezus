@@ -30,7 +30,9 @@ import {
   clearCache,
   loadIncomes,
   loadExpenses,
-  getSavings
+  getSavings,
+  getForceRecalcDate,
+  setForceRecalcDate
 
 } from './modules/dataManager.js';
 
@@ -1289,6 +1291,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Symulacja wydatku
     'simulate-expense': () => handleSimulateExpense(),
+
+    // Wymuszone przeliczenie koperty
+    'force-recalc-envelope': async () => {
+      const todayStr = getWarsawDateString();
+      const lastDate = await getForceRecalcDate();
+      if (lastDate === todayStr) {
+        showErrorMessage('Przeliczenie koperty zostało już wymuszone dziś. Limit: 1×/dobę.');
+        return;
+      }
+      const confirmed = await showPasswordModal(
+        'Wymuś przeliczenie koperty',
+        'Ta operacja wymaga potwierdzenia hasłem administratora. Koperta dnia zostanie przeliczona od nowa.'
+      );
+      if (!confirmed) return;
+      try {
+        const btn = document.getElementById('forceRecalcBtn');
+        if (btn) btn.disabled = true;
+        await recalculateEnvelope();
+        await setForceRecalcDate(todayStr);
+        const currentUser = getCurrentUser();
+        const userName = getBudgetUserName(currentUser?.uid) || getDisplayName() || 'Admin';
+        await log('ENVELOPE_FORCE_RECALC', {
+          budgetUser: userName,
+          date: todayStr,
+          message: 'Ręczne wymuszenie przeliczenia koperty dnia'
+        });
+        renderDailyEnvelope();
+        showSuccessMessage('Koperta dnia została przeliczona.');
+        if (btn) btn.disabled = false;
+      } catch (err) {
+        showErrorMessage('Nie udało się przeliczyć koperty.');
+        const btn = document.getElementById('forceRecalcBtn');
+        if (btn) btn.disabled = false;
+      }
+    },
 
     // Modale dodawania
     'open-add-expense-modal': () => {

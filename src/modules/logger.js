@@ -115,7 +115,8 @@ export function formatLogEntry(logEntry) {
     'PURPOSE_BUDGET_ADD': 'Dodanie budżetu celowego',
     'PURPOSE_BUDGET_EDIT': 'Edycja budżetu celowego',
     'PURPOSE_BUDGET_DELETE': 'Usunięcie budżetu celowego',
-    'SAVINGS_UPDATE': 'Zmiana kwoty oszczędności'
+    'SAVINGS_UPDATE': 'Zmiana kwoty oszczędności',
+    'ENVELOPE_FORCE_RECALC': 'Wymuszone przeliczenie koperty dnia'
   };
   
   let userName = null;
