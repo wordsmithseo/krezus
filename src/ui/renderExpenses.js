@@ -246,7 +246,7 @@ export function renderExpenses() {
     const msg = allExpenses.length === 0
       ? 'Brak wydatków do wyświetlenia'
       : 'Brak wyników dla wybranych filtrów';
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${msg}</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
     if (countEl) countEl.textContent = '';
     renderExpensesPagination(0);
@@ -262,7 +262,7 @@ export function renderExpenses() {
   const catByName = name => categories.find(c => c.name === name) || null;
   const todayStr = getWarsawDateString();
 
-  const html = paginatedExpenses.map(exp => {
+  const html = paginatedExpenses.map((exp, index) => {
     const cat = exp.category ? catByName(exp.category) : null;
     const catHtml = cat
       ? catBadgeHTML(cat, true)
@@ -271,12 +271,13 @@ export function renderExpenses() {
 
     return `
       <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${isToday ? ' today' : ''}">
+        <td class="row-num">${startIdx + index + 1}</td>
         <td>
           <div style="font-weight:500">${formatDateLabel(exp.date)}</div>
           <div class="text-mute text-sm">${exp.time || ''}</div>
         </td>
         <td>${catHtml}</td>
-        <td>${escapeHTML(exp.description || '—')}</td>
+        <td class="col-desc">${escapeHTML(exp.description || '—')}</td>
         <td>${exp.userId && getBudgetUserNameFn ? userChipHTML({ id: exp.userId, name: getBudgetUserNameFn(exp.userId) }) : '<span class="text-mute">—</span>'}</td>
         <td>${exp.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
@@ -299,7 +300,7 @@ export function renderExpenses() {
   if (tfoot) {
     const sum = paginatedExpenses.reduce((acc, e) => acc + e.amount, 0);
     tfoot.innerHTML = `<tr>
-      <td colspan="5" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
+      <td colspan="6" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
       <td class="amount" style="font-weight:600;color:var(--danger)">−${Fmt.zl(sum)}</td>
       <td></td>
     </tr>`;

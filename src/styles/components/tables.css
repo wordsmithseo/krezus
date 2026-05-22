@@ -35,12 +35,30 @@ td.actions:hover .row-actions { opacity: 1; }
 /* table.table — overrides global td padding with density token */
 table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.table th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
-table.table td { padding: var(--density-row) 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.table td { padding: var(--density-row) 14px; border-bottom: 1px solid var(--line); vertical-align: middle; overflow: hidden; }
 table.table td .cat-badge { white-space: normal; }
 table.table tr:last-child td { border-bottom: none; }
 table.table tr:hover td { background: var(--surface-2); }
 table.table .amount { font-family: var(--font-mono); font-feature-settings: "tnum" 1; text-align: right; }
 table.table .actions { display: table-cell; text-align: right; white-space: nowrap; padding-right: 12px; width: auto; }
+
+/* Ordinal number column */
+th.row-num, td.row-num {
+  text-align: center;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* Flex (description/source) column — truncate long text */
+table.table td.col-desc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {

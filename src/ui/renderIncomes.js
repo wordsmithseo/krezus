@@ -224,7 +224,7 @@ export function renderSources() {
     const msg = allIncomes.length === 0
       ? 'Brak przychodów do wyświetlenia'
       : 'Brak wyników dla wybranych filtrów';
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${msg}</td></tr>`;
     if (tfoot) tfoot.innerHTML = '';
     if (countEl) countEl.textContent = '';
     renderIncomesPagination(0);
@@ -237,7 +237,7 @@ export function renderSources() {
   const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
 
   const todayStr = getWarsawDateString();
-  const html = paginatedIncomes.map(inc => {
+  const html = paginatedIncomes.map((inc, index) => {
     const isCorrection = inc.source === 'KOREKTA';
     const isToday = inc.date === todayStr;
     const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
@@ -248,11 +248,12 @@ export function renderSources() {
 
     return `
     <tr class="${rowClass}${isToday ? ' today' : ''}">
+      <td class="row-num">${startIdx + index + 1}</td>
       <td>
         <div style="font-weight:500">${formatDateLabel(inc.date)}</div>
         <div class="text-mute text-sm">${inc.time || ''}</div>
       </td>
-      <td>${sourceHtml}</td>
+      <td class="col-desc">${sourceHtml}</td>
       <td>${inc.userId && getBudgetUserNameFn ? userChipHTML({ id: inc.userId, name: getBudgetUserNameFn(inc.userId) }) : '<span class="text-mute">—</span>'}</td>
       <td>${isCorrection
         ? '<span class="tag info dot">Korekta</span>'
@@ -279,7 +280,7 @@ export function renderSources() {
     const sum = paginatedIncomes.reduce((acc, i) => acc + i.amount, 0);
     const sign = sum >= 0 ? '+' : '';
     tfoot.innerHTML = `<tr>
-      <td colspan="4" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
+      <td colspan="5" class="text-mute text-sm" style="padding:10px 16px">Suma widoczna</td>
       <td class="amount" style="font-weight:600;color:var(--success)">${sign}${Fmt.zl(Math.abs(sum))}</td>
       <td></td>
     </tr>`;
