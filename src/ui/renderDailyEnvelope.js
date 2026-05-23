@@ -141,14 +141,43 @@ function renderDayProgress(spent, total) {
   );
 }
 
-function updateEnvelopeGaugeSvg(fillId, remainingId, spent, total) {
+let gaugeMode = 'remaining';
+let _gaugeValues = { spent: 0, remaining: 0, total: 0 };
+
+export function toggleGaugeMode() {
+  gaugeMode = gaugeMode === 'remaining' ? 'spent' : 'remaining';
+  _refreshGaugeCenters();
+}
+
+function _setGaugeFill(fillId, spent, total) {
   const fill = document.getElementById(fillId);
   if (!fill) return;
   const pct = total > 0 ? Math.min(spent / total, 1) : 0;
   fill.style.strokeDashoffset = `${(1 - pct).toFixed(4)}`;
   fill.style.stroke = pct > 0.85 ? 'var(--danger)' : pct > 0.6 ? 'oklch(0.65 0.15 50)' : 'var(--accent)';
-  const rem = document.getElementById(remainingId);
-  if (rem) rem.textContent = Fmt.zl(spent);
+}
+
+function _refreshGaugeCenters() {
+  const { spent, remaining } = _gaugeValues;
+  const value = gaugeMode === 'remaining' ? remaining : spent;
+  const label = gaugeMode === 'remaining' ? 'Pozostało' : 'Wydano';
+  const formatted = Fmt.zl(value);
+  const pairs = [
+    ['envelopeGaugeRemaining', 'envelopeGaugeLabel'],
+    ['envelopeGaugeRemainingFull', 'envelopeGaugeLabelFull'],
+  ];
+  for (const [valId, labelId] of pairs) {
+    const valEl = document.getElementById(valId);
+    const labelEl = document.getElementById(labelId);
+    if (valEl) valEl.textContent = formatted;
+    if (labelEl) labelEl.textContent = label;
+  }
+}
+
+function updateEnvelopeGaugeSvg(fillId, spent, remaining, total) {
+  _setGaugeFill(fillId, spent, total);
+  _gaugeValues = { spent, remaining, total };
+  _refreshGaugeCenters();
 }
 
 function getMiniDateLabel() {
@@ -199,8 +228,8 @@ export function renderDailyEnvelope() {
     if (envelopeSpentFullEl) envelopeSpentFullEl.textContent = '0.00';
     if (envelopeMedianFullEl) envelopeMedianFullEl.textContent = '0.00';
     if (spendingGaugeFullEl) spendingGaugeFullEl.style.width = '0%';
-    updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 'envelopeGaugeRemaining', 0, 0);
-    updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', 0, 0);
+    updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 0, 0, 0);
+    updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 0, 0, 0);
 
     if (envelopePeriodInfoEl) envelopePeriodInfoEl.innerHTML = '';
 
@@ -306,8 +335,8 @@ export function renderDailyEnvelope() {
   }
 
   // Update both SVG ring gauges
-  updateEnvelopeGaugeSvg('envelopeGaugeFillEl', 'envelopeGaugeRemaining', spent, total);
-  updateEnvelopeGaugeSvg('envelopeGaugeFillFull', 'envelopeGaugeRemainingFull', spent, total);
+  updateEnvelopeGaugeSvg('envelopeGaugeFillEl', spent, remaining, total);
+  updateEnvelopeGaugeSvg('envelopeGaugeFillFull', spent, remaining, total);
 
   const totalLabel = `z ${Fmt.zl(total)} zł`;
   const gaugeTotalEl = document.getElementById('envelopeGaugeTotal');
@@ -316,6 +345,7 @@ export function renderDailyEnvelope() {
   if (gaugeTotalFullEl) gaugeTotalFullEl.textContent = totalLabel;
 
   const overLimitDiv = document.getElementById('envelopeOverLimit');
+  const navDot = document.getElementById('navEnvelopeAlert');
   if (overLimitDiv) {
     if (spent > total) {
       const overAmount = Fmt.zl(spent - total);
@@ -323,8 +353,10 @@ export function renderDailyEnvelope() {
         `<div style="background:var(--danger-soft);color:var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:500;margin-top:6px;display:flex;align-items:center;gap:6px">${icon('AlertTriangle', {size:13})} Przekroczono kopertę o ${escapeHTML(overAmount)} zł</div>`
       );
       overLimitDiv.style.display = 'block';
+      navDot?.classList.add('active');
     } else {
       overLimitDiv.style.display = 'none';
+      navDot?.classList.remove('active');
     }
   }
 

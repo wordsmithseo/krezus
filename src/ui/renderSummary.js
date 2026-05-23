@@ -60,12 +60,11 @@ function renderSparkline(days = heroSparklineDays) {
   // Średnia + delta
   const meta = document.getElementById('heroSparklineMeta');
   if (!meta) return;
-  const nonZero = values.filter(v => v > 0);
-  const avg = nonZero.length > 0 ? nonZero.reduce((s, v) => s + v, 0) / nonZero.length : 0;
+  const avg = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
 
   const prevData = buildLastNDaysData(days * 2).slice(0, days);
-  const prevNonZero = prevData.map(d => d.value).filter(v => v > 0);
-  const prevAvg = prevNonZero.length > 0 ? prevNonZero.reduce((s, v) => s + v, 0) / prevNonZero.length : 0;
+  const prevValues = prevData.map(d => d.value);
+  const prevAvg = prevValues.length > 0 ? prevValues.reduce((s, v) => s + v, 0) / prevValues.length : 0;
 
   const avgFmt = Fmt.zl(avg);
   let deltaHtml = '';
@@ -95,7 +94,7 @@ function initHeroSparklineSeg() {
   });
 }
 
-function deltaHTML(current, prev, invert = false) {
+function deltaHTML(current, prev, invert = false, vsLabel = '') {
   if (prev <= 0 || current === 0) return '';
   const pct = ((current - prev) / prev) * 100;
   const sign = pct >= 0 ? '+' : '';
@@ -103,7 +102,8 @@ function deltaHTML(current, prev, invert = false) {
   const up = pct > 0;
   const tone = invert ? (up ? 'up bad' : 'down good') : (up ? 'up good' : 'down bad');
   const arrow = up ? icon('TrendUp', { size: 11 }) : icon('TrendDown', { size: 11 });
-  return `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}%</span>`;
+  const vs = vsLabel ? ` <span style="font-weight:400;opacity:0.7;font-size:10px">${vsLabel}</span>` : '';
+  return `<span class="delta ${tone}">${arrow}${sign}${pct.toFixed(1).replace('.', ',')}%${vs}</span>`;
 }
 
 function renderPeriodDeltas(todayExp, weekExp, monthExp) {
@@ -114,7 +114,7 @@ function renderPeriodDeltas(todayExp, weekExp, monthExp) {
   const last30 = buildLastNDaysData(30);
   const avg30 = last30.reduce((s, d) => s + d.value, 0) / 30;
   const todayEl = document.getElementById('todayExpensesDelta');
-  if (todayEl) todayEl.innerHTML = sanitizeHTML(deltaHTML(todayExp, avg30, true));
+  if (todayEl) todayEl.innerHTML = sanitizeHTML(deltaHTML(todayExp, avg30, true, 'vs śr. 30d'));
 
   // Tydzień vs poprzedni tydzień (ostatnie 7 dni vs 7 dni wcześniej)
   const w1End = getWarsawDateString(now);
@@ -125,7 +125,7 @@ function renderPeriodDeltas(todayExp, weekExp, monthExp) {
     .filter(e => e.type === 'normal' && e.date >= getWarsawDateString(w2Start) && e.date <= getWarsawDateString(w2End))
     .reduce((s, e) => s + (e.amount || 0), 0);
   const weekEl = document.getElementById('weekExpensesDelta');
-  if (weekEl) weekEl.innerHTML = sanitizeHTML(deltaHTML(weekExp, prevWeekExp, true) || '');
+  if (weekEl) weekEl.innerHTML = sanitizeHTML(deltaHTML(weekExp, prevWeekExp, true, 'vs poprzedni tydz.') || '');
 
   // Miesiąc vs poprzedni miesiąc (proporcjonalnie do dni)
   const daysElapsed = now.getDate();
@@ -135,7 +135,7 @@ function renderPeriodDeltas(todayExp, weekExp, monthExp) {
     .filter(e => e.type === 'normal' && e.date >= getWarsawDateString(prevMonthStart) && e.date <= getWarsawDateString(prevMonthSameDay))
     .reduce((s, e) => s + (e.amount || 0), 0);
   const monthEl = document.getElementById('monthExpensesDelta');
-  if (monthEl) monthEl.innerHTML = sanitizeHTML(deltaHTML(monthExp, prevMonthExp, true) || '');
+  if (monthEl) monthEl.innerHTML = sanitizeHTML(deltaHTML(monthExp, prevMonthExp, true, 'vs poprzedni mies.') || '');
 }
 
 export function renderSummary() {
@@ -186,9 +186,9 @@ export function renderSummary() {
   const monthExpensesEl = document.getElementById('monthExpenses');
   if (monthExpensesEl) animateNumber(monthExpensesEl, monthExpenses, 1500, 2, 0, Fmt.zl);
 
-  // Średnia dzienna (bieżący miesiąc)
-  const daysElapsed = new Date().getDate();
-  const dailyAvg = daysElapsed > 0 ? monthExpenses / daysElapsed : 0;
+  // Średnia dzienna (ostatnie 30 dni)
+  const last30forAvg = buildLastNDaysData(30);
+  const dailyAvg = last30forAvg.reduce((s, d) => s + d.value, 0) / 30;
   const dailyAvgEl = document.getElementById('dailyAvgExpenses');
   if (dailyAvgEl) animateNumber(dailyAvgEl, dailyAvg, 1500, 2, 0, Fmt.zl);
 
@@ -303,7 +303,7 @@ export function renderSpendingDynamics() {
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
         <div>
           <span style="font-size:11px;font-weight:600;color:var(--ink-2)">Tempo vs limit</span>
-          <span style="font-size:10px;color:var(--ink-3)"> · ile z dziennego limitu wydajesz średnio</span>
+          <span style="font-size:10px;color:var(--ink-3)"> · śr. 7d ÷ limit; limit maleje z każdym dniem</span>
         </div>
         <span class="num" style="font-size:11px;font-weight:600;color:${barColor}">${pct}%</span>
       </div>
@@ -412,7 +412,7 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3);flex-wrap:wrap;gap:8px">
-          <span>Różnica: <strong class="num" style="color:var(--success)">+${Fmt.zl(delta)} zł/d</strong></span>
+          <span>Różnica: <strong class="num" style="color:${delta >= 0 ? 'var(--success)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${Fmt.zl(delta)} zł/d</strong></span>
           ${futureExpense > 0 ? `<span>Zobowiązania: <strong class="num" style="color:var(--danger)">${Fmt.zl(futureExpense)} zł</strong></span>` : ''}
         </div>
       </div>

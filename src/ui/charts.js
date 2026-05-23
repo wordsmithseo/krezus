@@ -199,8 +199,23 @@ export function dailyChartHTML(data, opts = {}) {
     return `<div style="flex:1;position:relative;height:16px">${inner}</div>`;
   }).join('');
 
+  const avg = data.reduce((s, d) => s + d.value, 0) / data.length;
+  const showTrend = avg > 0;
+  const trendTopPct = showTrend ? ((1 - avg / maxVal) * 100).toFixed(1) : 0;
+
+  const trendLine = showTrend
+    ? `<div style="position:absolute;left:0;right:0;top:${trendTopPct}%;border-top:1px dashed var(--ink-3);pointer-events:none;z-index:2;opacity:0.55"></div>`
+    : '';
+
+  const legend = showTrend
+    ? `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);margin-top:10px">
+  <span style="width:16px;border-top:1px dashed var(--ink-3);display:inline-block;opacity:0.55"></span>Średnia dzienna — ${Fmt.zl(avg)} zł
+</div>`
+    : '';
+
   return `<div style="display:flex;flex-direction:column">
-  <div class="daily-chart" style="height:${h}px">${bars}</div>
+  <div class="daily-chart" style="height:${h}px">${bars}${trendLine}</div>
   <div style="display:flex;gap:3px;margin-top:2px">${ticks}</div>
+  ${legend}
 </div>`;
 }

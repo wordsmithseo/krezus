@@ -1,6 +1,7 @@
 // src/modules/budgetCalculator.js
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised, calculateRemainingTime } from '../utils/dateHelpers.js';
 import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
+import { Fmt } from '../utils/fmt.js';
 
 // === CACHE LIMITÓW DZIENNYCH ===
 const LIMITS_CACHE_KEY = 'krezus_daily_limits_cache';
@@ -428,9 +429,13 @@ export function getGlobalMedian30d() {
     );
     
     if (last30.length === 0) return 0;
-    
-    const amounts = last30.map(e => e.amount || 0).sort((a,b) => a-b);
-    return amounts[Math.floor(amounts.length / 2)];
+
+    const dailyMap = {};
+    last30.forEach(e => {
+        dailyMap[e.date] = (dailyMap[e.date] || 0) + (e.amount || 0);
+    });
+    const dailyTotals = Object.values(dailyMap).sort((a, b) => a - b);
+    return dailyTotals[Math.floor(dailyTotals.length / 2)];
 }
 
 /**
@@ -1179,7 +1184,7 @@ export function getMonthName() {
  * @param {number} simulationAmount - Kwota wydatku
  * @returns {Object} Szczegółowa analiza bezpieczeństwa wydatku
  */
-export function simulateExpense(simulationDate, simulationAmount) {
+export function simulateExpense(simulationDate, simulationAmount, category = null) {
     const today = getWarsawDateString();
     const expenses = getExpenses();
     const incomes = getIncomes();
@@ -1285,71 +1290,111 @@ export function simulateExpense(simulationDate, simulationAmount) {
         Math.abs((e.amount || 0) - simulationAmount) < simulationAmount * 0.2
     );
 
-    // === KROK 9: Podejmij decyzję ===
+    // === KROK 9: Analiza kategorii ===
+    let categoryAnalysis = null;
+    if (category) {
+        const catExpenses60d = historicalExpenses.filter(e => e.category === category);
+        const d30 = new Date(today);
+        d30.setDate(d30.getDate() - 30);
+        const date30str = getWarsawDateString(d30);
+        const catExpenses30d = catExpenses60d.filter(e => e.date >= date30str);
+
+        const catTotal30d = catExpenses30d.reduce((sum, e) => sum + (e.amount || 0), 0);
+        const catCount30d = catExpenses30d.length;
+        const catAmounts = catExpenses60d.map(e => e.amount || 0).sort((a, b) => a - b);
+        const catAvg = catAmounts.length > 0 ? catAmounts.reduce((a, b) => a + b, 0) / catAmounts.length : 0;
+        const catMedian = catAmounts.length > 0 ? catAmounts[Math.floor(catAmounts.length / 2)] : 0;
+
+        categoryAnalysis = {
+            category,
+            total30d: catTotal30d,
+            count30d: catCount30d,
+            avgAmount: catAvg,
+            medianAmount: catMedian,
+            count60d: catExpenses60d.length
+        };
+    }
+
+    // === KROK 10: Podejmij decyzję ===
+    const f = (text, type = 'neutral') => ({ text, type });
     const findings = [];
     let riskLevel = 'safe'; // safe, caution, warning, danger
 
     // Czy starczy środków?
     if (availableAfterSimulation < 0) {
         riskLevel = 'danger';
-        findings.push(`Brak wystarczających środków. Prognozowane saldo po wydatku: ${availableAfterSimulation.toFixed(2)} zł (ujemne).`);
+        findings.push(f(`Brak wystarczających środków. Prognozowane saldo po wydatku: ${Fmt.zl(availableAfterSimulation)} zł (ujemne).`, 'bad'));
     } else if (dailyBudgetAfter < 0) {
         riskLevel = 'danger';
-        findings.push(`Po wydatku zabraknie środków na codzienne wydatki do następnego wpływu.`);
+        findings.push(f(`Po wydatku zabraknie środków na codzienne wydatki do następnego wpływu.`, 'bad'));
     } else if (dailyBudgetAfter < estimatedDailyBurn * 0.3) {
         riskLevel = 'warning';
-        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) spadnie poniżej 30% Twoich zwykłych wydatków (${estimatedDailyBurn.toFixed(2)} zł/dzień).`);
+        findings.push(f(`Po wydatku dzienny budżet (${Fmt.zl(dailyBudgetAfter)} zł) spadnie poniżej 30% Twoich zwykłych wydatków (${Fmt.zl(estimatedDailyBurn)} zł/dzień).`, 'bad'));
     } else if (dailyBudgetAfter < estimatedDailyBurn * 0.6) {
         riskLevel = 'caution';
-        findings.push(`Po wydatku dzienny budżet (${dailyBudgetAfter.toFixed(2)} zł) będzie ograniczony w porównaniu do zwykłych wydatków (${estimatedDailyBurn.toFixed(2)} zł/dzień).`);
+        findings.push(f(`Po wydatku dzienny budżet (${Fmt.zl(dailyBudgetAfter)} zł) będzie ograniczony w porównaniu do zwykłych wydatków (${Fmt.zl(estimatedDailyBurn)} zł/dzień).`, 'bad'));
     }
 
     // Kontekst kwoty vs dostępne środki
     if (projectedAvailable > 0 && simulationAmount > projectedAvailable * 0.5) {
         if (riskLevel === 'safe') riskLevel = 'caution';
-        findings.push(`Wydatek stanowi ${((simulationAmount / projectedAvailable) * 100).toFixed(0)}% prognozowanych środków na dzień symulacji.`);
+        findings.push(f(`Wydatek stanowi ${((simulationAmount / projectedAvailable) * 100).toFixed(0)}% prognozowanych środków na dzień symulacji.`, 'bad'));
     }
 
     if (simulationAmount > avgDailySpending * 5 && avgDailySpending > 0) {
-        findings.push(`Kwota jest ${(simulationAmount / avgDailySpending).toFixed(1)}× wyższa od Twojej średniej dziennej (${avgDailySpending.toFixed(2)} zł).`);
+        findings.push(f(`Kwota jest ${(simulationAmount / avgDailySpending).toFixed(1)}× wyższa od Twojej średniej dziennej (${Fmt.zl(avgDailySpending)} zł).`, 'bad'));
     }
 
     // Kontekst dnia tygodnia
     if (dayAvg > 0 && simulationAmount > dayAvg * 3) {
-        findings.push(`W ${dayNames[simDayOfWeek].toLowerCase()} zwykle wydajesz ok. ${dayAvg.toFixed(2)} zł, ten wydatek jest ${(simulationAmount / dayAvg).toFixed(1)}× wyższy.`);
+        findings.push(f(`W ${dayNames[simDayOfWeek].toLowerCase()} zwykle wydajesz ok. ${Fmt.zl(dayAvg)} zł, ten wydatek jest ${(simulationAmount / dayAvg).toFixed(1)}× wyższy.`, 'bad'));
     }
 
     // Podobne wydatki w historii
     if (similarExpenses.length > 0) {
-        findings.push(`Podobne wydatki (ok. ${simulationAmount.toFixed(0)} zł) pojawiały się ${similarExpenses.length} razy w ostatnich 60 dniach.`);
+        findings.push(f(`Podobne wydatki (ok. ${Fmt.zl(simulationAmount)} zł) pojawiały się ${similarExpenses.length} razy w ostatnich 60 dniach.`, 'neutral'));
+    }
+
+    // Kontekst kategorii
+    if (categoryAnalysis) {
+        if (categoryAnalysis.count30d > 0) {
+            findings.push(f(`W kategorii "${categoryAnalysis.category}" wydałeś ${Fmt.zl(categoryAnalysis.total30d)} zł w ostatnich 30 dniach (${categoryAnalysis.count30d} transakcji).`, 'neutral'));
+        } else if (categoryAnalysis.count60d === 0) {
+            findings.push(f(`Brak historii wydatków w kategorii "${categoryAnalysis.category}" z ostatnich 60 dni.`, 'neutral'));
+        }
+        if (categoryAnalysis.avgAmount > 0 && simulationAmount > categoryAnalysis.avgAmount * 1.5) {
+            findings.push(f(`Ta kwota jest ${(simulationAmount / categoryAnalysis.avgAmount).toFixed(1)}× wyższa od Twojej średniej w tej kategorii (${Fmt.zl(categoryAnalysis.avgAmount)} zł).`, 'bad'));
+        } else if (categoryAnalysis.avgAmount > 0 && simulationAmount < categoryAnalysis.avgAmount * 0.5 && categoryAnalysis.count60d >= 3) {
+            findings.push(f(`Ta kwota jest znacząco niższa od Twojej średniej w tej kategorii (${Fmt.zl(categoryAnalysis.avgAmount)} zł).`, 'good'));
+        }
     }
 
     // Szacowane wydatki po drodze
     if (daysToSimulation > 0 && estimatedSpendingUntilSim > 0) {
-        findings.push(`Szacowane codzienne wydatki do daty symulacji (${daysToSimulation} dni × ${estimatedDailyBurn.toFixed(2)} zł): ${estimatedSpendingUntilSim.toFixed(2)} zł.`);
+        findings.push(f(`Szacowane codzienne wydatki do daty symulacji (${daysToSimulation} dni × ${Fmt.zl(estimatedDailyBurn)} zł): ${Fmt.zl(estimatedSpendingUntilSim)} zł.`, 'neutral'));
     }
 
     // Planowane wpływy PRZED symulacją (zrealizują się po drodze)
     if (plannedIncomesBeforeSim > 0) {
-        findings.push(`Planowane wpływy do dnia symulacji: +${plannedIncomesBeforeSim.toFixed(2)} zł (uwzględnione w prognozie).`);
+        findings.push(f(`Planowane wpływy do dnia symulacji: +${Fmt.zl(plannedIncomesBeforeSim)} zł (uwzględnione w prognozie).`, 'good'));
     }
 
     // Planowane wydatki PRZED symulacją (zrealizują się po drodze)
     if (plannedExpensesBeforeSim > 0) {
-        findings.push(`Planowane wydatki do dnia symulacji: -${plannedExpensesBeforeSim.toFixed(2)} zł (uwzględnione w prognozie).`);
+        findings.push(f(`Planowane wydatki do dnia symulacji: -${Fmt.zl(plannedExpensesBeforeSim)} zł (uwzględnione w prognozie).`, 'neutral'));
     }
 
     // Informacja o następnym wpływie PO dacie symulacji (kontekst informacyjny)
     if (nextIncomeAfterSim) {
-        findings.push(`Następny wpływ po wydatku: ${nextIncomeAfterSim.source || 'Bez nazwy'} (${(nextIncomeAfterSim.amount || 0).toFixed(2)} zł) dnia ${nextIncomeAfterSim.date} (za ${daysToNextIncome} dni od symulacji).`);
+        findings.push(f(`Następny wpływ po wydatku: ${nextIncomeAfterSim.source || 'Bez nazwy'} (${Fmt.zl(nextIncomeAfterSim.amount || 0)} zł) dnia ${Fmt.date(nextIncomeAfterSim.date)} (za ${daysToNextIncome} dni od symulacji).`, 'good'));
     } else {
         if (riskLevel === 'safe' || riskLevel === 'caution') riskLevel = 'caution';
-        findings.push(`Brak zaplanowanych wpływów po dacie symulacji - zachowaj ostrożność.`);
+        findings.push(f(`Brak zaplanowanych wpływów po dacie symulacji - zachowaj ostrożność.`, 'bad'));
     }
 
     // Pozytywne informacje jeśli bezpiecznie
     if (riskLevel === 'safe') {
-        findings.push(`Po wydatku pozostanie ${availableAfterSimulation.toFixed(2)} zł, co daje ${dailyBudgetAfter.toFixed(2)} zł/dzień na ${daysForBudget} dni.`);
+        findings.push(f(`Po wydatku pozostanie ${Fmt.zl(availableAfterSimulation)} zł, co daje ${Fmt.zl(dailyBudgetAfter)} zł/dzień na ${daysForBudget} dni.`, 'good'));
     }
 
     // Tytuł i podsumowanie
@@ -1360,11 +1405,13 @@ export function simulateExpense(simulationDate, simulationAmount) {
         danger: 'Wydatek niebezpieczny'
     };
 
+    const simDateFmt = Fmt.dateLong(simulationDate);
+    const simAmtFmt = Fmt.zl(simulationAmount);
     const summaries = {
-        safe: `Możesz bezpiecznie dokonać wydatku ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate}. Twój budżet to udźwignie.`,
-        caution: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest możliwy, ale wymaga ostrożności w kolejnych dniach.`,
-        warning: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest ryzykowny i może zagrozić stabilności budżetu.`,
-        danger: `Wydatek ${simulationAmount.toFixed(2)} zł w dniu ${simulationDate} jest niebezpieczny - grozi brakiem środków.`
+        safe: `Możesz bezpiecznie dokonać wydatku ${simAmtFmt} zł w dniu ${simDateFmt}. Twój budżet to udźwignie.`,
+        caution: `Wydatek ${simAmtFmt} zł w dniu ${simDateFmt} jest możliwy, ale wymaga ostrożności w kolejnych dniach.`,
+        warning: `Wydatek ${simAmtFmt} zł w dniu ${simDateFmt} jest ryzykowny i może zagrozić stabilności budżetu.`,
+        danger: `Wydatek ${simAmtFmt} zł w dniu ${simDateFmt} jest niebezpieczny — grozi brakiem środków.`
     };
 
     return {
@@ -1372,6 +1419,7 @@ export function simulateExpense(simulationDate, simulationAmount) {
         title: titles[riskLevel],
         summary: summaries[riskLevel],
         findings,
+        categoryAnalysis,
         data: {
             simulationDate,
             simulationAmount,

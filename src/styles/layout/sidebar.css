@@ -117,6 +117,26 @@
   color: var(--accent);
 }
 
+
+.nav-envelope-dot {
+  display: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex-shrink: 0;
+}
+
+.nav-envelope-dot.active {
+  display: block;
+  animation: env-dot-pulse 2s ease-in-out infinite;
+}
+
+@keyframes env-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
 .sidebar-copyright {
   margin-top: auto;
   padding: 16px 4px 10px;

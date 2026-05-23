@@ -110,7 +110,7 @@ import { initClickDelegation, getDataAttributes } from './handlers/clickDelegati
 
 // Import funkcji renderowania UI
 import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
-import { renderDailyEnvelope } from './ui/renderDailyEnvelope.js';
+import { renderDailyEnvelope, toggleGaugeMode } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch, setExpenseAdvancedDeps, toggleExpenseFilterPanel, applyExpenseFilters, resetExpenseFilters } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch, setIncomeAdvancedDeps, toggleIncomeFilterPanel, applyIncomeFilters, resetIncomeFilters } from './ui/renderIncomes.js';
 import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
@@ -795,7 +795,14 @@ function renderSimulationResult(result) {
   const fmt = v => Fmt.zl(v);
 
   const findingsHTML = result.findings
-    .map(f => `<li>${escapeHTML(f)}</li>`).join('');
+    .map(({ text, type }) => {
+      const color = type === 'good' ? 'var(--success)' : type === 'bad' ? 'var(--danger)' : 'var(--ink-2)';
+      return `<li style="color:${color}">${escapeHTML(text)}</li>`;
+    }).join('');
+
+  const vc = v => v >= 0 ? 'var(--success)' : 'var(--danger)';
+  const afSim = d.availableAfterSimulation ?? 0;
+  const afterPlanned = afSim - (d.plannedExpensesBeforeSim ?? 0);
 
   const html = `
     <div style="background:${risk.soft};border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px">
@@ -803,6 +810,7 @@ function renderSimulationResult(result) {
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${risk.color};margin-bottom:2px">Wynik analizy</div>
         <div style="font-size:22px;font-weight:600;letter-spacing:-0.01em;color:${risk.color}">${escapeHTML(result.title)}</div>
+        <div style="font-size:12px;color:${risk.color};opacity:0.85;margin-top:4px;line-height:1.4">${escapeHTML(result.summary)}</div>
       </div>
       <div class="num" style="font-size:28px;font-weight:500;color:${risk.color};white-space:nowrap;flex-shrink:0">${fmt(d.simulationAmount ?? 0)}<span style="font-size:14px;opacity:0.6;margin-left:4px">zł</span></div>
     </div>
@@ -812,15 +820,26 @@ function renderSimulationResult(result) {
       <div class="metric"><div class="metric-label">Wpływ na limit</div><div class="metric-value">${d.dailyBudgetBefore > 0 ? Fmt.pct(((d.dailyBudgetAfter - d.dailyBudgetBefore) / d.dailyBudgetBefore) * 100) : '—'}</div></div>
       <div class="metric"><div class="metric-label">Zobowiązania planowane</div><div class="metric-value">${fmt(d.plannedExpensesBeforeSim ?? 0)} <span class="text-mute text-sm">zł</span></div></div>
     </div>
+    ${result.categoryAnalysis ? (() => {
+      const ca = result.categoryAnalysis;
+      const rows = [
+        `<div class="metric"><div class="metric-label">Wydatki w kat. (30 dni)</div><div class="metric-value">${fmt(ca.total30d)} <span class="text-mute text-sm">zł</span></div></div>`,
+        `<div class="metric"><div class="metric-label">Transakcji (30 dni)</div><div class="metric-value">${ca.count30d}</div></div>`,
+        ca.avgAmount > 0 ? `<div class="metric"><div class="metric-label">Śr. kwota w kategorii</div><div class="metric-value">${fmt(ca.avgAmount)} <span class="text-mute text-sm">zł</span></div></div>` : '',
+        ca.medianAmount > 0 ? `<div class="metric"><div class="metric-label">Mediana kwoty</div><div class="metric-value">${fmt(ca.medianAmount)} <span class="text-mute text-sm">zł</span></div></div>` : '',
+      ].filter(Boolean).join('');
+      return `<hr class="divider"><h3 style="margin:0 0 10px">Kategoria: ${escapeHTML(ca.category)}</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${rows}</div>`;
+    })() : ''}
     <hr class="divider">
     <h3 style="margin:0 0 10px">Analiza krok po kroku</h3>
     <ol style="padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.7;margin:0">
-      <li>Aktualne dostępne środki: <strong class="num">${fmt(d.projectedAvailable)}</strong> zł (prognozowane na dzień wydatku)</li>
-      <li>Po wydatku zostanie: <strong class="num">${fmt(d.availableAfterSimulation)}</strong> zł</li>
-      <li>Po odjęciu planowanych zobowiązań (<strong class="num">${fmt(d.plannedExpensesBeforeSim ?? 0)}</strong> zł): <strong class="num">${fmt(Math.max(0, d.availableAfterSimulation - (d.plannedExpensesBeforeSim ?? 0)))}</strong> zł</li>
-      <li>Podzielone na <strong>${d.daysToNextIncome ?? 30}</strong> dni → nowy limit dzienny: <strong class="num">${fmt(d.dailyBudgetAfter)}</strong> zł/d</li>
-      <li>Mediana historyczna <strong class="num">${fmt(d.medianDailySpending)}</strong> zł — limit <strong>${d.dailyBudgetAfter >= d.medianDailySpending ? 'POWYŻEJ' : 'PONIŻEJ'}</strong> mediany</li>
+      <li>Aktualne dostępne środki: <strong class="num" style="color:${vc(d.projectedAvailable ?? 0)}">${fmt(d.projectedAvailable)}</strong> zł (prognozowane na dzień wydatku)</li>
+      <li>Po wydatku zostanie: <strong class="num" style="color:${vc(afSim)}">${fmt(afSim)}</strong> zł</li>
+      <li>Po odjęciu planowanych zobowiązań (<strong class="num">${fmt(d.plannedExpensesBeforeSim ?? 0)}</strong> zł): <strong class="num" style="color:${vc(afterPlanned)}">${fmt(Math.max(0, afterPlanned))}</strong> zł</li>
+      <li>Podzielone na <strong>${d.daysToNextIncome ?? 30}</strong> dni → nowy limit dzienny: <strong class="num" style="color:${vc(d.dailyBudgetAfter ?? 0)}">${fmt(d.dailyBudgetAfter)}</strong> zł/d</li>
+      <li>Mediana historyczna <strong class="num">${fmt(d.medianDailySpending)}</strong> zł — limit ${d.dailyBudgetAfter >= d.medianDailySpending ? '<span class="tag success" style="font-size:10px">powyżej mediany</span>' : '<span class="tag danger" style="font-size:10px">poniżej mediany</span>'}</li>
     </ol>
+    ${findingsHTML ? `<hr class="divider"><h3 style="margin:0 0 10px">Szczegółowa analiza</h3><ul style="padding-left:18px;font-size:13px;line-height:1.7;margin:0">${findingsHTML}</ul>` : ''}
   `;
 
   container.innerHTML = sanitizeHTML(html);
@@ -834,6 +853,8 @@ const handleSimulateExpense = () => {
 
   const date = dateInput.value;
   const amount = parseFloat(amountInput.value);
+  const categoryInput = document.getElementById('simulationCategory');
+  const category = categoryInput ? categoryInput.value : '';
 
   if (!date) {
     showErrorMessage('Wybierz datę wydatku');
@@ -845,7 +866,7 @@ const handleSimulateExpense = () => {
     return;
   }
 
-  const result = simulateExpense(date, amount);
+  const result = simulateExpense(date, amount, category || null);
   renderSimulationResult(result);
 };
 
@@ -1157,7 +1178,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (expenseDateInput) expenseDateInput.value = today;
   if (incomeDateInput) incomeDateInput.value = today;
-  if (simulationDateInput) simulationDateInput.value = today;
+  if (simulationDateInput) {
+    simulationDateInput.value = today;
+    simulationDateInput.min = today;
+  }
 
   // Funkcja do przełączania zakładek autoryzacji
   const showAuthTab = (tabName) => {
@@ -1301,6 +1325,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Symulacja wydatku
     'simulate-expense': () => handleSimulateExpense(),
+
+    // Toggle trybu gauges koperty (wydano / pozostało)
+    'toggle-envelope-mode': () => toggleGaugeMode(),
 
     // Wymuszone przeliczenie koperty
     'force-recalc-envelope': async () => {

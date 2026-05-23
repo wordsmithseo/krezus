@@ -181,6 +181,7 @@
                     <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2zm13 2.383-4.708 2.825L15 11.105V5.383zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741zM1 11.105l4.708-2.897L1 5.383v5.722z"/></svg>
                     Koperta dnia
                     <span class="nav-badge" id="navBadgeEnvelope"></span>
+                    <span class="nav-envelope-dot" id="navEnvelopeAlert"></span>
                 </button>
                 <button class="nav-item" data-action="show-section" data-section="expensesSection">
                     <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5z"/></svg>
@@ -296,14 +297,14 @@
                                 <!-- Envelope mini -->
                                 <div class="card" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
                                     <div style="position:relative;flex-shrink:0">
-                                        <div class="gauge-ring-wrap">
+                                        <div class="gauge-ring-wrap" data-action="toggle-envelope-mode" style="cursor:pointer">
                                             <svg id="envelopeGaugeSvg" viewBox="0 0 160 160" width="160" height="160">
                                                 <circle class="gauge-track" cx="80" cy="80" r="66" fill="none" stroke-width="14" transform="rotate(-90 80 80)"/>
                                                 <circle class="gauge-fill-svg" id="envelopeGaugeFillEl" cx="80" cy="80" r="66" fill="none" stroke-width="14" stroke-linecap="round" transform="rotate(-90 80 80)" pathLength="1" stroke-dasharray="1" style="stroke-dashoffset:1"/>
                                             </svg>
                                             <div class="gauge-ring-center">
                                                 <div style="text-align:center">
-                                                    <div style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Wydano</div>
+                                                    <div id="envelopeGaugeLabel" style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px">Pozostało</div>
                                                     <div style="display:flex;align-items:baseline;gap:2px;justify-content:center">
                                                         <div class="num" id="envelopeGaugeRemaining" style="font-size:20px;font-weight:500;letter-spacing:-0.02em">0,00</div>
                                                         <div style="font-size:11px;color:var(--ink-3)">zł</div>
@@ -349,7 +350,7 @@
                                         <div id="monthExpensesDelta" class="delta"></div>
                                     </div>
                                     <div class="stat">
-                                        <div class="label">Śr. dzienna (mies.)</div>
+                                        <div class="label">Śr. dzienna (30d)</div>
                                         <div class="value"><span id="dailyAvgExpenses">0,00</span><span class="unit">zł</span></div>
                                         <div class="delta" style="color:var(--ink-3)">z ostatnich 30 dni</div>
                                     </div>
@@ -401,14 +402,14 @@
 
                                 <!-- Karta A: Ring gauge -->
                                 <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px">
-                                    <div class="gauge-ring-wrap">
+                                    <div class="gauge-ring-wrap" data-action="toggle-envelope-mode" style="cursor:pointer">
                                         <svg id="envelopeGaugeSvgFull" viewBox="0 0 240 240" width="240" height="240">
                                             <circle class="gauge-track" cx="120" cy="120" r="103" fill="none" stroke-width="14" transform="rotate(-90 120 120)"/>
                                             <circle class="gauge-fill-svg" id="envelopeGaugeFillFull" cx="120" cy="120" r="103" fill="none" stroke-width="14" stroke-linecap="round" transform="rotate(-90 120 120)" pathLength="1" stroke-dasharray="1" style="stroke-dashoffset:1"/>
                                         </svg>
                                         <div class="gauge-ring-center">
                                             <div style="text-align:center">
-                                                <div class="text-mute text-sm" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Wydano</div>
+                                                <div id="envelopeGaugeLabelFull" class="text-mute text-sm" style="text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Pozostało</div>
                                                 <div style="display:flex;align-items:baseline;gap:2px;justify-content:center">
                                                     <div class="num" id="envelopeGaugeRemainingFull" style="font-size:28px;font-weight:500;letter-spacing:-0.02em">0,00</div>
                                                     <div class="text-mute text-sm">zł</div>

@@ -8,6 +8,7 @@ import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -72,9 +73,27 @@ public class MainActivity extends BridgeActivity {
                     offlinePageShown = false;
                 }
             }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                offlinePageShown = false;
+                mainHandler.post(() -> view.loadUrl(SERVER_URL));
+                return true;
+            }
         });
 
         registerNetworkCallback();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        WebView webView = bridge.getWebView();
+        String url = webView.getUrl();
+        if (url == null || url.isEmpty() || "about:blank".equals(url)) {
+            offlinePageShown = false;
+            webView.loadUrl(SERVER_URL);
+        }
     }
 
     @Override
