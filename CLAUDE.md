@@ -6,6 +6,28 @@ Polska aplikacja do zarządzania budżetem domowym. Wdrożona na krezus.vercel.a
 
 > **WAŻNE:** Nie instaluj żadnych pakietów npm (`npm install`, `npm i`, `npx`) bez wyraźnej prośby użytkownika. Nie konfiguruj Playwright, przeglądarek headless ani innych narzędzi testowych — do weryfikacji UI używaj wyłącznie `gnome-screenshot`. Proste zadanie = minimalne działanie.
 
+## Wersjonowanie i git hooks
+
+**System:** patch version (`package.json`) jest automatycznie podbijany przy każdym commicie przez hook `pre-commit`.
+
+- Hook źródłowy: `.githooks/pre-commit` (śledzony przez git)
+- Po sklonowaniu / `git pull` na nowym komputerze: `npm install` lub `npm run prepare` konfiguruje git (`core.hooksPath = .githooks`)
+- **Bez tego kroku hook nie działa** — wersja się nie zmienia, modal aktualizacji produkcyjnej nie pojawia się
+- Modal aktualizacji (`src/utils/version.js`) działa tylko na produkcji: porównuje wersję z bundla z `/version.json` generowanym przez `vite build`
+
+## Android (Capacitor)
+
+Aplikacja ma wersję Android zbudowaną przez Capacitor. Katalog `android/` jest śledzony przez git (poza `*.apk` / `*.aab` które są w `.gitignore`).
+
+- **App ID:** `pl.krezus.app`
+- **Tryb:** remote URL — apka ładuje `https://krezus.vercel.app` (nie lokalny dist), więc nie wymaga osobnego buildu webowego do działania
+- **SDK:** minSdk 26, compileSdk/targetSdk 35
+- **versionCode/versionName:** w `android/app/build.gradle` (aktualizować ręcznie przy release)
+- **Debug APK:** `android/app/build/outputs/apk/debug/app-debug.apk` — katalog `build/` jest gitignorowany, APK nie transferuje się przez git i musi być skompilowany lokalnie
+- **Sync po zmianie `capacitor.config.json`:** `npx cap sync android`
+- **Build APK:** Android Studio lub `cd android && ./gradlew assembleDebug`
+- **Zależności Capacitor:** `@capacitor/core`, `@capacitor/cli`, `@capacitor/android` (już w `package.json`)
+
 ## Stack
 
 - **Frontend:** Vanilla JavaScript (ES Modules)
