@@ -433,6 +433,26 @@ function updateBudgetUserToggles() {
   renderToggle(incomeToggle, incomeHidden);
 }
 
+window.resetExpenseForm = function() {
+  const form = document.getElementById('expenseForm');
+  if (!form) return;
+  form.reset();
+  document.getElementById('expenseType')?.dispatchEvent(new Event('change'));
+  updateBudgetUserToggles();
+  const s = document.getElementById('descriptionSuggestions');
+  if (s) s.innerHTML = '';
+};
+
+window.resetIncomeForm = function() {
+  const form = document.getElementById('incomeForm');
+  if (!form) return;
+  form.reset();
+  document.getElementById('incomeType')?.dispatchEvent(new Event('change'));
+  updateBudgetUserToggles();
+  const s = document.getElementById('sourceSuggestions');
+  if (s) s.innerHTML = '';
+};
+
 function getBudgetUserName(userId) {
   if (userId === 'system') return 'System';
   const user = budgetUsersCache.find(u => u.id === userId);
@@ -597,22 +617,62 @@ function setupCategorySuggestions() {
     newDescriptionInput.addEventListener('input', () => {
       const category = newCategoryInput.value.trim();
       const value = newDescriptionInput.value.trim().toLowerCase();
-      
-      if (!category) {
+
+      if (value === '') {
+        descriptionSuggestions.innerHTML = '';
+        if (category) {
+          updateDescriptionButtons(category);
+        } else {
+          descriptionButtons.innerHTML = '';
+        }
+        return;
+      }
+
+      const expenses = getExpenses();
+      const relevantExpenses = category
+        ? expenses.filter(e => e.category === category)
+        : expenses;
+
+      const descMap = new Map();
+      relevantExpenses.forEach(e => {
+        if (!e.description) return;
+        if (!e.description.toLowerCase().includes(value)) return;
+        if (!descMap.has(e.description)) {
+          descMap.set(e.description, { catCounts: new Map(), total: 0 });
+        }
+        const entry = descMap.get(e.description);
+        entry.total++;
+        const cat = e.category || '';
+        entry.catCounts.set(cat, (entry.catCounts.get(cat) || 0) + 1);
+      });
+
+      if (descMap.size === 0) {
+        descriptionSuggestions.innerHTML = '';
         descriptionButtons.innerHTML = '';
         return;
       }
 
-      if (value === '') {
-        updateDescriptionButtons(category);
-      } else {
-        const expenses = getExpenses();
-        const categoryExpenses = expenses.filter(e => e.category === category);
-        const descriptions = [...new Set(categoryExpenses.map(e => e.description).filter(d => d))];
-        const filtered = descriptions.filter(d => d.toLowerCase().includes(value)).slice(0, 5);
-        
-        renderDescriptionButtons(filtered);
-      }
+      const results = Array.from(descMap.entries())
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 6)
+        .map(([desc, { catCounts }]) => {
+          let topCat = '';
+          let topCount = 0;
+          catCounts.forEach((count, cat) => {
+            if (count > topCount) { topCount = count; topCat = cat; }
+          });
+          return { desc, topCat };
+        });
+
+      descriptionSuggestions.innerHTML = results.map(r => `
+        <div class="suggestion-item" data-action="select-description-with-category"
+             data-description="${escapeHTML(r.desc)}"
+             data-category="${escapeHTML(r.topCat)}">
+          <span class="suggestion-desc-text">${escapeHTML(r.desc)}</span>
+          ${r.topCat && !category ? `<span class="suggestion-category-badge">${escapeHTML(r.topCat)}</span>` : ''}
+        </div>
+      `).join('');
+      descriptionButtons.innerHTML = '';
     });
   }
 
@@ -732,6 +792,31 @@ const selectDescription = (description) => {
   if (descriptionInput) {
     descriptionInput.value = description;
     document.getElementById('descriptionSuggestions').innerHTML = '';
+  }
+};
+
+const selectDescriptionWithCategory = (description, suggestedCategory) => {
+  const descriptionInput = document.getElementById('expenseDescription');
+  if (descriptionInput) descriptionInput.value = description;
+
+  const descriptionSuggestions = document.getElementById('descriptionSuggestions');
+  if (descriptionSuggestions) descriptionSuggestions.innerHTML = '';
+
+  if (!suggestedCategory) return;
+
+  const categoryInput = document.getElementById('expenseCategory');
+  if (!categoryInput || categoryInput.value.trim()) return;
+
+  categoryInput.value = suggestedCategory;
+
+  const descriptionButtons = document.getElementById('descriptionButtons');
+  if (descriptionButtons) {
+    const topDescriptions = getTopDescriptionsForCategory(suggestedCategory, 5);
+    descriptionButtons.innerHTML = topDescriptions.map(d => `
+      <button type="button" class="category-quick-btn" data-action="select-description" data-description="${escapeHTML(d.name)}">
+        ${escapeHTML(d.name)}
+      </button>
+    `).join('');
   }
 };
 
@@ -1258,6 +1343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wydatki - quick buttons i suggestions
     'select-description': (el) => selectDescription(getDataAttributes(el).description),
+    'select-description-with-category': (el) => selectDescriptionWithCategory(el.dataset.description, el.dataset.category),
     'select-category': (el) => selectCategory(getDataAttributes(el).name),
 
     // Wydatki - akcje

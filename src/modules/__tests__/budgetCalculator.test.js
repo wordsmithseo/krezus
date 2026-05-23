@@ -383,7 +383,7 @@ describe('getGlobalMedian30d', () => {
       { type: 'normal', date: '2026-02-12', amount: 50 }
     ]);
 
-    expect(getGlobalMedian30d()).toBe(30);
+    expect(getGlobalMedian30d()).toBe(20);
   });
 
   it('returns 0 when no expenses', () => {

@@ -1068,16 +1068,27 @@ window.closeModal = (modalId) => {
 
 window.closePasswordModal = closePasswordModal;
 
+let _modalMousedownOnBackdrop = false;
+document.addEventListener('mousedown', (e) => {
+  _modalMousedownOnBackdrop = e.target.classList.contains('modal');
+});
+
 document.addEventListener('click', (e) => {
+  if (!_modalMousedownOnBackdrop) return;
   if (e.target.classList.contains('modal')) {
     e.target.classList.remove('active');
-    
+
     if (e.target.id === 'profileModal' && budgetUsersUnsubscribe) {
       budgetUsersUnsubscribe();
       budgetUsersUnsubscribe = null;
     }
   }
 });
+
+const _scrollLockObserver = new MutationObserver(() => {
+  document.body.style.overflow = document.querySelector('.modal.active') ? 'hidden' : '';
+});
+_scrollLockObserver.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {

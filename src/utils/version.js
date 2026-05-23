@@ -4,6 +4,8 @@ import { icon } from './icons.js';
 import { escapeHTML } from './sanitizer.js';
 
 const VERSION_STORAGE_KEY = 'krezus_last_version';
+const DISMISSED_KEY = 'krezus_dismissed_update';
+const DISMISS_TTL_MS = 4 * 60 * 60 * 1000; // 4h per device
 const POLL_INTERVAL = 5 * 60 * 1000;
 let pollTimer = null;
 
@@ -40,6 +42,22 @@ async function fetchRemoteVersion() {
   } catch {
     return null;
   }
+}
+
+function isVersionDismissed(version) {
+  try {
+    const data = JSON.parse(localStorage.getItem(DISMISSED_KEY) || 'null');
+    return data && data.version === version && Date.now() < data.expires;
+  } catch {
+    return false;
+  }
+}
+
+function saveDismissed(version) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify({
+    version,
+    expires: Date.now() + DISMISS_TTL_MS,
+  }));
 }
 
 function showUpdateModal(newVersion) {
@@ -79,7 +97,10 @@ function showUpdateModal(newVersion) {
 
   document.body.appendChild(modal);
 
-  const dismiss = () => modal.remove();
+  const dismiss = () => {
+    saveDismissed(newVersion);
+    modal.remove();
+  };
 
   modal.querySelector('#versionUpdateRefresh').addEventListener('click', () => {
     const url = new URL(window.location.href);
@@ -113,9 +134,7 @@ export function startVersionPolling() {
     checking = true;
     try {
       const remote = await fetchRemoteVersion();
-      if (remote && remote !== currentVersion) {
-        stopVersionPolling();
-        document.removeEventListener('visibilitychange', onVisible);
+      if (remote && remote !== currentVersion && !isVersionDismissed(remote)) {
         showUpdateModal(remote);
       }
     } finally {
