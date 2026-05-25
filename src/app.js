@@ -105,7 +105,7 @@ import { initTheme, initThemeSelector } from './utils/theme.js';
 
 import { log } from './modules/logger.js';
 
-import { exportBudgetDataForLLM } from './utils/llmExport.js';
+import { exportBudgetDataForLLM, setLLMExportDeps } from './utils/llmExport.js';
 
 import { sanitizeHTML, escapeHTML } from './utils/sanitizer.js';
 import { showConfirmModal } from './components/confirmModal.js';
@@ -1321,6 +1321,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setCategoryHandlerDeps({ renderCategories, renderExpenses });
   setSummaryDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setSavingsDeps({ getBudgetUsersCache: () => budgetUsersCache });
+  setLLMExportDeps({ getBudgetUsersCache: () => budgetUsersCache });
   setExpenseHandlerDeps({
     getBudgetUserName,
     getBudgetUsersCache: () => budgetUsersCache,

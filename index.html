@@ -358,15 +358,12 @@
                             </div>
 
                             <!-- Limity dzienne -->
-                            <div>
-                                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;gap:8px">
-                                    <div>
-                                        <h3 style="font-size:16px;margin:0 0 2px">Limity dzienne</h3>
-                                        <div style="font-size:12px;color:var(--ink-3)">Limit „realny" zakłada brak wpływu. „Planowany" zakłada że wpływ dotrze. Każdy kafel = jeden planowany przychód.</div>
-                                    </div>
-                                    <span id="limitsCalcDate" style="font-size:12px;color:var(--ink-3)"></span>
+                            <div class="card flush">
+                                <div class="card-header" style="padding:16px 20px;border-bottom:1px solid var(--line);margin-bottom:0">
+                                    <h3>Limity dzienne</h3>
+                                    <span id="limitsCalcDate" class="card-sub"></span>
                                 </div>
-                                <div id="limitsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:0">
+                                <div id="limitsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;padding:14px">
                                     <!-- renderDynamicLimits populates this -->
                                 </div>
                             </div>
