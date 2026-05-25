@@ -30,7 +30,10 @@ import {
   clearCache,
   loadIncomes,
   loadExpenses,
-  getSavings,
+  getGoals,
+  deleteGoal,
+  deleteHistoryEntry,
+  migrateLegacySavings,
   getForceRecalcDate,
   setForceRecalcDate
 
@@ -109,7 +112,8 @@ import { showConfirmModal } from './components/confirmModal.js';
 import { initClickDelegation, getDataAttributes } from './handlers/clickDelegation.js';
 
 // Import funkcji renderowania UI
-import { renderSummary, setSummaryDeps } from './ui/renderSummary.js';
+import { renderSummary, setSummaryDeps, getLimitModalData } from './ui/renderSummary.js';
+import { showLimitDetailModal } from './components/limitModal.js';
 import { renderDailyEnvelope, toggleGaugeMode } from './ui/renderDailyEnvelope.js';
 import { renderExpenses, changeExpensePage, setExpenseDeps, setExpenseFilter, setExpenseSearch, setExpenseAdvancedDeps, toggleExpenseFilterPanel, applyExpenseFilters, resetExpenseFilters } from './ui/renderExpenses.js';
 import { renderSources, changeIncomePage, setIncomeDeps, setIncomeFilter, setIncomeSearch, setIncomeAdvancedDeps, toggleIncomeFilterPanel, applyIncomeFilters, resetIncomeFilters } from './ui/renderIncomes.js';
@@ -117,7 +121,7 @@ import { renderCategories, changeCategoryPage } from './ui/renderCategories.js';
 import { renderAnalytics, selectPeriod, applyCustomPeriod, refreshCategoriesChart } from './ui/renderAnalytics.js';
 import { renderLogs, changeLogPage, clearLogs, resetAndRenderLogs } from './ui/renderLogs.js';
 import { renderSavingsSection, setSavingsDeps } from './ui/renderSavings.js';
-import { showSavingsModal } from './components/savingsModal.js';
+import { showSavingsGoalModal, showGoalDepositModal } from './components/savingsGoalModal.js';
 import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } from './ui/initSidebar.js';
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
@@ -200,6 +204,28 @@ function hideLoader() {
 
 function openModal(id) {
   document.getElementById(id)?.classList.add('active');
+}
+
+function setCorrectionModeUI(mode) {
+  const label = document.getElementById('correctionAmountLabel');
+  const input = document.getElementById('correctionAmountInput');
+  const hint  = document.getElementById('correctionAmountHint');
+  const info  = document.getElementById('correctionModeInfo');
+  const btns  = document.querySelectorAll('[data-action="set-correction-mode"]');
+
+  btns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+  if (mode === 'delta') {
+    if (label) label.textContent = 'Kwota korekty (zł)';
+    if (input) { input.placeholder = 'np. −200,00 lub +500,00'; input.min = ''; }
+    if (hint)  hint.innerHTML = 'Podaj kwotę zmiany — <strong>dodatnia zwiększa</strong> środki, <strong>ujemna zmniejsza</strong>.';
+    if (info)  info.textContent = 'Korekta kwotowa — wpisz wprost o ile zmienić środki, bez konieczności podawania nowego salda.';
+  } else {
+    if (label) label.textContent = 'Nowa kwota całkowitych środków (zł)';
+    if (input) { input.placeholder = '0,00'; input.min = '0'; }
+    if (hint)  hint.innerHTML = 'Wprowadź kwotę, którą <strong>chcesz mieć po korekcie</strong>. System wyliczy różnicę i zapisze ją jako korektę w historii.';
+    if (info)  info.textContent = 'Korekta to różnica między obecnymi a deklarowanymi środkami. Wpisuje się jako pojedynczy wpis do historii przychodów (dodatnia lub ujemna), nie powiązana z konkretną transakcją.';
+  }
 }
 
 function updateDisplayNameInUI(displayName) {
@@ -320,6 +346,7 @@ async function loadAllData() {
 
     await clearCache();
     await fetchAllData(userId);
+    await migrateLegacySavings();
 
     await loadBudgetUsers(userId);
     await autoRealiseDueTransactions();
@@ -514,11 +541,11 @@ function updateNavBadges() {
   const catBadge = document.getElementById('navBadgeCategories');
   if (catBadge) catBadge.textContent = categories.length;
 
-  // Badge oszczędności: odłożona kwota
+  // Badge oszczędności: suma celów
   const savingsBadge = document.getElementById('navBadgeSavings');
   if (savingsBadge) {
-    const { current } = getSavings();
-    savingsBadge.textContent = current > 0 ? Fmt.zl(current) + ' zł' : '';
+    const totalSaved = getGoals().reduce((s, g) => s + g.current, 0);
+    savingsBadge.textContent = totalSaved > 0 ? Fmt.zl(totalSaved) + ' zł' : '';
   }
 }
 
@@ -1388,6 +1415,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Autoryzacja
     'show-auth-tab': (el) => showAuthTab(el.dataset.tab),
 
+    // Kafelki limitów
+    'view-limit': (el) => {
+      const index = parseInt(el.dataset.limitIndex, 10);
+      const data = getLimitModalData(index);
+      if (data) showLimitDetailModal(data);
+    },
+
     // Nawigacja
     'show-section': (el) => showSection(el.dataset.section),
     'open-profile': () => openProfile(),
@@ -1461,7 +1495,27 @@ document.addEventListener('DOMContentLoaded', () => {
       setupIncomeTypeToggle();
       setupSourceSuggestions();
     },
-    'open-correction-modal': () => openModal('correctionModal'),
+    'open-correction-modal': () => {
+      const dateInput = document.getElementById('correctionDate');
+      if (dateInput) dateInput.value = getWarsawDateString();
+      const fundsDisplay = document.getElementById('currentFundsDisplay');
+      const availableFunds = document.getElementById('availableFunds');
+      if (fundsDisplay && availableFunds) fundsDisplay.textContent = availableFunds.textContent;
+      // Resetuj tryb do "total" przy każdym otwarciu
+      const form = document.getElementById('correctionForm');
+      if (form) {
+        form.correctionMode.value = 'total';
+        setCorrectionModeUI('total');
+      }
+      openModal('correctionModal');
+    },
+    'set-correction-mode': (el) => {
+      const mode = el.dataset.mode;
+      const form = document.getElementById('correctionForm');
+      if (!form) return;
+      form.correctionMode.value = mode;
+      setCorrectionModeUI(mode);
+    },
     'open-change-password': () => showProfileModal(),
 
     // Zapis profilu w ustawieniach
@@ -1493,8 +1547,70 @@ document.addEventListener('DOMContentLoaded', () => {
     'apply-income-filters':  () => applyIncomeFilters(),
     'reset-income-filters':  () => resetIncomeFilters(),
 
-    // Oszczędności
-    'open-savings-modal': () => showSavingsModal(budgetUsersCache),
+    // Cele oszczędnościowe
+    'open-savings-goal-modal': () => showSavingsGoalModal(null),
+    'toggle-savings-goal': (el) => el.closest('.savings-goal-card')?.classList.toggle('collapsed'),
+    'edit-savings-goal': (el) => {
+      const goal = getGoals().find(g => g.id === el.dataset.goalId);
+      if (goal) showSavingsGoalModal(goal);
+    },
+    'savings-goal-deposit': (el) => {
+      const goal = getGoals().find(g => g.id === el.dataset.goalId);
+      if (goal) showGoalDepositModal(goal, budgetUsersCache, el.dataset.mode ?? 'add');
+    },
+    'delete-savings-goal': async (el) => {
+      const goal = getGoals().find(g => g.id === el.dataset.goalId);
+      if (!goal) return;
+      const confirmed = await showConfirmModal(
+        `Usunąć cel "${goal.name}"?`,
+        'Tej operacji nie można cofnąć. Historia wpłat zostanie usunięta.',
+        { type: 'danger', confirmText: 'Usuń', cancelText: 'Anuluj' }
+      );
+      if (!confirmed) return;
+      try {
+        await deleteGoal(goal.id);
+        showSuccessMessage(`Cel "${goal.name}" usunięty`);
+      } catch {
+        showErrorMessage('Nie udało się usunąć celu');
+      }
+    },
+
+    'close-savings-goal': async (el) => {
+      const goal = getGoals().find(g => g.id === el.dataset.goalId);
+      if (!goal) return;
+      const amtFmt = Fmt.zl(goal.current);
+      const msg = goal.current > 0
+        ? `${amtFmt} zł wróci do dostępnych środków budżetu. Historia wpłat zostanie usunięta.`
+        : 'Cel zostanie usunięty. Historia wpłat zostanie usunięta.';
+      const confirmed = await showConfirmModal(
+        `Zamknąć cel "${goal.name}"?`,
+        msg,
+        { type: 'danger', confirmText: 'Zamknij cel', cancelText: 'Anuluj' }
+      );
+      if (!confirmed) return;
+      try {
+        await deleteGoal(goal.id);
+        const info = goal.current > 0 ? ` — ${amtFmt} zł zwrócono do budżetu` : '';
+        showSuccessMessage(`Cel "${goal.name}" zamknięty${info}`);
+      } catch {
+        showErrorMessage('Nie udało się zamknąć celu');
+      }
+    },
+
+    'delete-savings-history': async (el) => {
+      const confirmed = await showConfirmModal(
+        'Usunąć ten wpis z archiwum?',
+        'Wpis zostanie trwale usunięty z historii.',
+        { type: 'danger', confirmText: 'Usuń wpis', cancelText: 'Anuluj' }
+      );
+      if (!confirmed) return;
+      try {
+        await deleteHistoryEntry(el.dataset.entryId);
+        showSuccessMessage('Wpis usunięty');
+      } catch {
+        showErrorMessage('Nie udało się usunąć wpisu');
+      }
+    },
 
   });
 

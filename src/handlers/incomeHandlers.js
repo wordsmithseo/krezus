@@ -244,12 +244,13 @@ export async function addCorrection(e) {
     submitBtn.textContent = 'Zapisywanie...';
   }
 
-  const newTotalAmount = parseFloat(form.correctionAmount.value);
+  const mode = form.correctionMode?.value || 'total';
+  const rawAmount = parseFloat(form.correctionAmount.value);
   const reason = form.correctionReason.value.trim();
   const correctionDate = form.correctionDate?.value || getWarsawDateString();
 
-  if (!Number.isFinite(newTotalAmount)) {
-    showErrorMessage('Podaj prawidłową kwotę całkowitych środków');
+  if (!Number.isFinite(rawAmount)) {
+    showErrorMessage(mode === 'delta' ? 'Podaj prawidłową kwotę korekty' : 'Podaj prawidłową kwotę całkowitych środków');
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
     return;
   }
@@ -261,7 +262,16 @@ export async function addCorrection(e) {
   }
 
   const { available } = calculateAvailableFunds();
-  const difference = newTotalAmount - available;
+  const difference = mode === 'delta'
+    ? Math.round(rawAmount * 100) / 100
+    : Math.round((rawAmount - available) * 100) / 100;
+  const newTotalAmount = mode === 'delta' ? available + difference : rawAmount;
+
+  if (difference === 0) {
+    showErrorMessage('Kwota korekty wynosi 0 — brak zmiany do zapisania');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.originalText; }
+    return;
+  }
 
   const correctionType = difference >= 0 ? 'PLUS' : 'MINUS';
 

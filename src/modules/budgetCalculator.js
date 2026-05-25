@@ -1,6 +1,6 @@
 // src/modules/budgetCalculator.js
 import { parseDateStr, getWarsawDateString, getCurrentTimeString, isRealised, calculateRemainingTime } from '../utils/dateHelpers.js';
-import { getIncomes, getExpenses, getEndDates, getSavingGoal, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
+import { getIncomes, getExpenses, getEndDates, getGoals, getDailyEnvelope, saveDailyEnvelope } from './dataManager.js';
 import { Fmt } from '../utils/fmt.js';
 
 // === CACHE LIMITÓW DZIENNYCH ===
@@ -224,7 +224,7 @@ export function calculateSpendingPeriods() {
 
 export function calculateAvailableFunds() {
     const { sumIncome, sumExpense } = calculateRealisedTotals();
-    const savingGoal = getSavingGoal();
+    const savingGoal = getGoals().reduce((s, g) => s + g.current, 0);
     const totalAvailable = sumIncome - sumExpense;
     const available = totalAvailable - savingGoal;
 
@@ -567,7 +567,7 @@ export async function updateDailyEnvelope(forDate = null, forceRecalc = false, t
     // Odejmij dzisiejsze wydatki - bo koperta je doliczy osobno jako "spent"
     sumExpenseUpToToday -= todayExpensesSum;
 
-    const savingGoal = getSavingGoal();
+    const savingGoal = getGoals().reduce((s, g) => s + g.current, 0);
     const totalAvailable = sumIncomeUpToToday - sumExpenseUpToToday - savingGoal;
 
     // Faktycznie dostępne środki po odjęciu dzisiejszych wydatków
@@ -780,7 +780,7 @@ export function getEnvelopeCalculationInfo() {
     });
 
     sumExpenseUpToToday -= todayExpensesSum;
-    const savingGoal = getSavingGoal();
+    const savingGoal = getGoals().reduce((s, g) => s + g.current, 0);
     const totalAvailable = sumIncomeUpToToday - sumExpenseUpToToday - savingGoal;
 
     let description = '';
@@ -1188,7 +1188,7 @@ export function simulateExpense(simulationDate, simulationAmount, category = nul
     const today = getWarsawDateString();
     const expenses = getExpenses();
     const incomes = getIncomes();
-    const savingGoal = getSavingGoal();
+    const savingGoal = getGoals().reduce((s, g) => s + g.current, 0);
 
     // === KROK 1: Realne środki DZIŚ (tylko zrealizowane transakcje) ===
     let realizedIncome = 0;

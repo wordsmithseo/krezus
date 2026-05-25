@@ -13,6 +13,8 @@ let currentIncomeFilter = 'normal'; // 'normal' | 'planned'
 let currentIncomeSearch = '';
 let getBudgetUserNameFn = null;
 
+const isCorrection = inc => inc.source === 'KOREKTA';
+
 let advancedIncomeFilters = { dateFrom: '', dateTo: '', amountMin: '', amountMax: '', users: [] };
 let incomeFilterPanelOpen = false;
 let getIncUsersCacheFn = null;
@@ -180,7 +182,6 @@ function getFilteredIncomes() {
     if (dateCmp !== 0) return dateCmp;
     return (b.time || '').localeCompare(a.time || '');
   });
-  const isCorrection = inc => inc.source === 'KOREKTA';
   const f = advancedIncomeFilters;
   return sorted.filter(inc => {
     if (currentIncomeFilter === 'all' && inc.type === 'planned') return false;
@@ -238,11 +239,11 @@ export function renderSources() {
 
   const todayStr = getWarsawDateString();
   const html = paginatedIncomes.map((inc, index) => {
-    const isCorrection = inc.source === 'KOREKTA';
+    const isCorrEntry = isCorrection(inc);
     const isToday = inc.date === todayStr;
-    const rowClass = inc.type === 'planned' ? 'planned' : (isCorrection ? 'correction' : 'realised');
-    const sourceIcon = !isCorrection && inc.source ? getSourceIcon(inc.source) : '';
-    const sourceHtml = isCorrection
+    const rowClass = inc.type === 'planned' ? 'planned' : (isCorrEntry ? 'correction' : 'realised');
+    const sourceIcon = !isCorrEntry && inc.source ? getSourceIcon(inc.source) : '';
+    const sourceHtml = isCorrEntry
       ? `<span style="font-weight:600">KOREKTA</span>${inc.correctionReason ? `<br><span class="text-mute text-sm">${escapeHTML(inc.correctionReason)}</span>` : ''}`
       : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
@@ -255,14 +256,14 @@ export function renderSources() {
       </td>
       <td class="col-desc">${sourceHtml}</td>
       <td>${inc.userId && getBudgetUserNameFn ? userChipHTML({ id: inc.userId, name: getBudgetUserNameFn(inc.userId) }) : '<span class="text-mute">—</span>'}</td>
-      <td>${isCorrection
+      <td>${isCorrEntry
         ? '<span class="tag info dot">Korekta</span>'
         : inc.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
           : '<span class="tag success dot">Zrealizowany</span>'}</td>
-      <td class="amount" style="color:var(--success);font-weight:500">${inc.amount >= 0 ? '+' : ''}${Fmt.zl(Math.abs(inc.amount))}</td>
+      <td class="amount" style="color:${inc.amount < 0 ? 'var(--danger)' : 'var(--success)'};font-weight:500">${inc.amount >= 0 ? '+' : '−'}${Fmt.zl(Math.abs(inc.amount))}</td>
       <td class="actions">
-        ${!isCorrection ? `
+        ${!isCorrEntry ? `
           ${inc.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
           <div class="row-actions">
             <button class="btn ghost icon-only sm" data-action="edit-income" data-id="${inc.id}" title="Edytuj">${iconEdit}</button>

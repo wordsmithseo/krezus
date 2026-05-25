@@ -29,6 +29,24 @@ export function setSummaryDeps({ getBudgetUsersCache }) {
   _getBudgetUsersCache = getBudgetUsersCache;
 }
 
+let _lastLimitsRenderData = null;
+
+export function getLimitModalData(index) {
+  if (!_lastLimitsRenderData) return null;
+  const { limits, plannedTotals, available } = _lastLimitsRenderData;
+  const limit = limits[index];
+  if (!limit) return null;
+  const usersCache = _getBudgetUsersCache();
+  const limitUser = limit.userId ? (usersCache.find(u => u.id === limit.userId) || null) : null;
+  return {
+    limit,
+    periodTotal: plannedTotals?.periodTotals?.[index],
+    available,
+    limitUser,
+    isFirst: index === 0,
+  };
+}
+
 function buildLastNDaysData(n = 30) {
   const expenses = getExpenses();
   const data = [];
@@ -328,6 +346,7 @@ export function renderSpendingDynamics() {
  */
 function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt) {
   const { limits } = limitsData;
+  _lastLimitsRenderData = { limits, plannedTotals, available };
 
   const statsGrid = document.getElementById('limitsGrid');
   if (!statsGrid) return;
@@ -371,47 +390,34 @@ function renderDynamicLimits(limitsData, plannedTotals, available, calculatedAt)
 
     const dateStr = limit.date ? Fmt.date(limit.date) : '';
 
-    const realColor = realLimit < 50 ? 'var(--danger)' : 'var(--ink-1)';
-
-    const tileStyle = isFirst
-      ? 'padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 25%,var(--line))'
-      : 'padding:16px;display:flex;flex-direction:column;gap:12px';
+    const realClass = realLimit < 50 ? ' danger' : '';
 
     const html = `
-      <div class="card limit-tile${isFirst ? ' limit-tile--next' : ''}" style="${tileStyle}">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <div class="card limit-tile${isFirst ? ' limit-tile--next' : ''}" data-action="view-limit" data-limit-index="${index}" style="cursor:pointer">
+        <div class="limit-tile-header">
           <div class="limit-tile-icon">${limitIcon}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(limit.name || 'Planowany wpływ')}</div>
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">
-              ${limitUser ? userChipHTML(limitUser) : ''}
-              ${isFirst ? '<span class="tag accent dot" style="font-size:10px">Następny</span>' : ''}
+            <div class="limit-tile-name">${escapeHTML(limit.name || 'Planowany wpływ')}</div>
+            <div class="limit-tile-meta">
+              ${isFirst ? '<span class="tag accent dot pulse" style="font-size:10px">Następny</span>' : ''}
             </div>
           </div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 10px;background:var(--surface-2);border-radius:8px;gap:8px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;gap:2px">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Wpływ</span>
-            <span class="num" style="font-size:16px;font-weight:600;color:var(--success)">+${Fmt.zl(limit.amount || 0)} zł</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3)">Data</span>
-            <span style="font-size:13px;font-weight:500"><span class="num">${dateStr}</span> <span style="font-size:11px;color:var(--ink-3)">· za ${timeText}</span></span>
+          <div class="limit-tile-amount">
+            <div class="num">+${Fmt.zl(limit.amount || 0)} zł</div>
+            <div class="date">${dateStr} · ${timeText}</div>
           </div>
         </div>
-        <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)">
-          <div style="padding:10px 12px;display:flex;align-items:center;gap:8px">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--ink-3);white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${icon('Wallet', {size:10})} Realny</span>
-            <span style="font-size:11px;color:var(--ink-3)">· bez wpływu</span>
-            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:${realColor};white-space:nowrap">${Fmt.zl(realLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+        <div class="limit-tile-metrics">
+          <div class="metric${realClass}">
+            <span class="metric-label">Realny</span>
+            <span class="metric-value num">${Fmt.zl(realLimit)} <span style="font-size:11px;font-weight:400;color:var(--ink-3)">zł/d</span></span>
           </div>
-          <div style="padding:10px 12px;display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);background:color-mix(in srgb, var(--accent) 6%, transparent)">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;color:var(--accent);white-space:nowrap;display:inline-flex;align-items:center;gap:3px">${icon('Sparkles', {size:10})} Planowany</span>
-            <span style="font-size:11px;color:var(--ink-3)">· po wpływie</span>
-            <div class="num" style="margin-left:auto;font-size:18px;font-weight:500;color:var(--accent);white-space:nowrap">${Fmt.zl(plannedLimit)} <span style="font-size:11px;color:var(--ink-3)">zł/d</span></div>
+          <div class="metric accent">
+            <span class="metric-label">Planowany</span>
+            <span class="metric-value num">${Fmt.zl(plannedLimit)} <span style="font-size:11px;font-weight:400;color:var(--ink-3)">zł/d</span></span>
           </div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--ink-3);flex-wrap:wrap;gap:8px">
+        <div class="limit-tile-footer">
           <span>Różnica: <strong class="num" style="color:${delta >= 0 ? 'var(--success)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${Fmt.zl(delta)} zł/d</strong></span>
           ${futureExpense > 0 ? `<span>Zobowiązania: <strong class="num" style="color:var(--danger)">${Fmt.zl(futureExpense)} zł</strong></span>` : ''}
         </div>

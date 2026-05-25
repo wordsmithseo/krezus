@@ -1,6 +1,6 @@
 // src/modules/dataManager.js - Z AUTOMATYCZNĄ MIGRACJĄ realised → type
 
-import { ref, get, set, update, push, serverTimestamp, onValue } from 'firebase/database';
+import { ref, get, set, update, push, remove, serverTimestamp, onValue } from 'firebase/database';
 import { db } from '../config/firebase.js';
 import { getUserId } from './auth.js';
 import { getWarsawDateString, getCurrentTimeString, shouldBeRealisedNow, getWarsawTimeString } from '../utils/dateHelpers.js';
@@ -11,7 +11,7 @@ let incomesCache = [];
 let expensesCache = [];
 let endDate1Cache = '';
 let endDate2Cache = '';
-let savingsCache = { current: 0, history: [] };
+let savingsCache = { current: 0, history: [], goals: [] };
 let dailyEnvelopeCache = null;
 
 let activeListeners = {};
@@ -68,7 +68,7 @@ function clearCacheInternal() {
   expensesCache = [];
   endDate1Cache = '';
   endDate2Cache = '';
-  savingsCache = { current: 0, history: [] };
+  savingsCache = { current: 0, history: [], goals: [] };
   dailyEnvelopeCache = null;
   currentCachedUserId = null;
 }
@@ -238,8 +238,26 @@ export async function loadEndDates() {
   }
 }
 
+function parseGoals(goalsObj) {
+  return Object.entries(goalsObj ?? {})
+    .map(([id, g]) => ({
+      id,
+      name: g.name ?? '',
+      target: typeof g.target === 'number' ? g.target : 0,
+      current: typeof g.current === 'number' ? g.current : 0,
+      icon: g.icon ?? '🎯',
+      color: g.color ?? '#3b82f6',
+      deadline: g.deadline ?? null,
+      createdAt: g.createdAt ?? 0,
+      history: Object.entries(g.history ?? {})
+        .map(([hid, h]) => ({ id: hid, ...h }))
+        .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+    }))
+    .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+}
+
 /**
- * Załaduj oszczędności (current + history) z Firebase
+ * Załaduj oszczędności (current + history + goals) z Firebase
  */
 export async function loadSavings() {
   try {
@@ -250,11 +268,12 @@ export async function loadSavings() {
     const history = Object.entries(val.history ?? {})
       .map(([id, h]) => ({ id, ...h }))
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    savingsCache = { current, history };
+    const goals = parseGoals(val.goals);
+    savingsCache = { current, history, goals };
     return savingsCache;
   } catch (error) {
     console.error('❌ Błąd ładowania oszczędności:', error);
-    return { current: 0, history: [] };
+    return { current: 0, history: [], goals: [] };
   }
 }
 
@@ -672,8 +691,15 @@ export function subscribeToRealtimeUpdates(userId, callbacks) {
     const history = Object.entries(val.history ?? {})
       .map(([id, h]) => ({ id, ...h }))
       .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-    const changed = savingsCache.current !== newCurrent;
-    savingsCache = { current: newCurrent, history };
+    const goals = parseGoals(val.goals);
+    const goalsKey = g => `${g.id}|${g.name}|${g.icon}|${g.color}|${g.deadline}|${g.current}`;
+    const oldGoalsKey = savingsCache.goals.map(goalsKey).join(';');
+    const newGoalsKey = goals.map(goalsKey).join(';');
+    const changed =
+      savingsCache.current !== newCurrent ||
+      savingsCache.history.length !== history.length ||
+      oldGoalsKey !== newGoalsKey;
+    savingsCache = { current: newCurrent, history, goals };
     if (changed && callbacks.onSavingGoalChange) {
       callbacks.onSavingGoalChange(newCurrent);
     }
@@ -722,12 +748,78 @@ export function getEndDates() {
   return { primary: endDate1Cache, secondary: endDate2Cache };
 }
 
-export function getSavingGoal() {
-  return savingsCache.current;
+export function getSavings() {
+  return {
+    current: savingsCache.current,
+    history: [...savingsCache.history],
+    goals: savingsCache.goals.map(g => ({ ...g, history: [...(g.history ?? [])] }))
+  };
 }
 
-export function getSavings() {
-  return { ...savingsCache, history: [...savingsCache.history] };
+export function getGoals() {
+  return savingsCache.goals.map(g => ({ ...g, history: [...(g.history ?? [])] }));
+}
+
+export async function saveGoal({ id, name, target = 0, icon = '🎯', color = '#3b82f6', deadline = null }) {
+  const uid = getUserId();
+  if (id) {
+    await update(ref(db, `users/${uid}/savings/goals/${id}`), { name, target, icon, color, deadline });
+  } else {
+    const newRef = push(ref(db, `users/${uid}/savings/goals`));
+    await set(newRef, {
+      id: newRef.key, name, target, icon, color, deadline,
+      current: 0, createdAt: serverTimestamp()
+    });
+  }
+}
+
+export async function updateGoalAmount({ goalId, newAmount, note = '', date, byUserId }) {
+  const uid = getUserId();
+  const goal = savingsCache.goals.find(g => g.id === goalId);
+  if (!goal) throw new Error('Cel nie istnieje');
+  const histRef = ref(db, `users/${uid}/savings/goals/${goalId}/history`);
+  const entryRef = push(histRef);
+  await update(ref(db), {
+    [`users/${uid}/savings/goals/${goalId}/current`]: newAmount,
+    [`users/${uid}/savings/goals/${goalId}/history/${entryRef.key}`]: {
+      date, fromAmount: goal.current, toAmount: newAmount,
+      userId: byUserId, note, createdAt: serverTimestamp()
+    }
+  });
+}
+
+export async function deleteGoal(goalId) {
+  const uid = getUserId();
+  await remove(ref(db, `users/${uid}/savings/goals/${goalId}`));
+}
+
+export async function deleteHistoryEntry(entryId) {
+  const uid = getUserId();
+  await remove(ref(db, `users/${uid}/savings/history/${entryId}`));
+}
+
+export async function migrateLegacySavings() {
+  const uid = getUserId();
+  if (!uid) return;
+  const { current, goals } = savingsCache;
+  if (current <= 0 || goals.length > 0) return;
+  try {
+    const newRef = push(ref(db, `users/${uid}/savings/goals`));
+    await update(ref(db), {
+      [`users/${uid}/savings/goals/${newRef.key}`]: {
+        id: newRef.key,
+        name: 'Ogólne',
+        icon: '🏦',
+        color: '#3b82f6',
+        target: 0,
+        current,
+        createdAt: serverTimestamp()
+      },
+      [`users/${uid}/savings/current`]: 0
+    });
+  } catch (err) {
+    console.error('❌ Błąd migracji oszczędności:', err);
+  }
 }
 
 

@@ -2,7 +2,6 @@
 import { getSavings } from '../modules/dataManager.js';
 import { calculateAvailableFunds } from '../modules/budgetCalculator.js';
 import { Fmt } from '../utils/fmt.js';
-import { icon } from '../utils/icons.js';
 import { userChipHTML } from './chips.js';
 import { escapeHTML } from '../utils/sanitizer.js';
 
@@ -15,25 +14,15 @@ function userById(userId) {
   return _getBudgetUsersCache().find(u => u.id === userId) ?? { name: userId ?? '?' };
 }
 
-function statHTML(label, value, sub, unit = '') {
+function statHTML(label, value, sub, unit = '', extraClass = '') {
   return `
-    <div class="stat">
+    <div class="stat-card${extraClass}">
       <div class="stat-label">${label}</div>
       <div class="stat-value">${value}${unit ? `<span class="stat-unit">${unit}</span>` : ''}</div>
-      <div class="sub">${sub}</div>
+      ${sub ? `<div style="font-size:11px;color:var(--ink-3);margin-top:4px">${sub}</div>` : ''}
     </div>`;
 }
 
-function infoRowHTML(iconName, title, text) {
-  return `
-    <div style="display:flex;gap:10px;padding:12px;background:var(--surface-2);border-radius:10px">
-      <div style="flex-shrink:0;color:var(--accent);margin-top:1px">${icon(iconName, { size: 14 })}</div>
-      <div>
-        <div style="font-size:13px;font-weight:500;margin-bottom:2px">${title}</div>
-        <div style="font-size:12px;color:var(--ink-3);line-height:1.5">${text}</div>
-      </div>
-    </div>`;
-}
 
 function historyRowHTML(h) {
   const user = userById(h.userId);
@@ -41,6 +30,7 @@ function historyRowHTML(h) {
   const positive = diff >= 0;
   const diffColor = positive ? 'var(--success)' : 'var(--danger)';
   const diffSign = positive ? '+' : '−';
+  const eid = escapeHTML(h.id);
   return `
     <tr>
       <td>
@@ -52,112 +42,187 @@ function historyRowHTML(h) {
       <td class="amount text-muted">${Fmt.zl(h.fromAmount ?? 0)}</td>
       <td class="amount" style="font-weight:500">${Fmt.zl(h.toAmount ?? 0)}</td>
       <td class="amount" style="color:${diffColor};font-weight:500">${diffSign}${Fmt.zl(Math.abs(diff))}</td>
+      <td class="row-actions">
+        <button class="btn ghost icon-only sm" title="Usuń wpis"
+          data-action="delete-savings-history" data-entry-id="${eid}">✕</button>
+      </td>
     </tr>`;
+}
+
+function goalCardHTML(goal) {
+  const pct       = goal.target > 0 ? Math.min(100, (goal.current / goal.target) * 100) : null;
+  const remaining = goal.target > 0 ? Math.max(0, goal.target - goal.current) : null;
+  const completed = pct !== null && pct >= 100;
+  const gid       = escapeHTML(goal.id);
+  const gcolor    = escapeHTML(goal.color);
+
+  const progressHTML = pct !== null ? `
+    <div class="goal-progress">
+      <div class="progress" style="height:6px">
+        <div style="width:${pct.toFixed(1)}%;background:${gcolor};border-radius:inherit"></div>
+      </div>
+      <div class="goal-progress-mini" style="margin-top:6px">
+        <span>${Fmt.zl(goal.current)} zł</span>
+        <span style="flex:1;text-align:right;color:var(--ink-3)">cel: ${Fmt.zl(goal.target)} zł</span>
+      </div>
+    </div>` : `
+    <div class="goal-progress-mini">
+      <span style="font-size:13px;font-weight:500">${Fmt.zl(goal.current)} zł</span>
+      <span style="color:var(--ink-3);font-size:12px;margin-left:6px">odłożone</span>
+    </div>`;
+
+  const infoItems = [
+    ...(pct !== null ? [
+      { label: 'Zebrane', value: `${Fmt.zl(goal.current)} zł` },
+      { label: 'Cel', value: `${Fmt.zl(goal.target)} zł` },
+      { label: 'Pozostało', value: `${Fmt.zl(remaining)} zł` },
+      { label: 'Postęp', value: `${pct.toFixed(0)}%` },
+    ] : []),
+    ...(goal.deadline ? [{ label: 'Termin', value: Fmt.dateLong(goal.deadline) }] : []),
+  ].map(i => `
+    <div class="goal-info-item">
+      <div class="label">${i.label}</div>
+      <div class="value">${i.value}</div>
+    </div>`).join('');
+
+  const last5 = (goal.history ?? []).slice(0, 5);
+  const contributionsHTML = last5.length ? `
+    <div class="contributions-list">
+      ${last5.map(h => {
+        const diff = (h.toAmount ?? 0) - (h.fromAmount ?? 0);
+        const pos  = diff >= 0;
+        return `
+          <div class="contribution-item">
+            <div class="contribution-info">
+              <span class="contribution-type">${pos ? '➕' : '➖'}</span>
+              <div>
+                <div style="font-size:12px;font-weight:500">${escapeHTML(h.note || (pos ? 'Wpłata' : 'Wypłata'))}</div>
+                <div class="contribution-date">${escapeHTML(Fmt.relativeDate(h.date))}</div>
+              </div>
+            </div>
+            <div class="contribution-right">
+              <span class="contribution-amount" style="color:${pos ? 'var(--success)' : 'var(--danger)'}">
+                ${pos ? '+' : ''}${Fmt.zl(diff)} zł
+              </span>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const collapsedInfo = pct !== null ? `
+    <div class="goal-collapsed-info">
+      <div class="collapsed-amounts">
+        <span class="collapsed-current">${Fmt.zl(goal.current)}</span>
+        <span class="collapsed-separator">/</span>
+        <span class="collapsed-target">${Fmt.zl(goal.target)} zł</span>
+      </div>
+      <span class="collapsed-progress">${pct.toFixed(0)}%</span>
+    </div>` : `
+    <div class="goal-collapsed-info">
+      <span class="collapsed-stat">${Fmt.zl(goal.current)} zł</span>
+    </div>`;
+
+  return `
+    <div class="savings-goal-card${completed ? ' completed' : ''}" data-goal-id="${gid}">
+      <div class="goal-header-collapsible" data-action="toggle-savings-goal" data-goal-id="${gid}">
+        <div class="goal-collapse-left">
+          <div class="goal-icon" style="background:color-mix(in srgb,${gcolor} 14%,var(--surface-2))">${escapeHTML(goal.icon)}</div>
+          <div class="goal-name">${escapeHTML(goal.name)}</div>
+          ${completed ? '<span class="goal-completed-badge">✓ Osiągnięty</span>' : ''}
+        </div>
+        ${collapsedInfo}
+      </div>
+      <div class="goal-actions-bar">
+        <button class="btn sm accent" data-action="savings-goal-deposit" data-goal-id="${gid}" data-mode="add">+ Wpłać</button>
+        <button class="btn sm ghost" data-action="savings-goal-deposit" data-goal-id="${gid}" data-mode="sub">− Wypłać</button>
+        <button class="btn sm ghost" data-action="edit-savings-goal" data-goal-id="${gid}">Edytuj</button>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn sm ghost" data-action="close-savings-goal" data-goal-id="${gid}"
+            title="Przenieś kwotę do dostępnych środków i usuń cel">↩ Zamknij cel</button>
+          <button class="btn sm ghost" style="color:var(--danger)" data-action="delete-savings-goal" data-goal-id="${gid}"
+            title="Usuń cel i całą historię wpłat">Usuń</button>
+        </span>
+      </div>
+      <div class="goal-expandable-content">
+        ${progressHTML}
+        ${infoItems ? `<div class="goal-info" style="margin-top:12px">${infoItems}</div>` : ''}
+        ${contributionsHTML}
+      </div>
+    </div>`;
 }
 
 export function renderSavingsSection() {
   const el = document.getElementById('savingsGoalsContent');
   if (!el) return;
 
-  const { current, history } = getSavings();
-  const { available, totalAvailable } = calculateAvailableFunds();
-  // totalAvailable = incomes − expenses (przed odjęciem savings) = "środki całkowite"
-  const totalFunds = totalAvailable;
-  const sharePct = totalFunds > 0 ? Math.min((current / totalFunds) * 100, 100) : 0;
-  const availableColor = available < 0 ? 'var(--danger)' : 'var(--success)';
-  const shareFormatted = sharePct.toFixed(1).replace('.', ',');
+  // Zapamiętaj stan collapsed przed re-renderem
+  const collapsedIds = new Set(
+    [...document.querySelectorAll('.savings-goal-card.collapsed')]
+      .map(c => c.dataset.goalId)
+      .filter(Boolean)
+  );
 
-  const historyRows = history.length
-    ? history.map(historyRowHTML).join('')
-    : `<tr><td colspan="6" style="text-align:center;padding:32px 0;color:var(--ink-3)">
-        <div style="font-size:13px;font-weight:500;margin-bottom:4px">Brak zmian</div>
-        <div style="font-size:12px">Pierwsza zmiana kwoty pojawi się tutaj</div>
-       </td></tr>`;
+  const { history, goals } = getSavings();
+  const { available, totalAvailable } = calculateAvailableFunds();
+  const totalSaved = goals.reduce((s, g) => s + g.current, 0);
+  const totalFunds = totalAvailable;
+  const sharePct = totalFunds > 0 ? Math.min((totalSaved / totalFunds) * 100, 100) : 0;
+  const shareFormatted = sharePct.toFixed(1).replace('.', ',');
 
   el.innerHTML = `
     <div class="col" style="gap:20px">
 
-      <p class="lead">
-        Odłożona kwota, którą wykluczasz z dostępnych środków. Wprowadzasz jedną liczbę — system odejmuje ją od budżetu przy każdym wyliczeniu limitów.
-      </p>
-
       <div class="stat-grid">
-        ${statHTML('Odłożone', Fmt.zl(current), 'wykluczone z budżetu')}
-        ${statHTML('Dostępne po odjęciu', Fmt.zl(available), 'w obliczeniach limitów')}
-        ${statHTML('Środki całkowite', Fmt.zl(totalFunds), 'odłożone + dostępne')}
+        ${statHTML('Łącznie odłożone', Fmt.zl(totalSaved), 'suma wszystkich celów')}
+        ${statHTML('Dostępne po odjęciu', Fmt.zl(available), 'w obliczeniach limitów', '', available < 0 ? ' danger' : '')}
+        ${statHTML('Środki całkowite', Fmt.zl(totalFunds), 'środki bez odjęcia oszczędności')}
         ${statHTML('Udział oszczędności', shareFormatted, 'w środkach całkowitych', '%')}
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:20px;align-items:stretch">
-
-        <div class="card" style="display:flex;flex-direction:column;justify-content:center;padding:28px;min-height:280px">
-          <div style="font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:0.08em;font-weight:600">
-            Aktualnie odłożone
-          </div>
-          <div class="num" style="font-size:clamp(36px,6vw,56px);font-weight:500;letter-spacing:-0.03em;line-height:1.05;margin-top:12px">
-            ${Fmt.zl(current)}<span style="font-size:0.4em;color:var(--ink-3);font-weight:400;margin-left:6px">zł</span>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px;font-size:12px">
-            <div style="display:flex;justify-content:space-between">
-              <span style="color:var(--ink-3)">Środki całkowite</span>
-              <span class="num">${Fmt.zl(totalFunds)} zł</span>
-            </div>
-            <div style="display:flex;justify-content:space-between">
-              <span style="color:var(--ink-3)">− Odłożone</span>
-              <span class="num">${Fmt.zl(current)} zł</span>
-            </div>
-            <div class="progress" style="height:8px">
-              <div style="width:${sharePct}%;background:var(--success)"></div>
-            </div>
-            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3)">
-              <span>= Dostępne dla budżetu</span>
-              <strong class="num" style="color:${availableColor}">${Fmt.zl(available)} zł</strong>
-            </div>
-          </div>
-
-          <button class="btn accent" data-action="open-savings-modal"
-            style="margin-top:20px;align-self:flex-start">
-            ${icon('Edit', { size: 14 })} Zmień kwotę oszczędności
-          </button>
-        </div>
-
-        <div class="card">
-          <div class="card-hd">
-            <h3>Jak działa moduł oszczędności</h3>
-            <span class="sub">Prosta logika, bez celów</span>
-          </div>
-          <p style="font-size:13px;color:var(--ink-2);margin:0 0 16px">
-            Oszczędności to <strong>pojedyncza kwota</strong>, którą deklarujesz jako odłożoną. System pomniejsza o nią dostępne środki przy wyliczaniu Koperty Dnia oraz limitów dziennych — tak, żeby budżet operacyjny nie obejmował tej puli.
-          </p>
-          <div class="col" style="gap:10px">
-            ${infoRowHTML('Wallet', 'Nie zmienia środków na koncie', 'Zmiana kwoty oszczędności to tylko deklaracja księgowa — nie generuje transakcji.')}
-            ${infoRowHTML('Target', 'Wpływa na limity', 'Koperta dnia i limity dzienne są wyliczane z (Dostępne − Oszczędności).')}
-            ${infoRowHTML('Clock', 'Historia zmian jest zachowana', 'Każda korekta kwoty trafia do logów — wiesz kto, kiedy i o ile zmienił.')}
-          </div>
-        </div>
-
       </div>
 
       <div class="card flush">
         <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
-          <h3 style="flex:1;margin:0">Historia zmian</h3>
+          <h3 style="flex:1;margin:0">Cele oszczędnościowe</h3>
+          <span class="tag">${goals.length}</span>
+          <button class="btn sm accent" data-action="open-savings-goal-modal">+ Dodaj cel</button>
+        </div>
+        <div style="padding:${goals.length ? '12px' : '0'}">
+          ${goals.length
+            ? `<div class="savings-goals-list">${goals.map(goalCardHTML).join('')}</div>`
+            : `<div class="savings-empty-state">
+                <div style="font-size:28px;margin-bottom:8px">🎯</div>
+                <div style="font-size:13px;font-weight:500;margin-bottom:4px">Brak celów</div>
+                <div style="font-size:12px">Dodaj pierwszy cel — jego kwota zostanie automatycznie odjęta z budżetu operacyjnego</div>
+              </div>`
+          }
+        </div>
+      </div>
+
+      ${history.length ? `
+      <div class="card flush">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px">
+          <h3 style="flex:1;margin:0">Archiwum zmian</h3>
           <span class="tag">${history.length}</span>
+          <span style="font-size:11px;color:var(--ink-3)">Historia sprzed migracji</span>
         </div>
         <table class="table">
           <thead>
             <tr>
-              <th>Data</th>
-              <th>Użytkownik</th>
-              <th>Notatka</th>
-              <th class="amount">Z</th>
-              <th class="amount">Na</th>
-              <th class="amount">Zmiana</th>
+              <th>Data</th><th>Użytkownik</th><th>Notatka</th>
+              <th class="amount">Z</th><th class="amount">Na</th><th class="amount">Zmiana</th><th></th>
             </tr>
           </thead>
-          <tbody>${historyRows}</tbody>
+          <tbody>${history.slice(0, 50).map(historyRowHTML).join('')}</tbody>
         </table>
-      </div>
+      </div>` : ''}
 
     </div>`;
+
+  // Przywróć stan collapsed po re-renderze
+  if (collapsedIds.size > 0) {
+    el.querySelectorAll('.savings-goal-card').forEach(card => {
+      if (collapsedIds.has(card.dataset.goalId)) {
+        card.classList.add('collapsed');
+      }
+    });
+  }
 }

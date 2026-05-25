@@ -7,12 +7,33 @@
 
 .savings-goal-card {
   background: var(--surface);
-  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm); overflow: hidden;
 }
 .savings-goal-card:hover { background: var(--surface); box-shadow: none; transform: none; }
-.savings-goal-card.completed { border-left-color: var(--success); opacity: 0.9; }
-.savings-goal-card.paused { border-left-color: var(--line-strong); opacity: 0.85; }
+.savings-goal-card.completed {
+  border-color: var(--success);
+  background: color-mix(in srgb, var(--success) 3%, var(--surface));
+}
+.savings-goal-card.completed .goal-header-collapsible:hover {
+  background: color-mix(in srgb, var(--success) 6%, var(--surface-2));
+}
+.savings-goal-card.completed .collapsed-progress {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.savings-goal-card.paused { opacity: 0.85; }
+
+.goal-completed-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--success);
+  background: var(--success-soft);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .savings-goal-card.collapsed .goal-collapsed-info { display: flex; }
 .savings-goal-card:not(.collapsed) .goal-collapsed-info { display: none; }
@@ -22,7 +43,7 @@
 .goal-header-collapsible { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; }
 .goal-header-collapsible:hover { background: var(--surface-2); }
 .goal-collapse-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-.goal-icon { font-size: 18px; flex-shrink: 0; }
+.goal-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
 .goal-name { font-size: 13px; font-weight: 500; color: var(--ink-1); margin: 0; }
 .goal-collapsed-info { display: flex; align-items: center; gap: 12px; margin-left: auto; padding-left: 8px; }
 .collapsed-amounts { display: flex; align-items: baseline; gap: 4px; font-size: 12px; }

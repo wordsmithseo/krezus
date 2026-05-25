@@ -24,6 +24,8 @@
 .tag.info    { background: var(--info-soft);    color: var(--info);    border-color: transparent; }
 .tag.accent  { background: var(--accent-soft);  color: var(--accent);  border-color: transparent; }
 .tag.dot::before { content: ""; width: 5px; height: 5px; background: currentColor; border-radius: 50%; flex-shrink: 0; }
+.tag.dot.pulse::before { animation: tag-dot-pulse 2s ease-in-out infinite; }
+@keyframes tag-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
 
 /* Delta indicators */
 .delta { font-size: 12px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); }

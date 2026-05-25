@@ -39,3 +39,6 @@
   display: flex; justify-content: flex-end; gap: 8px;
   position: sticky; bottom: 0; background: var(--surface);
 }
+
+/* Blokada scrolla strony gdy modal jest otwarty */
+body:has(.modal.active) { overflow: hidden; }

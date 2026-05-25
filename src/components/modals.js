@@ -975,7 +975,7 @@ export function showIncomeDetailsModal(income, { getBudgetUserName, onEdit } = {
     ? '<span class="tag" style="margin-left:6px;background:color-mix(in srgb,var(--info,#6c9) 12%,var(--surface));color:var(--ink-2)">Było planowane</span>'
     : '';
 
-  const amountSign = income.amount >= 0 ? '+' : '';
+  const amountSign = income.amount >= 0 ? '+' : '−';
   const amountColor = income.amount >= 0 ? 'var(--success)' : 'var(--danger)';
 
   const sourceLabel = isCorrection ? 'Korekta' : 'Źródło';

@@ -1,0 +1,18 @@
+#!/bin/sh
+# Po git pull: npm install jeśli package.json lub package-lock.json się zmieniły
+
+CHANGED=$(git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD 2>/dev/null)
+
+if echo "$CHANGED" | grep -qE "^package(-lock)?\.json$"; then
+  echo "post-merge: package.json zmieniony, uruchamiam npm install..."
+
+  # załaduj nvm jeśli dostępny
+  if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    . "$HOME/.nvm/nvm.sh"
+    nvm use 20 --silent 2>/dev/null || true
+  fi
+
+  npm install
+else
+  echo "post-merge: package.json bez zmian, pomijam npm install"
+fi

@@ -5,7 +5,7 @@ vi.mock('../dataManager.js', () => ({
   getIncomes: vi.fn(() => []),
   getExpenses: vi.fn(() => []),
   getEndDates: vi.fn(() => ({ primary: '', secondary: '' })),
-  getSavingGoal: vi.fn(() => 0),
+  getGoals: vi.fn(() => []),
   getEnvelopePeriod: vi.fn(() => 0),
   getDynamicsPeriod: vi.fn(() => 0),
   getDailyEnvelope: vi.fn(() => null),
@@ -66,7 +66,7 @@ import {
 import {
   getIncomes,
   getExpenses,
-  getSavingGoal,
+  getGoals,
   getDailyEnvelope,
   saveDailyEnvelope
 } from '../dataManager.js';
@@ -151,7 +151,7 @@ describe('calculateAvailableFunds', () => {
     getExpenses.mockReturnValue([
       { type: 'normal', date: '2026-02-10', amount: 3000 }
     ]);
-    getSavingGoal.mockReturnValue(1000);
+    getGoals.mockReturnValue([{'current': 1000}]);
 
     const result = calculateAvailableFunds();
     expect(result.totalAvailable).toBe(7000);
@@ -166,7 +166,7 @@ describe('calculateAvailableFunds', () => {
     getExpenses.mockReturnValue([
       { type: 'normal', date: '2026-02-10', amount: 2000 }
     ]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
 
     const result = calculateAvailableFunds();
     expect(result.available).toBe(-1000);
@@ -177,7 +177,7 @@ describe('calculateAvailableFunds', () => {
       { type: 'normal', date: '2026-02-10', amount: 5000 }
     ]);
     getExpenses.mockReturnValue([]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
 
     const result = calculateAvailableFunds();
     expect(result.available).toBe(5000);
@@ -195,7 +195,7 @@ describe('calculateCurrentLimits', () => {
       { type: 'planned', date: '2026-02-22', amount: 5000, source: 'Wyplata' }
     ]);
     getExpenses.mockReturnValue([]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
 
     const result = calculateCurrentLimits();
     expect(result.limits.length).toBe(1);
@@ -215,7 +215,7 @@ describe('calculateCurrentLimits', () => {
       { type: 'planned', date: '2026-02-05', amount: 5000, source: 'Old' }
     ]);
     getExpenses.mockReturnValue([]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
 
     const result = calculateCurrentLimits();
     const pastLimit = result.limits.find(l => l.calendarDays < 0);
@@ -234,7 +234,7 @@ describe('calculateCurrentLimits', () => {
     getExpenses.mockReturnValue([
       { type: 'planned', date: '2026-02-16', amount: 500 }
     ]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
 
     const result = calculateCurrentLimits();
     expect(result.limits.length).toBeGreaterThan(0);
@@ -475,7 +475,7 @@ describe('updateDailyEnvelope', () => {
     getExpenses.mockReturnValue([
       { type: 'normal', date: '2026-02-10', amount: 2000 }
     ]);
-    getSavingGoal.mockReturnValue(0);
+    getGoals.mockReturnValue([]);
     getDailyEnvelope.mockReturnValue(null);
 
     const result = await updateDailyEnvelope();
