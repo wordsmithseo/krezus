@@ -21,9 +21,15 @@ tbody tr:hover { background: var(--surface-2); }
 tr.planned { background: oklch(0.97 0.02 90 / 0.5); }
 tr.planned:hover, tr.correction:hover { filter: brightness(0.97); }
 
+tr.was-planned { background: var(--info-soft); }
+tr.was-planned:hover { background: color-mix(in oklch, var(--info-soft) 75%, var(--info) 25%); }
+
 tr.today { background: var(--accent-soft); }
 tr.today:hover { background: color-mix(in oklch, var(--accent-soft) 85%, var(--accent) 15%); }
 tr.today td { border-bottom-color: color-mix(in srgb, var(--accent) 20%, var(--line)); }
+
+tr.today.was-planned { background: linear-gradient(to right, var(--accent-soft), var(--info-soft)); }
+tr.today.was-planned:hover { background: linear-gradient(to right, color-mix(in oklch, var(--accent-soft) 80%, var(--accent) 20%), color-mix(in oklch, var(--info-soft) 75%, var(--info) 25%)); }
 
 .actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
 td.actions { width: 1%; white-space: nowrap; }

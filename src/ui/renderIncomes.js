@@ -233,9 +233,10 @@ export function renderSources() {
     return;
   }
 
-  const iconEdit  = icon('Edit',  { size: 14, strokeWidth: 1.5 });
-  const iconTrash = icon('Trash', { size: 14, strokeWidth: 1.5 });
-  const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
+  const iconEdit    = icon('Edit',      { size: 14, strokeWidth: 1.5 });
+  const iconTrash   = icon('Trash',     { size: 14, strokeWidth: 1.5 });
+  const iconCheck   = icon('Check',     { size: 14, strokeWidth: 2 });
+  const iconReplan  = icon('RefreshCw', { size: 14, strokeWidth: 1.5 });
 
   const todayStr = getWarsawDateString();
   const html = paginatedIncomes.map((inc, index) => {
@@ -248,7 +249,7 @@ export function renderSources() {
       : escapeHTML(sourceIcon ? `${sourceIcon} ${inc.source || 'Brak'}` : (inc.source || 'Brak'));
 
     return `
-    <tr class="${rowClass}${isToday ? ' today' : ''}" data-action="view-income" data-id="${inc.id}" style="cursor:pointer">
+    <tr class="${rowClass}${inc.wasPlanned ? ' was-planned' : ''}${isToday ? ' today' : ''}" data-action="view-income" data-id="${inc.id}" style="cursor:pointer">
       <td class="row-num">${startIdx + index + 1}</td>
       <td>
         <div style="font-weight:500">${formatDateLabel(inc.date)}</div>
@@ -260,12 +261,15 @@ export function renderSources() {
         ? '<span class="tag info dot">Korekta</span>'
         : inc.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
-          : '<span class="tag success dot">Zrealizowany</span>'}</td>
+          : inc.wasPlanned
+            ? '<span class="tag success dot">Zrealizowany</span><span class="tag" style="font-size:10px;margin-left:4px;opacity:.7">↩ plan.</span>'
+            : '<span class="tag success dot">Zrealizowany</span>'}</td>
       <td class="amount" style="color:${inc.amount < 0 ? 'var(--danger)' : 'var(--success)'};font-weight:500">${inc.amount >= 0 ? '+' : '−'}${Fmt.zl(Math.abs(inc.amount))}</td>
       <td class="actions">
         ${!isCorrEntry ? `
           ${inc.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-income" data-id="${inc.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
           <div class="row-actions">
+            ${inc.wasPlanned ? `<button class="btn ghost icon-only sm" data-action="replan-income" data-id="${inc.id}" title="Zaplanuj ponownie" style="color:var(--accent)">${iconReplan}</button>` : ''}
             <button class="btn ghost icon-only sm" data-action="edit-income" data-id="${inc.id}" title="Edytuj">${iconEdit}</button>
             <button class="btn ghost icon-only sm" data-action="delete-income" data-id="${inc.id}" title="Usuń">${iconTrash}</button>
           </div>

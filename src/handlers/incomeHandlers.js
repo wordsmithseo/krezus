@@ -11,7 +11,7 @@ import {
   calculateSpendingPeriods
 } from '../modules/budgetCalculator.js';
 import { showEditIncomeModal, showPasswordModal } from '../components/modals.js';
-import { showConfirmModal } from '../components/confirmModal.js';
+import { showConfirmModal, showPromptModal } from '../components/confirmModal.js';
 import { showErrorMessage, showSuccessMessage } from '../utils/errorHandler.js';
 import { validateAmount } from '../utils/validators.js';
 import { getWarsawDateString, getCurrentTimeString } from '../utils/dateHelpers.js';
@@ -197,6 +197,52 @@ export async function deleteIncome(incomeId) {
   } catch (error) {
     console.error('Błąd usuwania przychodu:', error);
     showErrorMessage('Nie udało się usunąć przychodu');
+  }
+}
+
+export async function rePlanIncome(incomeId) {
+  const incomes = getIncomes();
+  const income = incomes.find(i => i.id === incomeId);
+  if (!income) return;
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toLocaleDateString('sv-SE');
+
+  const newDate = await showPromptModal(
+    'Zaplanuj ponownie',
+    `„${income.source || 'Przychód'}" — wybierz nową datę planowanej realizacji:`,
+    tomorrowStr,
+    {
+      inputType: 'date',
+      confirmText: 'Zaplanuj',
+      validator: (v) => v ? true : 'Wybierz datę',
+    }
+  );
+  if (!newDate) return;
+
+  income.type = 'planned';
+  income.date = newDate;
+  income.time = income.time || '';
+
+  try {
+    await saveIncomes(incomes);
+    clearLimitsCache();
+    await updateDailyEnvelope();
+
+    const budgetUserName = getBudgetUserNameFn(income.userId);
+    await log('INCOME_REPLAN', {
+      amount: income.amount,
+      source: income.source,
+      newDate,
+      budgetUser: budgetUserName
+    });
+
+    if (renderAfterChangeFn) renderAfterChangeFn('income');
+    showSuccessMessage('Przychód zaplanowany ponownie');
+  } catch (error) {
+    console.error('Błąd ponownego planowania przychodu:', error);
+    showErrorMessage('Nie udało się zaplanować przychodu');
   }
 }
 

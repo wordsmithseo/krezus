@@ -254,9 +254,10 @@ export function renderExpenses() {
     return;
   }
 
-  const iconEdit  = icon('Edit',  { size: 14, strokeWidth: 1.5 });
-  const iconTrash = icon('Trash', { size: 14, strokeWidth: 1.5 });
-  const iconCheck = icon('Check', { size: 14, strokeWidth: 2 });
+  const iconEdit    = icon('Edit',      { size: 14, strokeWidth: 1.5 });
+  const iconTrash   = icon('Trash',     { size: 14, strokeWidth: 1.5 });
+  const iconCheck   = icon('Check',     { size: 14, strokeWidth: 2 });
+  const iconReplan  = icon('RefreshCw', { size: 14, strokeWidth: 1.5 });
 
   const categories = getCategories().map((cat, idx) => ({ ...cat, color: CAT_COLORS[idx % CAT_COLORS.length] }));
   const catByName = name => categories.find(c => c.name === name) || null;
@@ -270,7 +271,7 @@ export function renderExpenses() {
     const isToday = exp.date === todayStr;
 
     return `
-      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${isToday ? ' today' : ''}" data-action="view-expense" data-id="${exp.id}" style="cursor:pointer">
+      <tr class="${exp.type === 'planned' ? 'planned' : 'realised'}${exp.wasPlanned ? ' was-planned' : ''}${isToday ? ' today' : ''}" data-action="view-expense" data-id="${exp.id}" style="cursor:pointer">
         <td class="row-num">${startIdx + index + 1}</td>
         <td>
           <div style="font-weight:500">${formatDateLabel(exp.date)}</div>
@@ -281,11 +282,14 @@ export function renderExpenses() {
         <td>${exp.userId && getBudgetUserNameFn ? userChipHTML({ id: exp.userId, name: getBudgetUserNameFn(exp.userId) }) : '<span class="text-mute">—</span>'}</td>
         <td>${exp.type === 'planned'
           ? '<span class="tag info dot">Planowany</span>'
-          : '<span class="tag success dot">Zrealizowany</span>'}</td>
+          : exp.wasPlanned
+            ? '<span class="tag success dot">Zrealizowany</span><span class="tag" style="font-size:10px;margin-left:4px;opacity:.7">↩ plan.</span>'
+            : '<span class="tag success dot">Zrealizowany</span>'}</td>
         <td class="amount" style="color:var(--danger);font-weight:500">−${Fmt.zl(exp.amount)}</td>
         <td class="actions">
           ${exp.type === 'planned' ? `<button class="btn sm" style="color:var(--success);border-color:color-mix(in srgb,var(--success) 30%,var(--line))" data-action="realise-expense" data-id="${exp.id}" title="Zrealizuj">${iconCheck} Zrealizuj</button>` : ''}
           <div class="row-actions">
+            ${exp.wasPlanned ? `<button class="btn ghost icon-only sm" data-action="replan-expense" data-id="${exp.id}" title="Zaplanuj ponownie" style="color:var(--accent)">${iconReplan}</button>` : ''}
             <button class="btn ghost icon-only sm" data-action="edit-expense" data-id="${exp.id}" title="Edytuj">${iconEdit}</button>
             <button class="btn ghost icon-only sm" data-action="delete-expense" data-id="${exp.id}" title="Usuń">${iconTrash}</button>
           </div>

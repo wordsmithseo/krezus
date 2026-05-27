@@ -126,8 +126,8 @@ import { initNavIcons, setActiveNavItem, initMobileDrawer, setMobileDrawer } fro
 import { icon as lucideIcon } from './utils/icons.js';
 import { barChartHTML, dailyChartHTML } from './ui/charts.js';
 // Import handlerów
-import { addExpense, editExpense, deleteExpense, realiseExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
-import { addIncome, editIncome, deleteIncome, realiseIncome, addCorrection, setIncomeHandlerDeps } from './handlers/incomeHandlers.js';
+import { addExpense, editExpense, deleteExpense, realiseExpense, rePlanExpense, setExpenseHandlerDeps } from './handlers/expenseHandlers.js';
+import { addIncome, editIncome, deleteIncome, realiseIncome, rePlanIncome, addCorrection, setIncomeHandlerDeps } from './handlers/incomeHandlers.js';
 import { addCategory, editCategory, deleteCategory, startMergeCategory, cancelMergeCategory, selectMergeTarget, setCategoryHandlerDeps } from './handlers/categoryHandlers.js';
 
 // Import modułu obecności użytkowników
@@ -1575,6 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     },
     'realise-expense': (el) => realiseExpense(getDataAttributes(el).id),
+    'replan-expense':  (el) => rePlanExpense(getDataAttributes(el).id),
     'edit-expense': (el) => editExpense(getDataAttributes(el).id),
     'delete-expense': (el) => deleteExpense(getDataAttributes(el).id),
     'change-expense-page': (el) => changeExpensePage(parseInt(getDataAttributes(el).page, 10)),
@@ -1594,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     },
     'realise-income': (el) => realiseIncome(getDataAttributes(el).id),
+    'replan-income':  (el) => rePlanIncome(getDataAttributes(el).id),
     'edit-income': (el) => editIncome(getDataAttributes(el).id),
     'delete-income': (el) => deleteIncome(getDataAttributes(el).id),
     'change-income-page': (el) => changeIncomePage(parseInt(getDataAttributes(el).page, 10)),

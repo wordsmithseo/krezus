@@ -82,11 +82,8 @@
 }
 
 /* ---- Kwota w szybkim formularzu ---- */
-.quick-amount-wrap {
-  text-align: center;
-  padding: 8px 0 4px;
-}
 .quick-amount-input {
+  display: block;
   width: 100%;
   font-size: 36px;
   font-weight: 700;
@@ -104,6 +101,5 @@
 }
 .quick-amount-input::-webkit-outer-spin-button,
 .quick-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.quick-amount-input::placeholder { color: var(--ink-4, var(--ink-3)); font-weight: 400; font-size: 24px; }
 .quick-amount-input:focus { border-color: var(--accent); }
 

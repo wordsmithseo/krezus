@@ -10,8 +10,8 @@ import {
   updateDailyEnvelope,
   clearLimitsCache
 } from '../modules/budgetCalculator.js';
-import { showEditExpenseModal } from '../components/modals.js';
-import { showPasswordModal } from '../components/modals.js';
+import { showEditExpenseModal, showPasswordModal } from '../components/modals.js';
+import { showPromptModal } from '../components/confirmModal.js';
 import { showErrorMessage, showSuccessMessage } from '../utils/errorHandler.js';
 import { validateAmount } from '../utils/validators.js';
 import { getCategoryIcon } from '../utils/iconMapper.js';
@@ -223,6 +223,55 @@ export async function deleteExpense(expenseId) {
   } catch (error) {
     console.error('Błąd usuwania wydatku:', error);
     showErrorMessage('Nie udało się usunąć wydatku');
+  }
+}
+
+export async function rePlanExpense(expenseId) {
+  const expenses = getExpenses();
+  const expense = expenses.find(e => e.id === expenseId);
+  if (!expense) return;
+
+  // Domyślna data: jutro
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+
+  const newDate = await showPromptModal(
+    'Zaplanuj ponownie',
+    `„${expense.description || expense.category}" — wybierz nową datę planowanej realizacji:`,
+    tomorrowStr,
+    {
+      inputType: 'date',
+      confirmText: 'Zaplanuj',
+      validator: (v) => v ? true : 'Wybierz datę',
+    }
+  );
+  if (!newDate) return;
+
+  expense.type = 'planned';
+  expense.date = newDate;
+  expense.time = expense.time || '';
+  // wasPlanned pozostaje true — historia, że była już kiedyś zrealizowana
+
+  try {
+    await saveExpenses(expenses);
+    clearLimitsCache();
+    await updateDailyEnvelope();
+
+    const budgetUserName = getBudgetUserNameFn(expense.userId);
+    await log('EXPENSE_REPLAN', {
+      amount: expense.amount,
+      category: expense.category,
+      description: expense.description,
+      newDate,
+      budgetUser: budgetUserName
+    });
+
+    if (renderAfterChangeFn) renderAfterChangeFn('expense');
+    showSuccessMessage('Wydatek zaplanowany ponownie');
+  } catch (error) {
+    console.error('Błąd ponownego planowania wydatku:', error);
+    showErrorMessage('Nie udało się zaplanować wydatku');
   }
 }
 
