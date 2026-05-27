@@ -107,36 +107,3 @@
 .quick-amount-input::placeholder { color: var(--ink-4, var(--ink-3)); font-weight: 400; font-size: 24px; }
 .quick-amount-input:focus { border-color: var(--accent); }
 
-/* ---- Swipe reveal w tabeli ---- */
-.swipe-reveal-delete {
-  position: absolute;
-  right: 0; top: 0; bottom: 0;
-  width: 80px;
-  background: var(--danger);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  gap: 4px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 100ms;
-}
-.swipe-reveal-edit {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 80px;
-  background: var(--accent);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  gap: 4px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 100ms;
-}
