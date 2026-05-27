@@ -295,6 +295,7 @@ export function renderExpenses() {
   }).join('');
 
   tbody.innerHTML = html;
+  initSwipeRows(tbody);
 
   // tfoot — suma widoczna (tylko bieżąca strona)
   if (tfoot) {
@@ -367,4 +368,70 @@ function updatePaginationVisibility(totalItems) {
   const container = document.getElementById('expensesPagination');
   if (!container) return;
   container.style.display = totalItems > PAGINATION.EXPENSES_PER_PAGE ? 'flex' : 'none';
+}
+
+/**
+ * Swipe-to-action na wierszach tabeli wydatków (tylko mobile).
+ * Swipe w lewo → usuń, swipe w prawo → edytuj.
+ */
+function initSwipeRows(tbody) {
+  if (!tbody) return;
+  // Tylko na urządzeniach dotykowych
+  if (!window.matchMedia('(pointer: coarse)').matches) return;
+
+  const THRESHOLD = 55; // px do wyzwolenia akcji
+  const MAX_SWIPE = 90; // px — limit przesunięcia wizualnego
+
+  tbody.querySelectorAll('tr[data-action="view-expense"]').forEach(row => {
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let tracking = false;
+
+    row.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      currentX = 0;
+      tracking = true;
+      row.style.transition = 'none';
+    }, { passive: true });
+
+    row.addEventListener('touchmove', (e) => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      // Jeśli ruch głównie pionowy — nie traktuj jako swipe
+      if (Math.abs(dy) > Math.abs(dx) + 8) { tracking = false; return; }
+      currentX = dx;
+      const clampedX = Math.max(-MAX_SWIPE, Math.min(MAX_SWIPE, dx));
+      row.style.transform = `translateX(${clampedX}px)`;
+    }, { passive: true });
+
+    row.addEventListener('touchend', () => {
+      if (!tracking) return;
+      tracking = false;
+      row.style.transition = 'transform 200ms ease';
+
+      if (currentX < -THRESHOLD) {
+        // Swipe lewo → usuń
+        row.style.transform = `translateX(-${MAX_SWIPE}px)`;
+        setTimeout(() => {
+          const deleteBtn = row.querySelector('[data-action="delete-expense"]');
+          if (deleteBtn) deleteBtn.click();
+          row.style.transform = '';
+        }, 180);
+      } else if (currentX > THRESHOLD) {
+        // Swipe prawo → edytuj
+        row.style.transform = `translateX(${MAX_SWIPE}px)`;
+        setTimeout(() => {
+          const editBtn = row.querySelector('[data-action="edit-expense"]');
+          if (editBtn) editBtn.click();
+          row.style.transform = '';
+        }, 120);
+      } else {
+        row.style.transform = '';
+      }
+      currentX = 0;
+    });
+  });
 }

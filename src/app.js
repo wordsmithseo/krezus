@@ -547,6 +547,22 @@ function updateNavBadges() {
     const totalSaved = getGoals().reduce((s, g) => s + g.current, 0);
     savingsBadge.textContent = totalSaved > 0 ? Fmt.zl(totalSaved) + ' zł' : '';
   }
+
+  // Topbar chip koperty (mobile)
+  updateTopbarEnvelopeChip();
+}
+
+function updateTopbarEnvelopeChip() {
+  const chip = document.getElementById('topbarEnvelopeChip');
+  const amountEl = document.getElementById('topbarEnvelopeAmount');
+  if (!chip || !amountEl) return;
+  try {
+    const { remaining, total, spent } = calculateSpendingGauge();
+    amountEl.textContent = Fmt.zl(remaining) + ' zł';
+    const pct = total > 0 ? spent / total : 0;
+    chip.dataset.status = pct > 0.85 ? 'danger' : pct > 0.6 ? 'warning' : 'ok';
+    chip.style.display = '';
+  } catch { /* brak danych koperty */ }
 }
 
 // renderSummary, renderSpendingDynamics, renderDailyEnvelope, renderAnalytics są importowane z src/ui/
@@ -1009,6 +1025,206 @@ const handleExportBudgetData = async (format = 'json') => {
   }
 };
 
+
+// ===== SZYBKI WYDATEK — logika =====
+
+/** Ewaluuje proste wyrażenie matematyczne z pola kwoty (np. "12+5.5", "8*3"). */
+function evalAmountExpr(raw) {
+  const cleaned = raw.replace(/,/g, '.').replace(/\s/g, '');
+  if (!cleaned) return NaN;
+  // Tylko cyfry i podstawowe operatory — bez eval na arbitralnym kodzie
+  if (!/^[\d+\-*/().]+$/.test(cleaned)) return parseFloat(cleaned);
+  try {
+    // eslint-disable-next-line no-new-func
+    const result = Function('"use strict"; return (' + cleaned + ')')();
+    return typeof result === 'number' && isFinite(result) ? result : NaN;
+  } catch { return NaN; }
+}
+
+/** Renderuje top-N kategorie jako duże przyciski w quick formularzu. */
+function setupQuickCategoryBtns(budgetUsers) {
+  const container = document.getElementById('quickCategoryBtns');
+  if (!container) return;
+  const top = getTopCategories(8);
+  if (!top.length) {
+    container.innerHTML = '<div class="text-mute text-sm">Brak kategorii — dodaj pierwszą w sekcji Kategorie.</div>';
+    return;
+  }
+  container.innerHTML = top.map(cat => {
+    const icon = cat.icon || '📦';
+    return `<button type="button" class="quick-cat-btn" data-action="quick-select-cat" data-name="${escapeHTML(cat.name)}">
+      <span class="qcat-icon">${escapeHTML(icon)}</span>
+      <span>${escapeHTML(cat.name)}</span>
+    </button>`;
+  }).join('');
+}
+
+/** Ustawia użytkownika w quick formularzu (chip). */
+function setupQuickUserBtns() {
+  const users = budgetUsersCache;
+  const userRow = document.getElementById('quickUserRow');
+  const userBtnsEl = document.getElementById('quickUserBtns');
+  const userIdInput = document.getElementById('quickUserId');
+  if (!userRow || !userBtnsEl || !userIdInput) return;
+
+  if (users.length <= 1) {
+    // jeden użytkownik — ukryj picker, ustaw automatycznie
+    userRow.style.display = 'none';
+    if (users.length === 1) userIdInput.value = users[0].id;
+    return;
+  }
+
+  userRow.style.display = 'block';
+  // Ustaw pierwszy jako domyślny
+  if (!userIdInput.value && users.length > 0) userIdInput.value = users[0].id;
+
+  userBtnsEl.innerHTML = users.map(u => {
+    const initial = (u.name || '?')[0].toUpperCase();
+    const isActive = userIdInput.value === u.id;
+    return `<button type="button" class="quick-cat-btn${isActive ? ' active' : ''}" style="min-height:auto;padding:8px 12px;flex-direction:row;gap:6px"
+      data-action="quick-select-user" data-uid="${escapeHTML(u.id)}">
+      <span style="font-size:15px;font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px">${escapeHTML(initial)}</span>
+      <span>${escapeHTML(u.name || u.id)}</span>
+    </button>`;
+  }).join('');
+}
+
+/** Wypełnia pole "Powtórz ostatni" ostatnim zrealizowanym wydatkiem. */
+function setupQuickRepeatBar() {
+  const bar = document.getElementById('quickRepeatBar');
+  if (!bar) return;
+  const expenses = getExpenses().filter(e => e.type === 'normal');
+  if (!expenses.length) { bar.style.display = 'none'; return; }
+  // Sortuj malejąco po dacie+czasie
+  expenses.sort((a, b) => {
+    const da = a.date + (a.time || '');
+    const db = b.date + (b.time || '');
+    return db.localeCompare(da);
+  });
+  const last = expenses[0];
+  const nameEl   = document.getElementById('quickRepeatName');
+  const metaEl   = document.getElementById('quickRepeatMeta');
+  const amountEl = document.getElementById('quickRepeatAmount');
+  if (nameEl) nameEl.textContent = last.description || last.category || '—';
+  if (metaEl) metaEl.textContent = last.category || '';
+  if (amountEl) amountEl.textContent = '−' + Fmt.zl(last.amount) + ' zł';
+  bar.style.display = 'flex';
+  bar.dataset.repeatId = last.id;
+}
+
+/** Otwiera quick-expense modal i inicjalizuje go. */
+function openQuickExpenseModal() {
+  openModal('quickExpenseModal');
+  setupQuickCategoryBtns();
+  setupQuickUserBtns();
+  setupQuickRepeatBar();
+  // Wyczyść poprzednie dane
+  const amountInput = document.getElementById('quickAmount');
+  const descInput   = document.getElementById('quickDescription');
+  const catInput    = document.getElementById('quickCategory');
+  const calcPrev    = document.getElementById('quickCalcPreview');
+  if (amountInput) { amountInput.value = ''; amountInput.focus(); }
+  if (descInput)   descInput.value = '';
+  if (catInput)    catInput.value = '';
+  if (calcPrev)    calcPrev.textContent = '';
+  document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
+}
+
+/** Obsługa submit szybkiego formularza. */
+async function addExpenseQuick(e) {
+  e.preventDefault();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn?.disabled) return;
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Zapisywanie…'; }
+
+  const rawAmount = document.getElementById('quickAmount')?.value || '';
+  const amount    = evalAmountExpr(rawAmount);
+
+  if (!validateAmount(amount)) {
+    showErrorMessage('Kwota musi być większa od 0');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
+    return;
+  }
+
+  const category = (document.getElementById('quickCategory')?.value || '').trim();
+  if (!category) {
+    showErrorMessage('Wybierz kategorię');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
+    return;
+  }
+
+  const rawDesc   = (document.getElementById('quickDescription')?.value || '').trim();
+  const description = rawDesc || category;
+
+  const userId = document.getElementById('quickUserId')?.value || '';
+  if (!userId) {
+    showErrorMessage('Brak użytkownika — dodaj go w Ustawieniach');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
+    return;
+  }
+
+  // Dodaj kategorię jeśli nie istnieje
+  const categories = getCategories();
+  if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
+    const newCat = { id: `cat_${Date.now()}`, name: escapeHTML(category), icon: getCategoryIcon(category) };
+    await saveCategories([...categories, newCat]);
+  }
+
+  const date = getWarsawDateString();
+  const time = getCurrentTimeString();
+
+  const newExpense = {
+    id: `exp_${Date.now()}`,
+    amount: Math.round(amount * 100) / 100,
+    type: 'normal',
+    userId,
+    category: escapeHTML(category),
+    description: escapeHTML(description),
+    date,
+    time,
+  };
+
+  try {
+    const expenses = getExpenses();
+    await saveExpenses([...expenses, newExpense]);
+    await updateDailyEnvelope();
+    clearLimitsCache();
+
+    const userName = getBudgetUserName(userId);
+    await log('EXPENSE_ADD', { amount: newExpense.amount, category, description, type: 'normal', budgetUser: userName });
+
+    window.closeModal('quickExpenseModal');
+    renderExpenses();
+    renderCategories();
+    renderSummary();
+    renderDailyEnvelope();
+    showSuccessMessage(`Zapisano: ${description} — ${Fmt.zl(newExpense.amount)} zł`);
+  } catch (err) {
+    console.error('❌ Błąd szybkiego wydatku:', err);
+    showErrorMessage('Nie udało się zapisać wydatku');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
+  }
+}
+
+/** Kalkulator w polu kwoty — obsługa eventów input. */
+function attachAmountCalc(inputId, previewId) {
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  if (!input || !preview) return;
+  input.addEventListener('input', () => {
+    const raw = input.value;
+    // Jeśli wygląda jak wyrażenie (ma operator poza pierwszym minusem)
+    const hasOp = /[\d)][\+\-\*\/][\d(]/.test(raw.replace(/,/g, '.'));
+    if (!hasOp) { preview.textContent = ''; return; }
+    const result = evalAmountExpr(raw);
+    if (!isNaN(result) && result > 0) {
+      preview.textContent = `= ${Fmt.zl(result)} zł`;
+    } else {
+      preview.textContent = '';
+    }
+  });
+}
 
 const SECTION_META = {
   summarySection: { heading: 'Podsumowanie', crumb: 'Budżet' },
@@ -1485,6 +1701,40 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
+    // Szybki wydatek
+    'open-quick-expense-modal': () => openQuickExpenseModal(),
+    'quick-select-cat': (el) => {
+      const name = el.dataset.name;
+      const catInput = document.getElementById('quickCategory');
+      if (catInput) catInput.value = name;
+      document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    },
+    'quick-select-user': (el) => {
+      const uid = el.dataset.uid;
+      const userInput = document.getElementById('quickUserId');
+      if (userInput) userInput.value = uid;
+      document.querySelectorAll('#quickUserBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+    },
+    'quick-repeat-last': (el) => {
+      const id = el.dataset.repeatId;
+      if (!id) return;
+      const expense = getExpenses().find(e => e.id === id);
+      if (!expense) return;
+      // Wypełnij quick form danymi ostatniego wydatku
+      const amountInput = document.getElementById('quickAmount');
+      const descInput   = document.getElementById('quickDescription');
+      const catInput    = document.getElementById('quickCategory');
+      if (amountInput) amountInput.value = String(expense.amount).replace('.', ',');
+      if (descInput)   descInput.value   = expense.description || '';
+      if (catInput)    catInput.value    = expense.category || '';
+      // Zaznacz kategorię
+      document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.name === expense.category);
+      });
+    },
+
     // Modale dodawania
     'open-add-expense-modal': () => {
       openModal('addExpenseModal');
@@ -1645,6 +1895,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('incomeForm')?.addEventListener('submit', addIncome);
   document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);
   document.getElementById('settingsForm')?.addEventListener('submit', saveSettings);
+  document.getElementById('quickExpenseForm')?.addEventListener('submit', addExpenseQuick);
+
+  // Kalkulator w polu kwoty
+  attachAmountCalc('quickAmount', 'quickCalcPreview');
 
   initPullToRefresh();
 });

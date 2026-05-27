@@ -1,0 +1,212 @@
+/* ===== MOBILE UX — zakupowy tryb szybki ===== */
+
+/* ---- FAB (Floating Action Button) ---- */
+.fab-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 45%, transparent);
+  z-index: 89;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.fab-btn svg { width: 26px; height: 26px; stroke: #fff; }
+.fab-btn:active { transform: scale(0.91); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+@media (max-width: 900px) {
+  .fab-btn { display: flex; }
+}
+
+/* ---- Bottom sheet (modal variant) ---- */
+@media (max-width: 640px) {
+  .modal.bottom-sheet {
+    align-items: flex-end;
+  }
+  .modal.bottom-sheet .modal-content {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+    animation: slideUpSheet 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); opacity: 0.6; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Sheet handle (dekoracja) */
+.sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  margin: 10px auto 0;
+}
+
+/* ---- Topbar — chip koperty (mobile only) ---- */
+.topbar-envelope-chip {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.topbar-envelope-chip[data-status="ok"]      { color: var(--success); border-color: color-mix(in srgb, var(--success) 35%, var(--line)); }
+.topbar-envelope-chip[data-status="warning"] { color: oklch(0.65 0.15 50); border-color: color-mix(in srgb, oklch(0.65 0.15 50) 35%, var(--line)); }
+.topbar-envelope-chip[data-status="danger"]  { color: var(--danger);  border-color: color-mix(in srgb, var(--danger)  35%, var(--line)); }
+
+@media (max-width: 900px) {
+  .topbar-envelope-chip { display: flex; }
+  /* FAB zastępuje przycisk "Wydatek" w topbarze na mobile */
+  .topbar-add-expense-btn { display: none !important; }
+  /* Daj tytuł topbaru flex:1 żeby chip był przy akcjach */
+  .topbar-title { flex: 1; min-width: 0; overflow: hidden; }
+}
+
+/* ---- Szybki formularz wydatku ---- */
+.quick-amount-wrap {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.quick-amount-input {
+  width: 100%;
+  font-size: 36px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  text-align: center;
+  border: none;
+  border-bottom: 2.5px solid var(--line);
+  background: transparent;
+  padding: 6px 0 10px;
+  outline: none;
+  color: var(--ink-1);
+  transition: border-color 150ms;
+}
+.quick-amount-input::placeholder { color: var(--ink-4, var(--ink-3)); font-weight: 400; font-size: 28px; }
+.quick-amount-input:focus { border-color: var(--accent); }
+
+.calc-preview {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  margin-top: 2px;
+  font-family: var(--font-mono, monospace);
+}
+
+/* ---- Kategorie w szybkim formularzu ---- */
+.quick-cats-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--ink-3);
+  margin: 18px 0 8px;
+}
+
+.quick-cats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+
+.quick-cat-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  color: var(--ink-2);
+  transition: border-color 120ms, background 120ms, color 120ms;
+  min-height: 62px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+.quick-cat-btn .qcat-icon { font-size: 22px; line-height: 1; }
+.quick-cat-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ---- Powtórz ostatni wydatek ---- */
+.quick-repeat-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.quick-repeat-bar:hover { background: var(--accent-soft); border-color: var(--accent); }
+.quick-repeat-bar .repeat-icon { flex-shrink: 0; color: var(--ink-3); }
+.quick-repeat-bar .repeat-label { flex: 1; min-width: 0; }
+.quick-repeat-bar .repeat-name { font-weight: 600; color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-repeat-bar .repeat-meta { color: var(--ink-3); }
+.quick-repeat-bar .repeat-amount { font-weight: 700; font-family: var(--font-mono, monospace); color: var(--danger); flex-shrink: 0; font-size: 13px; }
+
+/* ---- Swipe reveal w tabeli ---- */
+tr.swipe-left { position: relative; }
+.swipe-reveal-delete {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: var(--danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+  border-radius: 0 0 0 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+.swipe-reveal-edit {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 80px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 100ms;
+}
