@@ -24,6 +24,10 @@
 
 @media (max-width: 900px) {
   .fab-btn { display: flex; }
+  /* FAB zastępuje przycisk "Wydatek" w topbarze na mobile */
+  .topbar-add-expense-btn { display: none !important; }
+  /* Daj tytuł topbaru flex:1 żeby chip był przy akcjach */
+  .topbar-title { flex: 1; min-width: 0; overflow: hidden; }
 }
 
 /* ---- Bottom sheet (modal variant) ---- */
@@ -75,13 +79,9 @@
 
 @media (max-width: 900px) {
   .topbar-envelope-chip { display: flex; }
-  /* FAB zastępuje przycisk "Wydatek" w topbarze na mobile */
-  .topbar-add-expense-btn { display: none !important; }
-  /* Daj tytuł topbaru flex:1 żeby chip był przy akcjach */
-  .topbar-title { flex: 1; min-width: 0; overflow: hidden; }
 }
 
-/* ---- Szybki formularz wydatku ---- */
+/* ---- Kwota w szybkim formularzu ---- */
 .quick-amount-wrap {
   text-align: center;
   padding: 8px 0 4px;
@@ -99,84 +99,15 @@
   outline: none;
   color: var(--ink-1);
   transition: border-color 150ms;
+  /* Ukryj spinner przeglądarki */
+  -moz-appearance: textfield;
 }
-.quick-amount-input::placeholder { color: var(--ink-4, var(--ink-3)); font-weight: 400; font-size: 28px; }
+.quick-amount-input::-webkit-outer-spin-button,
+.quick-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.quick-amount-input::placeholder { color: var(--ink-4, var(--ink-3)); font-weight: 400; font-size: 24px; }
 .quick-amount-input:focus { border-color: var(--accent); }
 
-.calc-preview {
-  min-height: 18px;
-  font-size: 12px;
-  color: var(--ink-3);
-  text-align: center;
-  margin-top: 2px;
-  font-family: var(--font-mono, monospace);
-}
-
-/* ---- Kategorie w szybkim formularzu ---- */
-.quick-cats-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .05em;
-  color: var(--ink-3);
-  margin: 18px 0 8px;
-}
-
-.quick-cats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 8px;
-}
-
-.quick-cat-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 6px;
-  border-radius: var(--radius);
-  border: 1.5px solid var(--line);
-  background: var(--surface);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: center;
-  color: var(--ink-2);
-  transition: border-color 120ms, background 120ms, color 120ms;
-  min-height: 62px;
-  line-height: 1.2;
-  word-break: break-word;
-}
-.quick-cat-btn .qcat-icon { font-size: 22px; line-height: 1; }
-.quick-cat-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-/* ---- Powtórz ostatni wydatek ---- */
-.quick-repeat-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  font-size: 12px;
-  margin-bottom: 14px;
-  cursor: pointer;
-}
-.quick-repeat-bar:hover { background: var(--accent-soft); border-color: var(--accent); }
-.quick-repeat-bar .repeat-icon { flex-shrink: 0; color: var(--ink-3); }
-.quick-repeat-bar .repeat-label { flex: 1; min-width: 0; }
-.quick-repeat-bar .repeat-name { font-weight: 600; color: var(--ink-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quick-repeat-bar .repeat-meta { color: var(--ink-3); }
-.quick-repeat-bar .repeat-amount { font-weight: 700; font-family: var(--font-mono, monospace); color: var(--danger); flex-shrink: 0; font-size: 13px; }
-
 /* ---- Swipe reveal w tabeli ---- */
-tr.swipe-left { position: relative; }
 .swipe-reveal-delete {
   position: absolute;
   right: 0; top: 0; bottom: 0;
@@ -189,7 +120,6 @@ tr.swipe-left { position: relative; }
   font-size: 12px;
   font-weight: 600;
   gap: 4px;
-  border-radius: 0 0 0 0;
   pointer-events: none;
   opacity: 0;
   transition: opacity 100ms;

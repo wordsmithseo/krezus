@@ -424,6 +424,8 @@ function updateBudgetUserToggles() {
   const expenseHidden = document.getElementById('expenseUserId');
   const incomeToggle = document.getElementById('incomeUserToggle');
   const incomeHidden = document.getElementById('incomeUserId');
+  const quickToggle  = document.getElementById('quickExpenseUserToggle');
+  const quickHidden  = document.getElementById('quickExpenseUserId');
 
   if (!expenseToggle || !incomeToggle) return;
 
@@ -458,6 +460,7 @@ function updateBudgetUserToggles() {
 
   renderToggle(expenseToggle, expenseHidden);
   renderToggle(incomeToggle, incomeHidden);
+  if (quickToggle && quickHidden) renderToggle(quickToggle, quickHidden);
 }
 
 window.resetExpenseForm = function() {
@@ -1028,202 +1031,172 @@ const handleExportBudgetData = async (format = 'json') => {
 
 // ===== SZYBKI WYDATEK — logika =====
 
-/** Ewaluuje proste wyrażenie matematyczne z pola kwoty (np. "12+5.5", "8*3"). */
-function evalAmountExpr(raw) {
-  const cleaned = raw.replace(/,/g, '.').replace(/\s/g, '');
-  if (!cleaned) return NaN;
-  // Tylko cyfry i podstawowe operatory — bez eval na arbitralnym kodzie
-  if (!/^[\d+\-*/().]+$/.test(cleaned)) return parseFloat(cleaned);
-  try {
-    // eslint-disable-next-line no-new-func
-    const result = Function('"use strict"; return (' + cleaned + ')')();
-    return typeof result === 'number' && isFinite(result) ? result : NaN;
-  } catch { return NaN; }
-}
-
-/** Renderuje top-N kategorie jako duże przyciski w quick formularzu. */
-function setupQuickCategoryBtns(budgetUsers) {
-  const container = document.getElementById('quickCategoryBtns');
-  if (!container) return;
-  const top = getTopCategories(8);
-  if (!top.length) {
-    container.innerHTML = '<div class="text-mute text-sm">Brak kategorii — dodaj pierwszą w sekcji Kategorie.</div>';
-    return;
-  }
-  container.innerHTML = top.map(cat => {
-    const icon = cat.icon || '📦';
-    return `<button type="button" class="quick-cat-btn" data-action="quick-select-cat" data-name="${escapeHTML(cat.name)}">
-      <span class="qcat-icon">${escapeHTML(icon)}</span>
-      <span>${escapeHTML(cat.name)}</span>
-    </button>`;
-  }).join('');
-}
-
-/** Ustawia użytkownika w quick formularzu (chip). */
-function setupQuickUserBtns() {
-  const users = budgetUsersCache;
-  const userRow = document.getElementById('quickUserRow');
-  const userBtnsEl = document.getElementById('quickUserBtns');
-  const userIdInput = document.getElementById('quickUserId');
-  if (!userRow || !userBtnsEl || !userIdInput) return;
-
-  if (users.length <= 1) {
-    // jeden użytkownik — ukryj picker, ustaw automatycznie
-    userRow.style.display = 'none';
-    if (users.length === 1) userIdInput.value = users[0].id;
-    return;
-  }
-
-  userRow.style.display = 'block';
-  // Ustaw pierwszy jako domyślny
-  if (!userIdInput.value && users.length > 0) userIdInput.value = users[0].id;
-
-  userBtnsEl.innerHTML = users.map(u => {
-    const initial = (u.name || '?')[0].toUpperCase();
-    const isActive = userIdInput.value === u.id;
-    return `<button type="button" class="quick-cat-btn${isActive ? ' active' : ''}" style="min-height:auto;padding:8px 12px;flex-direction:row;gap:6px"
-      data-action="quick-select-user" data-uid="${escapeHTML(u.id)}">
-      <span style="font-size:15px;font-weight:700;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px">${escapeHTML(initial)}</span>
-      <span>${escapeHTML(u.name || u.id)}</span>
-    </button>`;
-  }).join('');
-}
-
-/** Wypełnia pole "Powtórz ostatni" ostatnim zrealizowanym wydatkiem. */
-function setupQuickRepeatBar() {
-  const bar = document.getElementById('quickRepeatBar');
-  if (!bar) return;
-  const expenses = getExpenses().filter(e => e.type === 'normal');
-  if (!expenses.length) { bar.style.display = 'none'; return; }
-  // Sortuj malejąco po dacie+czasie
-  expenses.sort((a, b) => {
-    const da = a.date + (a.time || '');
-    const db = b.date + (b.time || '');
-    return db.localeCompare(da);
-  });
-  const last = expenses[0];
-  const nameEl   = document.getElementById('quickRepeatName');
-  const metaEl   = document.getElementById('quickRepeatMeta');
-  const amountEl = document.getElementById('quickRepeatAmount');
-  if (nameEl) nameEl.textContent = last.description || last.category || '—';
-  if (metaEl) metaEl.textContent = last.category || '';
-  if (amountEl) amountEl.textContent = '−' + Fmt.zl(last.amount) + ' zł';
-  bar.style.display = 'flex';
-  bar.dataset.repeatId = last.id;
-}
-
-/** Otwiera quick-expense modal i inicjalizuje go. */
+/** Otwiera quick-expense modal, czyści i inicjalizuje formularz. */
 function openQuickExpenseModal() {
   openModal('quickExpenseModal');
-  setupQuickCategoryBtns();
-  setupQuickUserBtns();
-  setupQuickRepeatBar();
+  setupQuickExpenseSuggestions();
   // Wyczyść poprzednie dane
-  const amountInput = document.getElementById('quickAmount');
-  const descInput   = document.getElementById('quickDescription');
-  const catInput    = document.getElementById('quickCategory');
-  const calcPrev    = document.getElementById('quickCalcPreview');
-  if (amountInput) { amountInput.value = ''; amountInput.focus(); }
-  if (descInput)   descInput.value = '';
-  if (catInput)    catInput.value = '';
-  if (calcPrev)    calcPrev.textContent = '';
-  document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
+  const form = document.getElementById('quickExpenseForm');
+  if (form) form.reset();
+  document.getElementById('quickDescriptionSuggestions')?.replaceChildren();
+  document.getElementById('quickDescriptionButtons')?.replaceChildren();
+  // Fokus na kwotę po animacji bottom-sheet
+  setTimeout(() => document.getElementById('quickAmount')?.focus(), 260);
 }
 
-/** Obsługa submit szybkiego formularza. */
+/**
+ * Inicjalizuje autocomplete kategorii + opisy w quick formularzu.
+ * Wzorowane bezpośrednio na setupCategorySuggestions() — te same mechanizmy,
+ * inne ID elementów.
+ */
+function setupQuickExpenseSuggestions() {
+  const categoryInput     = document.getElementById('quickExpenseCategory');
+  const categoryButtons   = document.getElementById('quickCategoryButtons');
+  const descriptionInput  = document.getElementById('quickExpenseDescription');
+  const descriptionSuggestions = document.getElementById('quickDescriptionSuggestions');
+  const descriptionButtons     = document.getElementById('quickDescriptionButtons');
+
+  if (!categoryInput || !categoryButtons) return;
+
+  // Usuń stare listenery przez klonowanie
+  const newCatInput = categoryInput.cloneNode(true);
+  categoryInput.parentNode.replaceChild(newCatInput, categoryInput);
+  const newDescInput = descriptionInput?.cloneNode(true);
+  if (descriptionInput && newDescInput) descriptionInput.parentNode.replaceChild(newDescInput, descriptionInput);
+
+  // Buduj kafelki top-5 z ikoną z katalogu kategorii
+  const allCats    = getCategories();
+  const topCats    = getTopCategories(5);
+  const catWithIcon = (name) => allCats.find(c => c.name === name);
+
+  function renderQuickCatButtons(cats) {
+    if (!cats.length) { categoryButtons.innerHTML = ''; return; }
+    categoryButtons.innerHTML = cats.map(tc => {
+      const cat = catWithIcon(tc.name) || tc;
+      const iconStr = cat.icon ? `${escapeHTML(cat.icon)} ` : '';
+      return `<button type="button" class="category-quick-btn" data-action="select-quick-category" data-name="${escapeHTML(tc.name)}">${iconStr}${escapeHTML(tc.name)}</button>`;
+    }).join('');
+  }
+  renderQuickCatButtons(topCats);
+
+  // Filtruj kategorie przy wpisywaniu
+  newCatInput.addEventListener('input', () => {
+    const val = newCatInput.value.trim().toLowerCase();
+    if (!val) { renderQuickCatButtons(topCats); return; }
+    const filtered = allCats.filter(c => c.name.toLowerCase().includes(val)).slice(0, 5);
+    if (filtered.length) {
+      renderQuickCatButtons(filtered.map(c => ({ name: c.name })));
+    } else {
+      categoryButtons.innerHTML = '<p style="color:var(--ink-3);font-size:12px;padding:6px 0">Brak pasujących kategorii</p>';
+    }
+  });
+
+  if (!newDescInput) return;
+
+  function updateQuickDescButtons(category) {
+    const top = getTopDescriptionsForCategory(category, 5);
+    descriptionButtons.innerHTML = top.map(d =>
+      `<button type="button" class="category-quick-btn" data-action="select-quick-description" data-description="${escapeHTML(d.name)}">${escapeHTML(d.name)}</button>`
+    ).join('');
+  }
+
+  // Przy zmianie kategorii — zaktualizuj opisy
+  newCatInput.addEventListener('change', () => {
+    const cat = newCatInput.value.trim();
+    if (cat) updateQuickDescButtons(cat);
+  });
+
+  newDescInput.addEventListener('focus', () => {
+    const cat = newCatInput.value.trim();
+    if (cat) updateQuickDescButtons(cat);
+  });
+
+  newDescInput.addEventListener('input', () => {
+    const cat = newCatInput.value.trim();
+    const val = newDescInput.value.trim().toLowerCase();
+
+    if (!val) {
+      descriptionSuggestions.innerHTML = '';
+      if (cat) updateQuickDescButtons(cat); else descriptionButtons.innerHTML = '';
+      return;
+    }
+
+    const expenses = getExpenses();
+    const relevant = cat ? expenses.filter(e => e.category === cat) : expenses;
+    const descMap = new Map();
+    relevant.forEach(e => {
+      if (!e.description?.toLowerCase().includes(val)) return;
+      const entry = descMap.get(e.description) || { catCounts: new Map(), total: 0 };
+      entry.total++;
+      entry.catCounts.set(e.category || '', (entry.catCounts.get(e.category || '') || 0) + 1);
+      descMap.set(e.description, entry);
+    });
+
+    if (!descMap.size) { descriptionSuggestions.innerHTML = ''; descriptionButtons.innerHTML = ''; return; }
+
+    const results = Array.from(descMap.entries())
+      .sort((a, b) => b[1].total - a[1].total).slice(0, 6)
+      .map(([desc, { catCounts }]) => {
+        let topCat = '', topCount = 0;
+        catCounts.forEach((cnt, c) => { if (cnt > topCount) { topCount = cnt; topCat = c; } });
+        return { desc, topCat };
+      });
+
+    descriptionSuggestions.innerHTML = results.map(r =>
+      `<div class="suggestion-item" data-action="select-quick-description-with-category"
+           data-description="${escapeHTML(r.desc)}" data-category="${escapeHTML(r.topCat)}">
+        <span class="suggestion-desc-text">${escapeHTML(r.desc)}</span>
+        ${r.topCat && !cat ? `<span class="suggestion-category-badge">${escapeHTML(r.topCat)}</span>` : ''}
+      </div>`
+    ).join('');
+    descriptionButtons.innerHTML = '';
+  });
+}
+
+/** Obsługa submit szybkiego formularza — ta sama logika co addExpense. */
 async function addExpenseQuick(e) {
   e.preventDefault();
-  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const form = e.target;
+  const submitBtn = form.querySelector('button[type="submit"]');
   if (submitBtn?.disabled) return;
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Zapisywanie…'; }
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.orig = submitBtn.textContent; submitBtn.textContent = 'Zapisywanie…'; }
 
-  const rawAmount = document.getElementById('quickAmount')?.value || '';
-  const amount    = evalAmountExpr(rawAmount);
+  const amount    = parseFloat(form.expenseAmount?.value);
+  const category  = (form.expenseCategory?.value || '').trim();
+  const description = (form.expenseDescription?.value || '').trim();
+  const userId    = form.expenseUser?.value || '';
 
-  if (!validateAmount(amount)) {
-    showErrorMessage('Kwota musi być większa od 0');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
-    return;
-  }
+  const restore = () => { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.orig || 'Zapisz wydatek'; } };
 
-  const category = (document.getElementById('quickCategory')?.value || '').trim();
-  if (!category) {
-    showErrorMessage('Wybierz kategorię');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
-    return;
-  }
+  if (!validateAmount(amount))  { showErrorMessage('Kwota musi być większa od 0'); restore(); return; }
+  if (!category)                { showErrorMessage('Podaj kategorię'); restore(); return; }
+  if (!description)             { showErrorMessage('Podaj opis'); restore(); return; }
+  if (!userId)                  { showErrorMessage('Brak użytkownika — dodaj go w Ustawieniach'); restore(); return; }
 
-  const rawDesc   = (document.getElementById('quickDescription')?.value || '').trim();
-  const description = rawDesc || category;
-
-  const userId = document.getElementById('quickUserId')?.value || '';
-  if (!userId) {
-    showErrorMessage('Brak użytkownika — dodaj go w Ustawieniach');
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
-    return;
-  }
-
-  // Dodaj kategorię jeśli nie istnieje
   const categories = getCategories();
   if (!categories.some(c => c.name.toLowerCase() === category.toLowerCase())) {
-    const newCat = { id: `cat_${Date.now()}`, name: escapeHTML(category), icon: getCategoryIcon(category) };
-    await saveCategories([...categories, newCat]);
+    await saveCategories([...categories, { id: `cat_${Date.now()}`, name: escapeHTML(category), icon: getCategoryIcon(category) }]);
   }
 
   const date = getWarsawDateString();
   const time = getCurrentTimeString();
-
   const newExpense = {
-    id: `exp_${Date.now()}`,
-    amount: Math.round(amount * 100) / 100,
-    type: 'normal',
-    userId,
-    category: escapeHTML(category),
-    description: escapeHTML(description),
-    date,
-    time,
+    id: `exp_${Date.now()}`, amount, type: 'normal', userId,
+    category: escapeHTML(category), description: escapeHTML(description), date, time,
   };
 
   try {
-    const expenses = getExpenses();
-    await saveExpenses([...expenses, newExpense]);
+    await saveExpenses([...getExpenses(), newExpense]);
     await updateDailyEnvelope();
     clearLimitsCache();
-
-    const userName = getBudgetUserName(userId);
-    await log('EXPENSE_ADD', { amount: newExpense.amount, category, description, type: 'normal', budgetUser: userName });
-
+    await log('EXPENSE_ADD', { amount, category, description, type: 'normal', budgetUser: getBudgetUserName(userId) });
     window.closeModal('quickExpenseModal');
-    renderExpenses();
-    renderCategories();
-    renderSummary();
-    renderDailyEnvelope();
-    showSuccessMessage(`Zapisano: ${description} — ${Fmt.zl(newExpense.amount)} zł`);
+    renderExpenses(); renderCategories(); renderSummary(); renderDailyEnvelope();
+    showSuccessMessage(`Zapisano: ${description} — ${Fmt.zl(amount)} zł`);
   } catch (err) {
     console.error('❌ Błąd szybkiego wydatku:', err);
     showErrorMessage('Nie udało się zapisać wydatku');
-  } finally {
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Zapisz wydatek'; }
-  }
-}
-
-/** Kalkulator w polu kwoty — obsługa eventów input. */
-function attachAmountCalc(inputId, previewId) {
-  const input = document.getElementById(inputId);
-  const preview = document.getElementById(previewId);
-  if (!input || !preview) return;
-  input.addEventListener('input', () => {
-    const raw = input.value;
-    // Jeśli wygląda jak wyrażenie (ma operator poza pierwszym minusem)
-    const hasOp = /[\d)][\+\-\*\/][\d(]/.test(raw.replace(/,/g, '.'));
-    if (!hasOp) { preview.textContent = ''; return; }
-    const result = evalAmountExpr(raw);
-    if (!isNaN(result) && result > 0) {
-      preview.textContent = `= ${Fmt.zl(result)} zł`;
-    } else {
-      preview.textContent = '';
-    }
-  });
+  } finally { restore(); }
 }
 
 const SECTION_META = {
@@ -1703,36 +1676,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Szybki wydatek
     'open-quick-expense-modal': () => openQuickExpenseModal(),
-    'quick-select-cat': (el) => {
+    'select-quick-category': (el) => {
       const name = el.dataset.name;
-      const catInput = document.getElementById('quickCategory');
-      if (catInput) catInput.value = name;
-      document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
+      const catInput = document.getElementById('quickExpenseCategory');
+      if (catInput) {
+        catInput.value = name;
+        // Zaktualizuj opisy dla tej kategorii
+        const top = getTopDescriptionsForCategory(name, 5);
+        const descBtns = document.getElementById('quickDescriptionButtons');
+        if (descBtns) descBtns.innerHTML = top.map(d =>
+          `<button type="button" class="category-quick-btn" data-action="select-quick-description" data-description="${escapeHTML(d.name)}">${escapeHTML(d.name)}</button>`
+        ).join('');
+        document.getElementById('quickDescriptionSuggestions')?.replaceChildren();
+        document.getElementById('quickExpenseDescription')?.focus();
+      }
     },
-    'quick-select-user': (el) => {
-      const uid = el.dataset.uid;
-      const userInput = document.getElementById('quickUserId');
-      if (userInput) userInput.value = uid;
-      document.querySelectorAll('#quickUserBtns .quick-cat-btn').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
+    'select-quick-description': (el) => {
+      const descInput = document.getElementById('quickExpenseDescription');
+      if (descInput) descInput.value = el.dataset.description || '';
+      document.getElementById('quickDescriptionSuggestions')?.replaceChildren();
     },
-    'quick-repeat-last': (el) => {
-      const id = el.dataset.repeatId;
-      if (!id) return;
-      const expense = getExpenses().find(e => e.id === id);
-      if (!expense) return;
-      // Wypełnij quick form danymi ostatniego wydatku
-      const amountInput = document.getElementById('quickAmount');
-      const descInput   = document.getElementById('quickDescription');
-      const catInput    = document.getElementById('quickCategory');
-      if (amountInput) amountInput.value = String(expense.amount).replace('.', ',');
-      if (descInput)   descInput.value   = expense.description || '';
-      if (catInput)    catInput.value    = expense.category || '';
-      // Zaznacz kategorię
-      document.querySelectorAll('#quickCategoryBtns .quick-cat-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.name === expense.category);
-      });
+    'select-quick-description-with-category': (el) => {
+      const desc = el.dataset.description || '';
+      const cat  = el.dataset.category  || '';
+      const descInput = document.getElementById('quickExpenseDescription');
+      if (descInput) descInput.value = desc;
+      document.getElementById('quickDescriptionSuggestions')?.replaceChildren();
+      const catInput = document.getElementById('quickExpenseCategory');
+      if (catInput && !catInput.value.trim() && cat) catInput.value = cat;
     },
 
     // Modale dodawania
@@ -1896,9 +1867,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('correctionForm')?.addEventListener('submit', addCorrection);
   document.getElementById('settingsForm')?.addEventListener('submit', saveSettings);
   document.getElementById('quickExpenseForm')?.addEventListener('submit', addExpenseQuick);
-
-  // Kalkulator w polu kwoty
-  attachAmountCalc('quickAmount', 'quickCalcPreview');
 
   initPullToRefresh();
 });

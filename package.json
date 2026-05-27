@@ -1,6 +1,6 @@
 {
   "name": "krezus-budget-app",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "Nowoczesna aplikacja do zarządzania budżetem domowym z Firebase",
   "type": "module",
   "main": "src/app.js",
