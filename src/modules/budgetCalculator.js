@@ -1440,3 +1440,71 @@ export function simulateExpense(simulationDate, simulationAmount, category = nul
         }
     };
 }
+
+export function suggestSavingsTransfer(goal) {
+    if (!goal || !(goal.target > 0)) return null;
+
+    const today = getWarsawDateString();
+    const todayDate = parseDateStr(today);
+
+    const incomes = getIncomes().filter(i => i.type === 'normal');
+    const expenses = getExpenses().filter(e => e.type === 'normal');
+
+    // Nadwyżka za ostatnie 6 pełnych miesięcy
+    const monthSurpluses = [];
+    for (let i = 1; i <= 6; i++) {
+        const d = new Date(todayDate.getFullYear(), todayDate.getMonth() - i, 1);
+        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const mIncome = incomes
+            .filter(inc => inc.date.startsWith(m))
+            .reduce((s, inc) => s + (inc.amount || 0), 0);
+        const mExpense = expenses
+            .filter(exp => exp.date.startsWith(m))
+            .reduce((s, exp) => s + (exp.amount || 0), 0);
+        if (mIncome > 0 || mExpense > 0) monthSurpluses.push(mIncome - mExpense);
+    }
+
+    const monthsUsed = monthSurpluses.length;
+    let medianSurplus = 0;
+    if (monthsUsed > 0) {
+        const sorted = [...monthSurpluses].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        medianSurplus = sorted.length % 2 === 0
+            ? (sorted[mid - 1] + sorted[mid]) / 2
+            : sorted[mid];
+    }
+
+    // Sugerowana kwota
+    let amount;
+    let basedOnDeadline = false;
+    if (goal.deadline) {
+        const deadlineDate = parseDateStr(goal.deadline);
+        const remaining = Math.max(0, goal.target - goal.current);
+        const monthsLeft = Math.max(1,
+            (deadlineDate.getFullYear() - todayDate.getFullYear()) * 12 +
+            (deadlineDate.getMonth() - todayDate.getMonth())
+        );
+        amount = Math.ceil(remaining / monthsLeft / 50) * 50;
+        basedOnDeadline = true;
+    } else {
+        if (medianSurplus <= 0) return null;
+        amount = Math.max(50, Math.round((medianSurplus * 0.20) / 50) * 50);
+    }
+
+    // Sugerowany dzień miesiąca — 2 dni po typowym dniu wpływu przychodu
+    const incomeDays = incomes
+        .map(i => (i.date && i.date.length >= 10) ? parseInt(i.date.substring(8, 10), 10) : null)
+        .filter(d => d !== null && d >= 1 && d <= 31);
+
+    let day = null;
+    if (incomeDays.length >= 2) {
+        const counts = {};
+        for (const d of incomeDays) counts[d] = (counts[d] || 0) + 1;
+        const modeDay = parseInt(Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0], 10);
+        day = Math.min(28, modeDay + 2);
+    }
+
+    const canAfford = medianSurplus > 0 && amount <= medianSurplus * 0.5;
+
+    return { amount, day, monthsUsed, medianSurplus, basedOnDeadline, canAfford };
+}

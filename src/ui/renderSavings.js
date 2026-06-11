@@ -1,6 +1,6 @@
 // src/ui/renderSavings.js
 import { getSavings } from '../modules/dataManager.js';
-import { calculateAvailableFunds } from '../modules/budgetCalculator.js';
+import { calculateAvailableFunds, suggestSavingsTransfer } from '../modules/budgetCalculator.js';
 import { Fmt } from '../utils/fmt.js';
 import { userChipHTML } from './chips.js';
 import { escapeHTML } from '../utils/sanitizer.js';
@@ -71,6 +71,8 @@ function goalCardHTML(goal) {
       <span style="color:var(--ink-3);font-size:12px;margin-left:6px">odłożone</span>
     </div>`;
 
+  const suggestion = suggestSavingsTransfer(goal);
+
   const infoItems = [
     ...(pct !== null ? [
       { label: 'Zebrane', value: `${Fmt.zl(goal.current)} zł` },
@@ -79,10 +81,25 @@ function goalCardHTML(goal) {
       { label: 'Postęp', value: `${pct.toFixed(0)}%` },
     ] : []),
     ...(goal.deadline ? [{ label: 'Termin', value: Fmt.dateLong(goal.deadline) }] : []),
+    ...(suggestion ? [
+      {
+        label: 'Sugerowany przelew',
+        value: `${Fmt.zl(suggestion.amount)} zł/mies.`,
+        sub: suggestion.basedOnDeadline
+          ? `by zdążyć do terminu${suggestion.canAfford === false ? ' ⚠️' : ''}`
+          : `~20% typowej nadwyżki`,
+      },
+      ...(suggestion.day ? [{
+        label: 'Najlepszy moment',
+        value: `${suggestion.day}. dnia mies.`,
+        sub: `po typowym wpływie`,
+      }] : []),
+    ] : []),
   ].map(i => `
     <div class="goal-info-item">
-      <div class="label">${i.label}</div>
-      <div class="value">${i.value}</div>
+      <div class="label">${escapeHTML(i.label)}</div>
+      <div class="value">${escapeHTML(i.value)}</div>
+      ${i.sub ? `<div style="font-size:10px;color:var(--ink-3);margin-top:1px">${escapeHTML(i.sub)}</div>` : ''}
     </div>`).join('');
 
   const last5 = (goal.history ?? []).slice(0, 5);
